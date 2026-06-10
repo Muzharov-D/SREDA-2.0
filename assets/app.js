@@ -462,22 +462,15 @@ const PULSE_LOGO = `
 </svg>`;
 
 function renderPulse(root, d){
-  root.innerHTML = workHead(d, `Живое сердце компании · ${COMPANY_SIZE} людей + ${DIGITAL_SIZE} цифровых сотрудников (${DIGITAL_SHARE}% штата)`) + `
+  root.innerHTML = workHead(d, `Нервная система компании · ${TOTAL_STAFF} нейронов: ${COMPANY_SIZE} людей + ${DIGITAL_SIZE} цифровых (${DIGITAL_SHARE}% штата)`) + `
     <div class="pls-wrap">
-      <div class="pls-stage" id="plsStage">
+      <div class="pls-stage cx-stage" id="cxStage">
         <div class="pls-bgglow"></div>
-        <svg class="pls-links" id="plsLinks" preserveAspectRatio="none"></svg>
         <div class="pls-core" id="plsCore" title="Запустить рой">
           <span class="pls-ring r1"></span><span class="pls-ring r2"></span>
           <div class="pls-logo">${PULSE_LOGO}</div>
           <b>АВАНДОК СРЕДА 2.0</b><i>больше, чем результат</i>
         </div>
-        ${ROLE_IDS.map((r,i)=>{ const dep=DEPARTMENTS.find(x=>x.id===r); const dt=DEPT_TASK[r];
-          return `<div class="pls-dep" data-i="${i}" data-id="${r}" style="--c:${dt.c}" title="Открыть пульс отдела">
-            <div class="pls-dep-h"><span class="pls-dot"></span><b>${dep.icon} ${dep.label}</b></div>
-            <i>👤 ${HEADCOUNT[r]} · 🤖 ${DIGITAL_HEADCOUNT[r]}</i>
-            <small class="pls-now" data-now="${r}">в потоке…</small>
-          </div>`; }).join('')}
       </div>
       <aside class="pls-side">
         <button class="btn go pls-surge" id="plsSurge">⚡ Запустить рой</button>
@@ -487,82 +480,71 @@ function renderPulse(root, d){
         <div class="of-live"><b id="pls-done">—</b> выполнено сегодня</div>
         <div class="of-live"><b id="pls-flows">—</b> сквозных потока активно</div>
         <div class="of-legend kind-legend">
-          <span class="lg-d">задача цифрового</span>
-          <span class="lg-h" style="--c:#9aa096">задача человека</span>
-          <span style="--c:#34d399">передача →</span>
+          <span class="lg-h" style="--c:#9aa096">нейрон-человек</span>
+          <span class="lg-d">цифровой · ромб</span>
+          <span style="--c:#34d399">синапс = передача</span>
+          <span style="--c:#f87171">⛔ застрял = гейт</span>
         </div>
         <div class="of-legend pls-legend">${ROLE_IDS.map(r=>{ const dep=DEPARTMENTS.find(x=>x.id===r);
           return `<span style="--c:${DEPT_TASK[r].c}">${dep.label.toLowerCase()}</span>`; }).join('')}</div>
         <div class="of-feed" id="plsFeed"></div>
-        <div class="od-gov">На каждой частице — исполнитель: <b style="color:var(--acc)">цифровой сотрудник</b> готовит черновик, <b>человек</b> правит и принимает. Кликните отдел — провалитесь в его пульс.</div>
+        <div class="od-gov">Каждый нейрон — сотрудник из штатки: наведите — имя и задача, клик — профиль. Цепочки сделок бегут между конкретными людьми. <b>Колесо мыши</b> — приблизиться; докрутите на отделе — нырнёте в его пульс.</div>
       </aside>
     </div>`;
 
-  const stage=$('#plsStage',root), core=$('#plsCore',root), links=$('#plsLinks',root);
-  const pos = {};
-  const layout = () => {
-    const r = stage.getBoundingClientRect(); if(!r.width) return;
-    const cx=r.width/2, cy=r.height/2;
-    const rx=Math.min(r.width*0.40, 620), ry=Math.min(r.height*0.40, 250);
-    core.style.left=cx+'px'; core.style.top=cy+'px'; pos.core=[cx,cy];
-    const arr=$$('.pls-dep',stage); let lines='';
-    arr.forEach((n,i)=>{
-      const a=-Math.PI/2 + i/arr.length*Math.PI*2; const rf=(i%2)?0.84:1;
-      const x=cx+Math.cos(a)*rx*rf, y=cy+Math.sin(a)*ry*rf;
-      n.style.left=x+'px'; n.style.top=y+'px'; pos[n.dataset.id]=[x,y];
-      const mx=(cx+x)/2+(y-cy)*0.12, my=(cy+y)/2-(x-cx)*0.12;
-      lines+=`<path d="M${cx} ${cy} Q${mx} ${my} ${x} ${y}" stroke="${DEPT_TASK[n.dataset.id].c}" stroke-opacity=".16" fill="none" class="pls-link"/>`;
-    });
-    /* межотделовые синапсы: толщина = объём передач за период (DEPT_SYN) */
-    DEPT_SYN.forEach(s=>{ const A=pos[s.a], B=pos[s.b]; if(!A||!B) return;
-      const mx=(A[0]+B[0])/2+(B[1]-A[1])*0.10, my=(A[1]+B[1])/2-(B[0]-A[0])*0.10;
-      lines+=`<path d="M${A[0]} ${A[1]} Q${mx} ${my} ${B[0]} ${B[1]}" stroke="#34d399" stroke-opacity="${(0.07+s.w/260).toFixed(2)}" stroke-width="${Math.max(1,Math.min(6,s.w*0.15)).toFixed(1)}" fill="none" class="pls-syn"><title>${roleLabel(s.a)} ↔ ${roleLabel(s.b)} · ~${s.w} передач/нед</title></path>`;
-    });
-    if(links){ links.setAttribute('viewBox',`0 0 ${r.width} ${r.height}`); links.innerHTML=lines; }
-  };
-  layout(); requestAnimationFrame(layout);
-  window.addEventListener('resize', layout);
+  const stage=$('#cxStage',root), core=$('#plsCore',root);
 
-  /* частица: летит по кривой от a к b (через лёгкий изгиб), с меткой задачи */
-  const fly = (from, to, label, color, dur, isDigital) => {
-    const [fx,fy]=pos[from]||pos.core, [tx,ty]=pos[to]||pos.core; if(fx==null||tx==null) return;
-    const mx=(fx+tx)/2+(ty-fy)*0.18, my=(fy+ty)/2-(tx-fx)*0.18;
-    const c = el(`<div class="pls-chip ${label?'lbl':''} ${isDigital?'dgt':''}" style="--c:${color};offset-path:path('M${fx} ${fy} Q${mx} ${my} ${tx} ${ty}')">${label||''}</div>`);
-    stage.appendChild(c);
-    requestAnimationFrame(()=>{ c.style.transition=`offset-distance ${dur||1.5}s cubic-bezier(.45,.05,.35,1), opacity .4s ${((dur||1.5)-0.4)}s`; c.style.offsetDistance='100%'; c.style.opacity='0'; });
-    setTimeout(()=>c.remove(), (dur||1.5)*1000+150);
-    const tgt = $(`.pls-dep[data-id="${to}"]`, stage);
-    if(tgt) setTimeout(()=>{ tgt.classList.add('hit'); setTimeout(()=>tgt.classList.remove('hit'),500); }, (dur||1.5)*1000-250);
-    if(from==='core'){ core.classList.add('beat'); setTimeout(()=>core.classList.remove('beat'),350); }
-  };
-  const randDept = () => ROLE_IDS[Math.floor(Math.random()*ROLE_IDS.length)];
-  const emit = () => {
-    const to = randDept(), dt = DEPT_TASK[to];
-    const labeled = Math.random()<0.45;
-    const isDigital = Math.random()<0.62;
-    let label = '';
-    if (labeled){
-      const task = dt.l[Math.floor(Math.random()*dt.l.length)];
-      let who = '';
-      if (isDigital){ const pool=DIGITAL_STAFF[to]||[]; if(pool.length) who=pool[Math.floor(Math.random()*pool.length)].name; }
-      else { const t=COCKPITS[to]&&COCKPITS[to].team; if(t&&t.length){ const p=t[Math.floor(Math.random()*t.length)]; who=Array.isArray(p)?p[0]:p.name; } }
-      label = (isDigital?'🤖 ':'👤 ') + (who ? who+' · '+task : task);
-    }
-    fly('core', to, label, dt.c, 1.3+Math.random()*0.6, isDigital);
-    if (Math.random()<0.34){ // передача между отделами — по реальным синапсам, не случайно
-      const s=pickSyn(); const lbl=Math.random()<0.6?s.art[Math.floor(Math.random()*s.art.length)]:'';
-      fly(s.a, s.b, lbl, '#34d399', 1.7);
-    }
-  };
-  /* выбор синапса пропорционально объёму передач */
+  /* кластеры: реальные именные люди и цифровые, добитые типовыми до штатки */
+  const clusters = ROLE_IDS.map(r=>{
+    const dep=DEPARTMENTS.find(x=>x.id===r), cfg=COCKPITS[r], dt=DEPT_TASK[r];
+    const named=cfg.team.map((tt,i)=>{ const p=Array.isArray(tt)?{name:tt[0],role:tt[1],task:tt[2]}:tt;
+      return { name:p.name, sub:p.role, now:p.task, named:true, i }; });
+    const hc=HEADCOUNT[r]||named.length, dhc=DIGITAL_HEADCOUNT[r]||0;
+    const digsN=(DIGITAL_STAFF[r]||[]).map(w=>({ name:w.name, sub:w.title, now:w.now, named:true, id:w.id }));
+    return { id:r, label:dep.label, icon:dep.icon, color:dt.c, hc, dhc,
+      people:[...named, ...Array.from({length:Math.max(0,hc-named.length)},()=>({named:false}))],
+      digital:[...digsN, ...Array.from({length:Math.max(0,dhc-digsN.length)},()=>({named:false}))] };
+  });
+
+  const feed=(mark, who, text, dgt)=>{ const f=$('#plsFeed',root); if(!f) return;
+    const m = mark==='d' ? '<span class="lg-mark d"></span>'
+      : mark==='x' ? '<span style="color:#34d399">→</span>'
+      : mark==='g' ? '<span style="color:#f87171">⛔</span>'
+      : `<span class="lg-mark h" style="--c:${mark}"></span>`;
+    const row=el(`<div class="of-row fade-in">${m} <b>${who}</b>${dgt?' <i class="dgt-tag">цифровой</i>':''} ${text}</div>`);
+    f.insertBefore(row,f.firstChild); while(f.children.length>6) f.removeChild(f.lastChild); };
+
+  const cx = cortexMap(stage, {
+    clusters, synapses:DEPT_SYN, coreEl:core,
+    gated:(id)=>stepGate({role:id}).gated,
+    onDive:(id,fromZoom)=>{ if(fromZoom) toast(`Ныряем в пульс «${roleLabel(id)}»`); navTo('dpulse:'+id); },
+    onNode:(n)=>{ if(n.named&&n.type==='h') navTo('person:'+n.ci+':'+n.ref.i);
+      else if(n.named&&n.type==='d') navTo('worker:'+n.ref.id);
+      else navTo('team:'+n.ci); },
+  });
+  window.__CX = cx; /* отладочный хук для e2e-проверок */
+
   const synTotal=DEPT_SYN.reduce((a,s)=>a+s.w,0);
-  function pickSyn(){ let r=Math.random()*synTotal; for(const s of DEPT_SYN){ if((r-=s.w)<0) return s; } return DEPT_SYN[0]; }
+  const pickSyn=()=>{ let r=Math.random()*synTotal; for(const s of DEPT_SYN){ if((r-=s.w)<0) return s; } return DEPT_SYN[0]; };
+  const randDept = () => ROLE_IDS[Math.floor(Math.random()*ROLE_IDS.length)];
 
-  /* живая строка «чем занят отдел» */
-  const nowLine = () => {
-    const r = randDept(); const dt=DEPT_TASK[r]; const n=$(`.pls-now[data-now="${r}"]`,stage);
-    if(n){ n.textContent='→ '+dt.l[Math.floor(Math.random()*dt.l.length)]; n.classList.remove('tick'); void n.offsetWidth; n.classList.add('tick'); }
-  };
+  /* сюжет: сквозная цепочка из FLOWS бежит по конкретным людям; гейт её останавливает */
+  let storyI=0, storyBusy=false;
+  async function runStory(){
+    if(storyBusy) return; storyBusy=true;
+    const f=FLOWS[storyI++ % FLOWS.length];
+    feed('x', f.icon+' '+f.title, '— цепочка пошла по компании');
+    for(let i=0;i<f.steps.length-1;i++){
+      const s=f.steps[i], nx=f.steps[i+1];
+      const blocked = stepGate(nx).gated;
+      const ai=cx.findNode(s.role, s.who, 'h'), bi=cx.findNode(nx.role, nx.who, 'h');
+      const ok=await cx.impulse(ai, bi, { label:s.out, color:'#34d399', dur:2.6, size:4, stuck:blocked });
+      if(blocked){ feed('g', `${nx.who} · ${roleLabel(nx.role)}`, `гейт закрыт (sev1) — «${s.out}» ждёт решения человека`); break; }
+      if(!ok) break;
+      feed(DEPT_TASK[nx.role].c, nx.who, `принял(а): ${s.out}`);
+    }
+    storyBusy=false;
+  }
 
   const FEED=[
     ['d','Алгоритм','собрал черновик PR #'+(480+(Date.now()%40)),'dev'],
@@ -581,13 +563,34 @@ function renderPulse(root, d){
     ['d','Модель','пересчёт сценария кэш-флоу','finance'],
     ['h','Рома','подтвердил сверку июня','finance'],
     ['x','Оля → Ира','КП «Гамма» передано в Юр','sales']];
-  let done = 12480 + Math.floor(Math.random()*200);
+  let done = 12480 + Math.floor(Math.random()*200), tick=0;
   const baseInf = Math.round(DIGITAL_SIZE*1.6);
   clearInterval(window.__pulseTimer);
   window.__pulseTimer=setInterval(()=>{
-    if(!document.body.contains(stage)){ clearInterval(window.__pulseTimer); return; }
-    emit(); if(Math.random()<0.7) emit();
-    nowLine();
+    if(!document.body.contains(stage)){ clearInterval(window.__pulseTimer); cx.destroy(); return; }
+    tick++;
+    /* фоновая жизнь: задачи бегут между нейронами внутри отделов */
+    for(let q=0;q<2;q++){
+      const r=randDept(), dt=DEPT_TASK[r];
+      const isD=Math.random()<0.62;
+      let who='';
+      if(Math.random()<0.4){
+        if(isD){ const pool=DIGITAL_STAFF[r]||[]; if(pool.length) who=pool[Math.floor(Math.random()*pool.length)].name; }
+        else { const t=COCKPITS[r].team; const p=t[Math.floor(Math.random()*t.length)]; who=Array.isArray(p)?p[0]:p.name; }
+      }
+      const task=(isRPG()&&Math.random()<0.04)?'🐴 Плотва · срочный квест':dt.l[Math.floor(Math.random()*dt.l.length)];
+      cx.localPulse(r, who?(isD?'🤖 ':'👤 ')+who+' · '+task:'');
+    }
+    /* задача из ядра в отдел */
+    if(tick%2===0){ const r=randDept(), dt=DEPT_TASK[r];
+      cx.corePulse(r, Math.random()<0.4?dt.l[Math.floor(Math.random()*dt.l.length)]:'', dt.c); }
+    /* передача по межотделовому синапсу — между конкретными людьми */
+    if(Math.random()<0.5){ const s=pickSyn();
+      cx.impulse(cx.findNode(s.a,null,'h'), cx.findNode(s.b,null,'h'),
+        { label:Math.random()<0.55?s.art[Math.floor(Math.random()*s.art.length)]:'', color:'#34d399', dur:2.3 }); }
+    /* сюжетная цепочка сделки и волна-дыхание */
+    if(tick%12===5) runStory();
+    if(tick%9===2) cx.surgeWave();
     done += 3+Math.floor(Math.random()*4);
     const infV=Math.max(1,baseInf+Math.round((Math.random()-0.5)*60));
     const infD=Math.round(infV*0.62), infH=infV-infD;
@@ -596,26 +599,21 @@ function renderPulse(root, d){
     const ifh=$('#pls-inf-h',root); if(ifh) ifh.textContent=infH.toLocaleString('ru');
     const dn=$('#pls-done',root); if(dn) dn.textContent=done.toLocaleString('ru');
     const FS=flowState(); const fl=$('#pls-flows',root); if(fl) fl.textContent=FLOWS.filter(f=>FS[f.id]<f.steps.length).length;
-    const feed=$('#plsFeed',root); if(feed){ const f=FEED[Math.floor(Math.random()*FEED.length)];
-      const mark = f[0]==='d' ? '<span class="lg-mark d"></span>' : f[0]==='h' ? `<span class="lg-mark h" style="--c:${DEPT_TASK[f[3]].c}"></span>` : '<span style="color:#34d399">→</span>';
-      const tag = f[0]==='d' ? ' <i class="dgt-tag">цифровой</i>' : '';
-      const row=el(`<div class="of-row fade-in">${mark} <b>${f[1]}</b>${tag} ${f[2]}</div>`);
-      feed.insertBefore(row,feed.firstChild); while(feed.children.length>6) feed.removeChild(feed.lastChild); }
-  }, 700);
+    if(tick%3===1){ const f=FEED[Math.floor(Math.random()*FEED.length)];
+      feed(f[0]==='d'?'d':f[0]==='x'?'x':DEPT_TASK[f[3]].c, f[1], f[2], f[0]==='d'); }
+  }, 760);
 
-  /* всплеск роя — волна задач из ядра во все отделы */
+  /* всплеск роя — волна по коре + задачи из ядра во все отделы */
   const surge = () => {
-    let k=0; const burst=setInterval(()=>{
-      ROLE_IDS.forEach(r=>{ if(Math.random()<0.8){ const dt=DEPT_TASK[r]; fly('core', r, Math.random()<0.5?dt.l[Math.floor(Math.random()*dt.l.length)]:'', dt.c, 1.1+Math.random()*0.7); } });
-      if(++k>=4){ clearInterval(burst); }
-    }, 260);
+    cx.surgeWave();
+    ROLE_IDS.forEach(r=>{ const dt=DEPT_TASK[r];
+      setTimeout(()=>cx.corePulse(r, dt.l[Math.floor(Math.random()*dt.l.length)], dt.c), Math.random()*600);
+      setTimeout(()=>cx.corePulse(r, '', dt.c), 600+Math.random()*600); });
     pushAudit({ who:'CEO · Кирилл', what:'Запустил рой по всем отделам', verdict:'allow' });
-    toast('Рой запущен — задачи разлетелись по 8 отделам');
+    toast('Рой запущен — волна прошла по всей коре компании');
   };
   $('#plsSurge',root).onclick = surge;
   core.onclick = surge;
-
-  $$('.pls-dep',stage).forEach(n=>n.onclick=()=>navTo('dpulse:'+n.dataset.id));
 }
 
 /* ========================================================================== */

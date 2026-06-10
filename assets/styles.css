@@ -3972,5 +3972,28 @@ body.rpg-mode .rolecard.hc{border-color:rgba(232,196,104,.25);box-shadow:inset 0
 body.rpg-mode .hc-ach{color:#e6d9b8}
 
 /* ============================================================================
+   CORTEX — нервная система компании на Пульсе (canvas, 314 нейронов)
+   ========================================================================== */
+.cx-stage{position:relative;overflow:hidden}
+.cx-canvas{position:absolute;inset:0;z-index:2;display:block}
+.cx-stage .pls-core{z-index:3;pointer-events:auto;
+  transform:translate(-50%,-50%) scale(var(--zoom,1));transform-origin:center}
+.cx-label{position:absolute;transform:translate(-50%,-100%);z-index:4;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:1px;padding:5px 11px;
+  background:rgba(18,19,16,.78);border:1px solid var(--line2);border-radius:11px;
+  backdrop-filter:blur(3px);transition:border-color .2s,box-shadow .2s;font-family:inherit;text-align:center}
+.cx-label b{font-size:12px;color:var(--txt);font-weight:700;white-space:nowrap}
+.cx-label i{font-style:normal;font-size:10px;color:var(--muted);white-space:nowrap}
+.cx-label:hover{border-color:var(--c,var(--acc));box-shadow:0 0 0 1px var(--c,var(--acc)),0 8px 20px rgba(0,0,0,.4)}
+.cx-tip{position:absolute;transform:translate(-50%,-100%);z-index:8;pointer-events:none;
+  background:rgba(26,28,24,.96);border:1px solid var(--line3);border-radius:9px;padding:6px 10px;
+  box-shadow:0 8px 22px rgba(0,0,0,.55);max-width:240px;text-align:left}
+.cx-tip b{display:block;font-size:12px;color:var(--txt)}
+.cx-tip small{display:block;font-size:10.5px;color:var(--txt2);margin-top:1px}
+.cx-tip i{display:block;font-style:normal;font-size:9.5px;color:var(--acc);margin-top:3px}
+.cx-hint{position:absolute;left:12px;bottom:10px;z-index:4;font-size:10px;color:var(--faint);
+  background:rgba(18,19,16,.6);border-radius:8px;padding:4px 9px;pointer-events:none}
+
+/* ============================================================================
    Конец дополнительных стилей
    ========================================================================== */
