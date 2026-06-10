@@ -764,7 +764,26 @@ const MEGA_PROJECT = {
   ],
 };
 const PROJ_STATE = { done:['✓','готово','#34d399'], active:['●','в работе','#fbbf24'], blocked:['⛔','гейт sev1','#f87171'], wait:['○','в очереди','#8e9288'] };
-function projTasks(){ return MEGA_PROJECT.phases.flatMap(p => p.tasks.map(t => ({ ...t, phase: p.title }))); }
+/* живые статусы: blocked привязан к реальному sev1-гейту рабочего стола;
+   фаза «Запуск» открывается, когда закрыты все предыдущие; done копится в сторе */
+function projStore(){ return window.__PROJST || (window.__PROJST = { done:{}, launched:false }); }
+function projComplete(dept, who){ projStore().done[dept + ':' + who] = true; }
+function projTaskState(t){
+  const S = projStore();
+  if (S.done[t.dept + ':' + t.who]) return 'done';
+  if (t.state === 'blocked')
+    return (typeof stepGate === 'function' && stepGate({ role: t.dept }).gated) ? 'blocked' : 'active';
+  if (t.state === 'wait'){
+    const prevDone = MEGA_PROJECT.phases.slice(0, 4).every(ph => ph.tasks.every(x => {
+      if (S.done[x.dept + ':' + x.who] || x.state === 'done') return true;
+      if (x.state === 'blocked') return false;          /* юр-гейт держит запуск */
+      return false;                                      /* active не закрыта */
+    }));
+    return prevDone ? 'active' : 'wait';
+  }
+  return t.state;
+}
+function projTasks(){ return MEGA_PROJECT.phases.flatMap(p => p.tasks.map(t => ({ ...t, phase: p.title, state: projTaskState(t) }))); }
 function projTasksOf(dept){ return projTasks().filter(t => t.dept === dept); }
 function projTaskOf(dept, name){ return projTasks().find(t => t.dept === dept && t.who === name) || null; }
 function projProgress(){ const all = projTasks(); const done = all.filter(t => t.state === 'done').length;

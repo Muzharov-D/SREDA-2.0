@@ -512,17 +512,7 @@ function renderPulse(root, d){
         <div class="of-feed" id="plsFeed"></div>
         <div class="od-gov">Каждый нейрон — сотрудник из штатки: наведите — имя и задача, клик — профиль. Цепочки сделок бегут между конкретными людьми. <b>Колесо мыши</b> — приблизиться; докрутите на отделе — нырнёте в его пульс.</div>
         </div>
-        <div class="side-proj" style="display:none">
-          <div class="pj-head"><b>🚀 ${MEGA_PROJECT.title}</b><small>${MEGA_PROJECT.ask}</small>
-            <small class="pj-meta">спонсор: ${MEGA_PROJECT.sponsor} · дедлайн ${MEGA_PROJECT.deadline}</small>
-            ${rpgBar(projProgress().pct,'ok')}<small class="pj-meta">${projProgress().done}/${projProgress().total} задач готово</small></div>
-          ${MEGA_PROJECT.phases.map(ph=>{ const ds=ph.tasks.filter(t=>t.state==='done').length;
-            return `<div class="pj-phase"><b>${ph.title} <span>${ds}/${ph.tasks.length}</span></b>
-            ${ph.tasks.map(t=>{ const s=PROJ_STATE[t.state];
-              return `<button class="pj-task" data-pj="${t.dept}:${t.who}"><i style="color:${s[2]}">${s[0]}</i><div><b>${t.who} · ${roleLabel(t.dept)}</b><small>${t.t}</small></div><span style="color:${s[2]}">${s[1]}</span></button>`; }).join('')}
-          </div>`; }).join('')}
-          <div class="od-gov">На карте подсвечены только нейроны проекта — трасса бежит по цепочке задач, ⛔ застревает на юр-гейте. Клик по задаче — профиль исполнителя (его первый квест — этот проект).</div>
-        </div>
+        <div class="side-proj" id="pjPanel" style="display:none"></div>
       </aside>
     </div>`;
 
@@ -558,38 +548,81 @@ function renderPulse(root, d){
   });
   window.__CX = cx; /* отладочный хук для e2e-проверок */
 
-  /* ── мегапроект CEO: трасса по нейронам, фокус-режим ── */
-  const projNodes = projTasks().map(t=>({ t, ni: cx.findNode(t.dept, t.who, 'h') }));
+  /* ── мегапроект CEO: трасса, живые статусы, доведение до конца ── */
   let projMode=false, projGen=0;
   const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+  const projBtnLbl=()=>{ const P=projProgress();
+    return P.pct>=100 ? `✓ ${MEGA_PROJECT.title} — завершён` : `🚀 ${MEGA_PROJECT.title} · ${P.pct}%`; };
+  function projPanelHTML(){
+    const P=projProgress(); const tasks=projTasks();
+    const byPhase={}; tasks.forEach(t=>{ (byPhase[t.phase]=byPhase[t.phase]||[]).push(t); });
+    return `<div class="pj-head"><b>🚀 ${MEGA_PROJECT.title}</b><small>${MEGA_PROJECT.ask}</small>
+      <small class="pj-meta">спонсор: ${MEGA_PROJECT.sponsor} · дедлайн ${MEGA_PROJECT.deadline}</small>
+      ${rpgBar(P.pct,'ok')}<small class="pj-meta">${P.done}/${P.total} задач готово${P.pct>=100?' · 🎉 продукт запущен':''}</small></div>
+    ${MEGA_PROJECT.phases.map(ph=>{ const ts=byPhase[ph.title]||[]; const ds=ts.filter(t=>t.state==='done').length;
+      return `<div class="pj-phase"><b>${ph.title} <span>${ds}/${ts.length}</span></b>
+      ${ts.map(t=>{ const s=PROJ_STATE[t.state];
+        return `<button class="pj-task" data-pj="${t.dept}:${t.who}"><i style="color:${s[2]}">${s[0]}</i><div><b>${t.who} · ${roleLabel(t.dept)}</b><small>${t.t}</small></div><span style="color:${s[2]}">${s[1]}</span></button>`
+        + (t.state==='blocked'?`<button class="pj-fix" data-fix="${t.dept}">⛔ снять sev1-риск — рабочий стол «${roleLabel(t.dept)}» →</button>`:''); }).join('')}
+      </div>`; }).join('')}
+    <div class="od-gov">${P.pct>=100
+      ? 'Проект доведён до конца: юр-гейт снят человеком, запуск открылся, все 17 задач закрыты. Это и есть контур: ИИ ведёт, человек решает.'
+      : 'Трасса закрывает задачи «в работе». ⛔ — реальный гейт: снимите sev1 в рабочем столе юриста, и фаза «Запуск» откроется. Клик по задаче — профиль исполнителя.'}</div>`;
+  }
+  function refreshProj(){
+    const pp=$('#pjPanel',root); if(pp && projMode){ pp.innerHTML=projPanelHTML(); wireProj(); }
+    const pb=$('#plsProj',root); if(pb && !projMode) pb.innerHTML=projBtnLbl();
+    cx.setFocus(projMode ? projTasks().map(t=>cx.findNode(t.dept,t.who,'h')).filter(x=>x!=null) : null);
+  }
+  function wireProj(){
+    root.querySelectorAll('[data-pj]').forEach(b=>b.onclick=()=>{ const [dp,who]=b.dataset.pj.split(':');
+      const i=personIdxByName(dp,who); if(i>=0) navTo('person:'+dp+':'+i); else navTo('team:'+dp); });
+    root.querySelectorAll('[data-fix]').forEach(b=>b.onclick=()=>{ toast('Рабочий стол юриста: исправьте sev1-пункт договора руками — гейт откроется'); navTo(b.dataset.fix); });
+  }
+  function celebrate(){
+    if(projStore().launched) return; projStore().launched=true;
+    cx.surgeWave();
+    ROLE_IDS.forEach((r,i)=>setTimeout(()=>cx.corePulse(r,'🚀 Среда запущена','#e8c468'), i*180));
+    setTimeout(()=>cx.surgeWave(), 900);
+    feed('x','🚀 '+MEGA_PROJECT.title,'— все 17 задач закрыты, продукт запущен');
+    pushAudit({ who:MEGA_PROJECT.sponsor, what:'Мегапроект завершён: '+MEGA_PROJECT.title+' — продукт запущен', verdict:'allow' });
+    toast('🎉 «Среда» запущена — проект пройден от задачи CEO до релиза');
+  }
   async function projTrace(gen){
     while(projMode && gen===projGen && document.body.contains(stage)){
+      const tasks=projTasks();                      /* статусы пересчитываются каждый круг */
       let prev=null;
-      for(const {t,ni} of projNodes){
+      for(const t of tasks){
         if(!projMode||gen!==projGen||!document.body.contains(stage)) return;
-        if(ni==null) continue;
+        const ni=cx.findNode(t.dept, t.who, 'h'); if(ni==null) continue;
         const col=PROJ_STATE[t.state][2], blocked=t.state==='blocked';
         if(prev==null){ cx.corePulse(t.dept, '🚀 '+t.t, col); await sleep(1400); }
-        else await cx.impulse(prev, ni, { label:(blocked?'⛔ ':'')+t.t, color:col, dur:1.9, size:4, stuck:blocked });
-        if(blocked) feed('g', `${t.who} · ${roleLabel(t.dept)}`, `проект упёрся в гейт sev1 — «${t.t}» ждёт человека`);
+        else await cx.impulse(prev, ni, { label:(blocked?'⛔ ':'')+t.t, color:col, dur:1.8, size:4, stuck:blocked,
+          pop:t.state==='done'?`${t.who}: готово · ${t.out}`:'' });
+        if(blocked) feed('g', `${t.who} · ${roleLabel(t.dept)}`, `гейт sev1 — «${t.t}» ждёт человека. Снять: рабочий стол юриста`);
+        /* трасса дошла до работающего — задача закрывается */
+        if(!blocked && t.state==='active' && Math.random()<0.6){
+          projComplete(t.dept, t.who);
+          feed(DEPT_TASK[t.dept].c, t.who, `закрыл(а) задачу проекта: «${t.t}» ✓`);
+          refreshProj();
+          if(projProgress().pct>=100){ celebrate(); refreshProj(); }
+        }
         prev=ni;
       }
-      await sleep(2600);
+      await sleep(2400);
     }
   }
   function setProj(on){
     projMode=on; projGen++;
-    const pb=$('#plsProj',root), pn=root.querySelector('.side-normal'), pp=root.querySelector('.side-proj');
-    if(pb){ pb.classList.toggle('on',on); pb.innerHTML = on ? '← Обычный пульс' : `🚀 ${MEGA_PROJECT.title} · ${projProgress().pct}%`; }
+    const pb=$('#plsProj',root), pn=root.querySelector('.side-normal'), pp=$('#pjPanel',root);
+    if(pb){ pb.classList.toggle('on',on); pb.innerHTML = on ? '← Обычный пульс' : projBtnLbl(); }
     if(pn) pn.style.display=on?'none':'';
-    if(pp) pp.style.display=on?'':'none';
-    cx.setFocus(on ? projNodes.map(p=>p.ni).filter(x=>x!=null) : null);
+    if(pp){ pp.style.display=on?'':'none'; if(on){ pp.innerHTML=projPanelHTML(); wireProj(); } }
+    cx.setFocus(on ? projTasks().map(t=>cx.findNode(t.dept,t.who,'h')).filter(x=>x!=null) : null);
     if(on){ pushAudit({ who:MEGA_PROJECT.sponsor, what:'Поставил задачу: '+MEGA_PROJECT.title+' — трасса проекта на пульсе', verdict:'allow' });
       toast('CEO поставил задачу — компания подсветила исполнителей, трасса побежала'); projTrace(projGen); }
   }
   const pjBtn=$('#plsProj',root); if(pjBtn) pjBtn.onclick=()=>setProj(!projMode);
-  root.querySelectorAll('[data-pj]').forEach(b=>b.onclick=()=>{ const [dp,who]=b.dataset.pj.split(':');
-    const i=personIdxByName(dp,who); if(i>=0) navTo('person:'+dp+':'+i); else navTo('team:'+dp); });
 
   const synTotal=DEPT_SYN.reduce((a,s)=>a+s.w,0);
   const pickSyn=()=>{ let r=Math.random()*synTotal; for(const s of DEPT_SYN){ if((r-=s.w)<0) return s; } return DEPT_SYN[0]; };
