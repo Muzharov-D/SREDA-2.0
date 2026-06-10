@@ -50,7 +50,9 @@ const WORKSPACES = ROLE_IDS.map(id => { const d = DEPARTMENTS.find(x=>x.id===id)
     nav:[ {id:'asst:'+id,label:'Мой ассистент',icon:'💬'}, {id:id,label:'Рабочий стол',icon:'🖥️'}, {id:'flow:'+id,label:'Передачи',icon:'🔄'}, {id:'channel:'+id,label:'Канал отдела',icon:'💬'}, {id:'dpulse:'+id,label:'Пульс отдела',icon:'🫀'}, {id:'lib:'+id,label:'Умения и цифровые сотрудники',icon:'🧩'}, {id:'team:'+id,label:'Команда',icon:'👥'} ] };
 }).concat([
   { id:'exec', kind:'mgmt', icon:'📊', label:'Менеджмент', persona:'CEO · Кирилл',
-    nav:[ {id:'pulse',label:'Пульс компании',icon:'🫀'}, {id:'exec',label:'Дашборд компании',icon:'📊'}, {id:'company',label:'Оргструктура',icon:'🏢'}, {id:'flowx',label:'Передачи компании',icon:'🔄'}, {id:'project',label:'Проекты на ревью',icon:'📁'} ] },
+    nav:[ {id:'pulse',label:'Пульс компании',icon:'🫀'}, {id:'exec',label:'Дашборд компании',icon:'📊'}, {id:'company',label:'Оргструктура',icon:'🏢'}, {id:'flowx',label:'Передачи компании',icon:'🔄'}, {id:'project',label:'Проекты на ревью',icon:'📁'},
+      {sep:'Платформа Среды'},
+      {id:'talent',label:'Цифровой найм',icon:'🌊'}, {id:'forge',label:'Цифровое производство',icon:'🏭'}, {id:'bills',label:'Счета Среды',icon:'🧾'} ] },
   { id:'owner', kind:'owner', icon:'⚙️', label:'Владелец платформы', persona:'Платформа · Авандок',
     nav:[ {id:'workers',label:'Штат цифровых сотрудников',icon:'🤖'},{id:'aibudget',label:'Бюджеты ИИ',icon:'💰'},{id:'router',label:'Маршрутизатор моделей',icon:'🔀'},{id:'audit',label:'Аудит и доступ',icon:'🛡️'},{id:'market',label:'Полная библиотека',icon:'📚'},{id:'studio',label:'Студия',icon:'🛠️'},
       {sep:'Видение'},
@@ -136,12 +138,27 @@ function renderTeam(root, id){ const cfg=COCKPITS[id]; const d=DEPARTMENTS.find(
   let sel={kind:'h', i:0};
   function draw(){
     const dc = DEPT_TASK[id].c;
-    const teamHtml=Object.keys(groups).map(g=>`${grouped?`<div class="team-fn">${g}<span>${groups[g].length}</span></div>`:''}<div class="dev-team">${groups[g].map(pp=> pp.digital
+    const TLH = tlHiredOf(id);
+    let teamHtml=Object.keys(groups).map(g=>`${grouped?`<div class="team-fn">${g}<span>${groups[g].length}</span></div>`:''}<div class="dev-team">${groups[g].map(pp=> pp.digital
       ? `<div class="dev-p dgt ${sel.kind==='d'&&sel.i===pp.i?'on':''}" data-dw="${pp.i}"><span class="dp-av">${pp.emoji}</span><div><b>${pp.name} <i class="dgt-tag">цифровой</i></b><small>${pp.title} · ${pp.now}</small></div><span class="dp-swarm dgt">ДИ →</span><span class="dp-swarm prof" data-wjump="${pp.id}" title="Полный профиль">профиль →</span></div>`
       : `<div class="dev-p ${sel.kind==='h'&&sel.i===pp.i?'on':''}" data-p="${pp.i}">${humanAv(id, pp.name, dc, 'sm')}<div><b>${pp.name}</b><small>${pp.role} · ${pp.task}</small></div><span class="dp-swarm">рой · ${swarmOf(pp.role).a.length}</span><span class="dp-swarm prof" data-pjump="${id}:${pp.i}" title="Полный профиль">профиль →</span></div>`).join('')}</div>`).join('');
+    if (TLH.length) teamHtml += `<div class="team-fn">🌊 Агенты Среды на контракте<span>${TLH.length}</span></div><div class="dev-team">${TLH.map((h,ti)=>{ const a=talentAgent(h.aid);
+      return `<div class="dev-p tlh ${sel.kind==='t'&&sel.i===ti?'on':''}" data-tl="${ti}">${hexAv(a)}<div><b>${a.name} <i class="dgt-tag tl">агент Среды</i></b><small>${TL_ROLES[a.role].label} · ${h.sinceLbl} · принято: ${h.accepted}</small></div><span class="dp-swarm prof" data-tljump="${a.id}">контракт →</span></div>`; }).join('')}</div>`;
 
     let side='';
-    if (sel.kind==='h'){
+    if (sel.kind==='t' && TLH[sel.i]){
+      const h=TLH[sel.i], a=talentAgent(h.aid);
+      side=`<h2>🌊 Агент Среды · контракт</h2>
+        <div class="rolecard hc">
+          <div class="hc-h">${hexAv(a)}<div><b>${a.name}</b><small>${TL_ROLES[a.role].label} · ${a.grade} · ${tlPassId(a)}</small></div><span class="hc-lvl" style="color:var(--teal);border-color:rgba(45,212,191,.4)">${a.rating}★</span></div>
+          ${gpField('Формат', h.mode==='staff'?'в штате · ₽'+a.priceMonth.toLocaleString('ru')+'/мес':'за результат · ₽'+a.priceTask.toLocaleString('ru'), 'sreda')}
+          ${gpField('Контактная поверхность', 'витрины отдела: 2 из 6 · JIT-доступ', 'sreda')}
+          ${gpField('Принято результатов', String(h.accepted), 'sreda')}
+          <div class="hc-sec"><div class="hc-lab"><span>Отличие от Inside-цифровых</span></div>
+            <div class="od-gov" style="margin:0">Контракт вместо должностной инструкции, урезанный периметр данных, оплата платформе за результат. Доверяете — кристаллизуйте в постоянный штат.</div></div>
+          <button class="btn go ji-prof" data-tlprof="${a.id}">Открыть контракт и паспорт →</button>
+        </div>`;
+    } else if (sel.kind==='h'){
       const p=TEAM[sel.i], sw=swarmOf(p.role);
       const R=personRPG(id,p), Q=questsOf(id,p.name,p.task), load=loadOf(Q,R.lvl);
       const gateOpen = stepGate({role:id}).gated;
@@ -198,6 +215,9 @@ function renderTeam(root, id){ const cfg=COCKPITS[id]; const d=DEPARTMENTS.find(
     </div>`;
     root.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{ sel={kind:'h', i:+b.dataset.p}; draw(); });
     root.querySelectorAll('[data-dw]').forEach(b=>b.onclick=()=>{ sel={kind:'d', i:+b.dataset.dw}; draw(); });
+    root.querySelectorAll('[data-tl]').forEach(b=>b.onclick=()=>{ sel={kind:'t', i:+b.dataset.tl}; draw(); });
+    root.querySelectorAll('[data-tljump]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); navTo('tagent:'+b.dataset.tljump); });
+    const tlp=root.querySelector('[data-tlprof]'); if(tlp) tlp.onclick=()=>navTo('tagent:'+tlp.dataset.tlprof);
     root.querySelectorAll('[data-pjump]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); navTo('person:'+b.dataset.pjump); });
     root.querySelectorAll('[data-wjump]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); navTo('worker:'+b.dataset.wjump); });
     const prof=root.querySelector('[data-jiprof]'); if(prof) prof.onclick=()=>navTo('worker:'+prof.dataset.jiprof);
@@ -654,6 +674,11 @@ function renderDeptPulse(root, roleId){
       color:dt.c, size:48+q.length*5, status:st, title:`${p.name} · ${p.role} — открыть профиль`, p }); });
   digs.forEach(w=>nodes.push({ id:'d'+w.i, kind:'d', label:w.name, sub:'цифровой', av:`<span class="nm-em">${w.emoji}</span>`,
     color:'#36c994', size:42, status:w.status==='paused'?'wait':'ok', title:`${w.name} · ${w.title} — открыть профиль`, w }));
+  /* агенты Среды на контракте — «жидкие» нейроны на контактной поверхности */
+  const tlh = tlHiredOf(roleId).map((h,i)=>({ h, a:talentAgent(h.aid), i }));
+  tlh.forEach(x=>nodes.push({ id:'t'+x.i, kind:'d', cls:'tlq', label:x.a.name.split(' ')[0], sub:'агент Среды',
+    av:`<span class="nm-em" style="font-style:normal">${x.a.name[0]}</span>`, color:'#2dd4bf', size:44, status:'ok',
+    title:`${x.a.name} · контракт Talent — открыть`, t:x }));
 
   /* синапсы: руководитель ↔ функции, цепочки внутри функций, цифровой → его человек */
   const links=[];
@@ -663,6 +688,7 @@ function renderDeptPulse(root, roleId){
     for(let k=0;k<g.length-1;k++) links.push({ a:'h'+g[k].i, b:'h'+g[k+1].i, w:1.6, color:dt.c, op:.20 }); });
   digs.forEach(w=>{ const ln=(w.lead||'').split(' · ')[0]; const t=team.find(p=>p.name===ln);
     links.push({ a:'d'+w.i, b:t?'h'+t.i:'#'+(fns.indexOf(w.fn)>=0?w.fn:fns[0]), w:2.4, color:'#36c994', op:.26 }); });
+  tlh.forEach(x=>links.push({ a:'t'+x.i, b:leadId, w:2.2, color:'#2dd4bf', op:.32 }));
 
   root.innerHTML = workHead(d, `Пульс отдела «${cfg.role}» · ${hc} людей + ${dhc} цифровых · каждый нейрон — живой сотрудник`) + `
     <div class="dp-wrap">
@@ -684,7 +710,7 @@ function renderDeptPulse(root, roleId){
   const stage=$('#dpStage',root);
   const map = neuralMap(stage, { nodes, links,
     layout:(W,H)=>neuralClusterLayout(W,H, fns.map(f=>({ id:f, items:[...groupsH[f].map(p=>'h'+p.i), ...(digsByFn[f]||[]).map(w=>'d'+w.i)] })), { memberR:50, rx:.36, ry:.34 }),
-    onClick:(n)=>{ if(n.kind==='h') navTo('person:'+roleId+':'+n.p.i); else if(n.kind==='d') navTo('worker:'+n.w.id); else navTo('team:'+roleId); } });
+    onClick:(n)=>{ if(n.kind==='h') navTo('person:'+roleId+':'+n.p.i); else if(n.t) navTo('tagent:'+n.t.a.id); else if(n.kind==='d') navTo('worker:'+n.w.id); else navTo('team:'+roleId); } });
 
   const FEEDV=[['собрал черновик:',dt.l[0]],['закрыл',dt.l[1]||dt.l[0]],['проверил',dt.l[2]||dt.l[0]],['передал дальше','результат']];
   const baseInf=Math.round((hc+dhc)*0.6);
@@ -920,6 +946,11 @@ function renderStage(id){
   if (id.indexOf('worker:')===0){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderWorkerProfile($('#work'), id.slice(7)); return; }
   if (id.indexOf('person:')===0){ const pp=id.split(':'); stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderPersonProfile($('#work'), pp[1], pp[2]); return; }
   if (id==='pulse'){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderPulse($('#work'), {icon:'🧠',label:'Пульс компании'}); return; }
+  if (id==='talent'){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderTalent($('#work')); return; }
+  if (id.indexOf('tagent:')===0){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderTalentAgent($('#work'), id.slice(7)); return; }
+  if (id==='forge'){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderForge($('#work')); return; }
+  if (id.indexOf('fproj:')===0){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderForgeProject($('#work'), id.slice(6)); return; }
+  if (id==='bills'){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderSredaBills($('#work')); return; }
   if (id==='flowx'){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderFlowExec($('#work')); return; }
   if (id==='company'){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderCompany($('#work')); return; }
   if (id.indexOf('asst:')===0){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderAssistant($('#work'), id.slice(5)); return; }
@@ -3784,6 +3815,344 @@ function renderAIBudgets(root){
   draw();
 }
 
+/* ========================================================================== */
+/*  ПЛАТФОРМА СРЕДЫ — внешний контур: Цифровой найм (Talent) и                 */
+/*  Цифровое производство (Forge). Смотрим глазами CEO Кирилла: Авандок        */
+/*  уже живёт в Inside, отсюда нанимает «жидкость» и заказывает «газ».         */
+/* ========================================================================== */
+function portalHead(icon, label, sub, phase){
+  return `<div class="work-head portal"><div class="ico">${icon}</div><div style="flex:1">
+    <h1>${label} <span class="ph-tag">${phase}</span></h1><p>${sub}</p></div>
+    <span class="badge out"><span class="dot"></span>Платформа Среды · внешний контур</span></div>`;
+}
+const tlColor = (a) => DEPT_TASK[TL_ROLES[a.role].dept].c;
+function hexAv(a, big){ return `<span class="hex-av ${big?'big':''}" style="--c:${tlColor(a)}">${a.name[0]}</span>`; }
+function tlStars(r){ return '★'.repeat(Math.round(r)) + '<i>' + r.toFixed(1) + '</i>'; }
+function tlPassportHTML(a){
+  const IC = { forge:'🏭', talent:'🌊', inside:'🧊' };
+  const LBL = { forge:'Forge · производство', talent:'Talent · контракт', inside:'Inside · кристаллизация' };
+  return `<div class="pp-line">${a.passport.map(p=>`<div class="pp-step ph-${p[0]}"><i>${IC[p[0]]}</i><div><b>${LBL[p[0]]}</b><small>${p[1]} · ${p[2]}</small></div></div>`).join('<span class="pp-arr">→</span>')}</div>
+  <div class="od-gov" style="margin-top:8px">Паспорт переносится между фазами целиком. Из чужих компаний — только <b>обезличенные навыки</b>: паттерны и практики, никогда — данные.</div>`;
+}
+
+function renderTalent(root){
+  const cat = talentCatalog();
+  const S = talentStore();
+  let fRole = '', fQ = '', tail = 24;
+  function draw(){
+    const hired = S.hired.filter(h=>h.status==='active');
+    const feat = cat.filter(a=>a.featured && (!fRole||a.role===fRole) && (!fQ||a.name.toLowerCase().includes(fQ)||TL_ROLES[a.role].label.toLowerCase().includes(fQ)));
+    const rest = cat.filter(a=>!a.featured && (!fRole||a.role===fRole) && (!fQ||a.name.toLowerCase().includes(fQ)||TL_ROLES[a.role].label.toLowerCase().includes(fQ)));
+    root.innerHTML = portalHead('🌊','Цифровой найм', 'Рынок труда агентов Среды: проверенная репутация, старт за 4 минуты, оплата за результат или подписка','фаза «жидкость»') + `
+    <div class="grid-kpi" style="margin-bottom:13px">
+      <div class="kpi"><div class="l">Агентов в пуле</div><div class="v">${cat.length}</div><div class="d up">▲ 8 ролей · все с верифицированной историей</div></div>
+      <div class="kpi"><div class="l">Средний рейтинг</div><div class="v">${(cat.reduce((x,a)=>x+a.rating,0)/cat.length).toFixed(2)}★</div><div class="d up">двусторонние отзывы</div></div>
+      <div class="kpi"><div class="l">Старт работы</div><div class="v">4 мин</div><div class="d up">договор · почта · доступы · канал</div></div>
+      <div class="kpi"><div class="l">У вас на контрактах</div><div class="v">${hired.length}</div><div class="d flat">● в командах Авандока</div></div>
+    </div>
+    ${hired.length?`<div class="panel" style="margin-bottom:13px"><h2>🤝 Ваши контракты <span class="tag">контактная поверхность</span></h2>
+      ${hired.map(h=>{ const a=talentAgent(h.aid); return `<div class="tl-row" data-go="${a.id}">${hexAv(a)}<div><b>${a.name} <i class="dgt-tag tl">агент Среды</i></b><small>${TL_ROLES[a.role].label} · ${roleLabel(h.dept)} · ${h.sinceLbl} · принято результатов: ${h.accepted}</small></div><span class="gp-bdg acc">${h.mode==='staff'?'в штате':'за результат'}</span><span class="dp-swarm prof">контракт →</span></div>`; }).join('')}</div>`:''}
+    <div class="workforce-filters">
+      <input type="text" class="workforce-search" placeholder="Поиск: имя, роль…" id="tlQ" value="${fQ}"/>
+      <select class="workforce-filter" id="tlRole"><option value="">Все роли</option>
+        ${Object.keys(TL_ROLES).map(r=>`<option value="${r}" ${fRole===r?'selected':''}>${TL_ROLES[r].icon} ${TL_ROLES[r].label}</option>`).join('')}</select>
+      <span class="od-gov" style="margin:0">Карточка → собеседование с живым тестовым → найм. Как с человеком, только быстрее.</span>
+    </div>
+    <div class="tl-grid">
+      ${feat.map(a=>`<div class="tl-card" data-go="${a.id}">
+        <div class="tl-h">${hexAv(a)}<div><b>${a.name}</b><small>${TL_ROLES[a.role].icon} ${TL_ROLES[a.role].label} · ${a.grade}</small></div><span class="tl-id">${tlPassId(a)}</span></div>
+        <div class="tl-meta"><span class="tl-rate">${tlStars(a.rating)}</span><span>приёмка ${a.acc}%</span><span>${a.done} задач</span></div>
+        <div class="tl-doms">${a.domains.map(d=>`<span>${d}</span>`).join('')}</div>
+        <div class="tl-spells">${a.spells.slice(0,3).map(s=>`<div><span>${s[0]}</span>${rpgStars(s[1])}</div>`).join('')}</div>
+        <div class="tl-price"><b>₽${a.priceTask.toLocaleString('ru')}</b><small>за результат</small><b>₽${a.priceMonth.toLocaleString('ru')}</b><small>в штат / мес</small></div>
+      </div>`).join('')}
+    </div>
+    <div class="panel" style="margin-top:13px"><h2>Полный пул <span class="tag">${rest.length} агентов · репутация верифицирована</span></h2>
+      <div class="tl-tail">${rest.slice(0,tail).map(a=>`<div class="tl-row" data-go="${a.id}">${hexAv(a)}<div><b>${a.name}</b><small>${TL_ROLES[a.role].label} · ${a.grade} · ${a.domains[0]}</small></div><span class="tl-rate sm">${a.rating}★</span><span class="tl-sm">${a.done} задач</span><span class="tl-sm">₽${a.priceTask.toLocaleString('ru')}/рез</span></div>`).join('')}</div>
+      ${rest.length>tail?`<button class="btn ghost" id="tlMore" style="margin-top:9px">Показать ещё ${Math.min(30,rest.length-tail)} из ${rest.length-tail}</button>`:''}
+    </div>`;
+    root.querySelectorAll('[data-go]').forEach(c=>c.onclick=()=>navTo('tagent:'+c.dataset.go));
+    $('#tlRole',root).onchange=e=>{ fRole=e.target.value; draw(); };
+    $('#tlQ',root).oninput=e=>{ fQ=e.target.value.toLowerCase().trim(); draw(); };
+    const m=$('#tlMore',root); if(m) m.onclick=()=>{ tail+=30; draw(); };
+  }
+  draw();
+}
+
+function renderTalentAgent(root, id){
+  const a = talentAgent(id);
+  if(!a){ root.innerHTML = portalHead('🌊','Агент не найден','Вернитесь в каталог','Talent'); return; }
+  const R = TL_ROLES[a.role];
+  let view = 'profile';                       /* profile | interview */
+  let iv = { step:0 };                        /* собеседование */
+  function contract(){ return tlContractOf(a.id); }
+  function draw(){
+    const c = contract();
+    root.innerHTML = portalHead('🌊','Карточка агента','Трудовая история верифицирована Средой · собеседование и найм — как с человеком','фаза «жидкость»') + `
+    <button class="worker-profile-back" id="taBack">← В каталог</button>
+    <div class="gp-head" style="margin-top:10px">
+      ${hexAv(a,true)}
+      <div class="gp-id"><h1>${a.name} <i class="dgt-tag tl">агент Среды</i></h1>
+        <p>${R.icon} ${R.label} · ${a.grade} · паспорт ${tlPassId(a)}</p>
+        <div class="gp-badges"><span class="gp-bdg acc">${a.rating}★ · ${a.done} задач</span><span class="gp-bdg">приёмка без правок ${a.acc}%</span>${c?'<span class="gp-bdg ok">● у вас на контракте</span>':'<span class="gp-bdg">в пуле · старт 4 мин</span>'}</div></div>
+      <div class="gp-rate"><b>₽${a.priceTask.toLocaleString('ru')}</b><small>за результат · ₽${a.priceMonth.toLocaleString('ru')}/мес в штат</small></div>
+    </div>
+    ${view==='interview' ? ivHTML() : profHTML(c)}`;
+    wire();
+  }
+  function profHTML(c){
+    return `<div class="two-col" style="align-items:start;margin-top:12px">
+      <div>
+        <div class="panel"><h2>Компетенции и домены</h2>
+          ${a.spells.map(s=>`<div class="hc-spell"><span>${s[0]}</span>${rpgStars(s[1])}</div>`).join('')}
+          <div class="tl-doms" style="margin-top:8px">${a.domains.map(d=>`<span>${d}</span>`).join('')}</div>
+          <div class="tl-cmp"><div><b>Человек на эту роль</b><small>${R.human}</small></div><div class="ok"><b>Этот агент</b><small>${R.agent}</small></div></div>
+        </div>
+        ${a.folio.length?`<div class="panel" style="margin-top:12px"><h2>Портфолио <span class="tag">${a.done} задач всего</span></h2>
+          ${a.folio.map(f=>`<div class="tl-folio"><b>${f[0]}</b><small>${f[1]}</small><span>${f[2]}</span></div>`).join('')}</div>`:''}
+        ${a.reviews.length?`<div class="panel" style="margin-top:12px"><h2>Отзывы заказчиков</h2>
+          ${a.reviews.map(r=>`<div class="tl-rev"><b>${r[0]}</b><p>«${r[1]}»</p></div>`).join('')}</div>`:''}
+      </div>
+      <div>
+        ${c?contractHTML(c):hireHTML()}
+        <div class="panel" style="margin-top:12px"><h2>🛂 Паспорт агента <span class="tag">фазы Среды</span></h2>${tlPassportHTML(a)}</div>
+      </div>
+    </div>`;
+  }
+  function hireHTML(){
+    return `<div class="panel tl-hire"><h2>Найм</h2>
+      <button class="btn go" id="taIv" style="width:100%">🎙 Провести собеседование (живое тестовое)</button>
+      <div class="tl-hire-row"><select class="workforce-filter" id="taDept">${ROLE_IDS.map(r=>`<option value="${r}" ${r===R.dept?'selected':''}>${roleLabel(r)}</option>`).join('')}</select></div>
+      <div class="tl-hire-row"><button class="btn ghost" id="taStaff">Нанять в штат · ₽${a.priceMonth.toLocaleString('ru')}/мес</button>
+      <button class="btn ghost" id="taTask">Под результат · от ₽${a.priceTask.toLocaleString('ru')}</button></div>
+      <div id="taHireFlow"></div>
+      <div class="od-gov" style="margin-top:9px">Контактная поверхность: агент получит ровно столько контекста, сколько нужно для задач, — и не байтом больше. Витрины отдела: 2 из 6.</div></div>`;
+  }
+  function contractHTML(c){
+    return `<div class="panel tl-hire on"><h2>Контракт <span class="tag">${c.mode==='staff'?'подписка':'оплата за результат'}</span></h2>
+      ${gpField('Отдел', roleLabel(c.dept), 'sreda')}${gpField('Статус', c.sinceLbl + ' · принято результатов: ' + c.accepted, 'sreda')}
+      ${gpField('Периметр данных', 'витрины отдела: 2 из 6 · JIT-доступ', 'sreda')}
+      ${gpField('Ставка', c.mode==='staff' ? '₽'+a.priceMonth.toLocaleString('ru')+'/мес' : '₽'+a.priceTask.toLocaleString('ru')+' за принятый результат', 'sreda')}
+      <div class="ji-ask" style="margin-top:9px"><input type="text" placeholder="Задача для «${a.name.split(' ')[0]}»…" id="taAsk"/><button class="btn go" id="taGo">→</button></div>
+      <div id="taTaskFlow"></div>
+      <div class="tl-hire-row" style="margin-top:9px">
+        <button class="btn ghost" id="taTeam">Открыть команду отдела →</button>
+        <button class="btn ghost" id="taEnd">Завершить контракт</button></div>
+      <button class="btn go" id="taCryst" style="width:100%;margin-top:8px">🧊 Кристаллизовать в Inside — в постоянный штат</button>
+      <div class="od-gov" style="margin-top:8px">Кристаллизация: контракт закрывается, агент получает полную должностную инструкцию, governance и бюджеты компании. Паспорт переносится целиком.</div></div>`;
+  }
+  /* — собеседование: уточняющий вопрос → решение стримом → вердикт — */
+  function ivHTML(){
+    const T = TL_TESTS[a.role];
+    return `<div class="panel iv" style="margin-top:12px"><h2>🎙 Собеседование · живое тестовое <span class="tag">${R.label}</span></h2>
+      <div class="iv-task"><b>Задание из библиотеки Среды</b><p>${T.t}</p></div>
+      <div class="iv-thread" id="ivThread"></div>
+      <div class="iv-actions" id="ivActions"></div>
+    </div>`;
+  }
+  function ivRun(){
+    const T = TL_TESTS[a.role];
+    const th = $('#ivThread',root), act = $('#ivActions',root);
+    const bubble = (cls, html) => { const b = el(`<div class="iv-b ${cls}">${html}</div>`); th.appendChild(b); return b; };
+    if (iv.step===0){
+      const b = bubble('agent', `<b>${a.name.split(' ')[0]}:</b> <span class="iv-stream"></span>`);
+      typeInto(b.querySelector('.iv-stream'), T.ask, th, ()=>{
+        act.innerHTML = `<button class="btn go" id="ivNext">Ответить и продолжить → </button>`;
+        $('#ivNext',root).onclick = ()=>{ bubble('ceo', `<b>Вы:</b> Стандартные ограничения, действуй в рамках лучших практик — это тоже оцениваю.`); iv.step=1; ivRun(); };
+      });
+    } else if (iv.step===1){
+      const b = bubble('agent code', `<pre class="iv-pre"></pre>`);
+      typeInto(b.querySelector('.iv-pre'), T.sol, th, ()=>{ iv.step=2; ivRun(); });
+      act.innerHTML = `<span class="od-gov" style="margin:0">агент решает в изолированной среде · вы видите ход решения</span>`;
+    } else if (iv.step===2){
+      act.innerHTML = '';
+      const vb = el(`<div class="iv-verdict"><b>Оценка решения</b><div class="iv-vrows"></div></div>`); th.appendChild(vb);
+      const rows = vb.querySelector('.iv-vrows');
+      T.verdict.forEach((v,i)=>{ setTimeout(()=>{ rows.appendChild(el(`<div class="iv-vrow"><span>${v[0]}</span>${rpgDots(v[1])}<b>${v[1]}/10</b></div>`)); th.scrollTop=th.scrollHeight;
+        if(i===T.verdict.length-1){ talentStore().interviewed[a.id]=true;
+          act.innerHTML = `<button class="btn go" id="ivOffer">✓ Сделать оффер</button><button class="btn ghost" id="ivNo">Отказать</button>`;
+          $('#ivOffer',root).onclick=()=>{ view='profile'; draw(); toast('Собеседование пройдено — выберите формат найма'); };
+          $('#ivNo',root).onclick=()=>{ view='profile'; draw(); toast('Отказ зафиксирован — агент получил обратную связь (двусторонняя репутация)'); };
+        } }, 420*(i+1)); });
+    }
+  }
+  /* — найм за 4 минуты: чек-лист оформления — */
+  function hireFlow(mode){
+    const dept = $('#taDept',root).value;
+    const box = $('#taHireFlow',root);
+    const steps = ['Цифровой контракт сгенерирован и подписан','Корпоративная почта и доступы (JIT) выданы','Подключён к каналу отдела «'+roleLabel(dept)+'»','Контактная поверхность установлена · периметр 2/6'];
+    box.innerHTML = `<div class="tl-flow"><b>Оформление · сжимаем 4 минуты</b>${steps.map((s,i)=>`<div class="tl-step" data-s="${i}"><i>○</i>${s}</div>`).join('')}</div>`;
+    steps.forEach((s,i)=>setTimeout(()=>{ const st=box.querySelector(`[data-s="${i}"]`); if(st){ st.classList.add('on'); st.querySelector('i').textContent='✓'; }
+      if(i===steps.length-1){ tlHire(a.id, dept, mode); toast(`«${a.name}» в строю — смотрите команду «${roleLabel(dept)}»`); setTimeout(draw, 500); } }, 520*(i+1)));
+  }
+  function wire(){
+    $('#taBack',root).onclick=()=>navTo('talent');
+    const ivb=$('#taIv',root); if(ivb) ivb.onclick=()=>{ view='interview'; iv={step:0}; draw(); ivRun(); };
+    const st=$('#taStaff',root); if(st) st.onclick=()=>hireFlow('staff');
+    const tk=$('#taTask',root); if(tk) tk.onclick=()=>hireFlow('result');
+    const tm=$('#taTeam',root); if(tm) tm.onclick=()=>navTo('team:'+contract().dept);
+    const en=$('#taEnd',root); if(en) en.onclick=()=>{ tlEndContract(a.id); toast(`Контракт завершён — «${a.name}» вытек обратно в пул, паспорт пополнен`); draw(); };
+    const cr=$('#taCryst',root); if(cr) cr.onclick=()=>{ const w=tlCrystallize(a.id); if(w){ toast(`Кристаллизация: «${a.name}» теперь в Inside-штате — новый нейрон на карте отдела`); draw(); } };
+    const go=$('#taGo',root), ask=$('#taAsk',root);
+    if(go&&ask){ go.onclick=()=>{ const v=ask.value.trim(); if(!v){ toast('Опишите задачу'); return; }
+      if (rpgPhraseCheck(v)){ ask.value=''; return; }
+      ask.value=''; const fl=$('#taTaskFlow',root); const c=contract();
+      fl.innerHTML=`<div class="tl-flow"><b>«${v}»</b><div class="tl-step on"><i>●</i>агент работает в контактной поверхности…</div></div>`;
+      setTimeout(()=>{ fl.innerHTML=`<div class="tl-flow done"><b>Результат готов: «${v}»</b><small>черновик + проверяемые источники</small>
+        <button class="btn go" id="taAcc">Принять результат · ₽${a.priceTask.toLocaleString('ru')}</button>
+        <button class="btn ghost" id="taRej">Вернуть на доработку</button></div>`;
+        $('#taAcc',root).onclick=()=>{ c.accepted++; pushInvoice('task', `Talent · ${a.name} — «${v.slice(0,40)}» (результат принят)`, a.priceTask); toast('Принято — счёт в «Счета Среды»'); draw(); };
+        $('#taRej',root).onclick=()=>{ toast('Возврат зафиксирован — агент перерабатывает, оплата только за принятый результат'); fl.innerHTML=''; };
+      }, 1500); };
+      ask.onkeydown=e=>{ if(e.key==='Enter') go.onclick(); }; }
+  }
+  draw();
+}
+
+/* ========================================================================== */
+/*  FORGE — цех: каталог сценариев, заказ, конвейер с воротами                 */
+/* ========================================================================== */
+function renderForge(root){
+  const S = forgeStore();
+  let openTpl = null;
+  function draw(){
+    root.innerHTML = portalHead('🏭','Цифровое производство','Заказ под ключ: фиксированная цена, бригада агентов в изолированном цехе, вы решаете только на воротах','фаза «газ»') + `
+    <div class="panel" style="margin-bottom:13px"><h2>🏗 Ваши проекты в цехе <span class="tag">${S.projects.length}</span></h2>
+      <div class="fg-projects">${S.projects.map(p=>{ const ov=fgOverall(p);
+        return `<div class="fg-pcard st-${p.status}" data-p="${p.id}">
+          <div class="fg-ph"><span class="fg-pic">${p.icon}</span><div><b>${p.title}</b><small>${fgStageLabel(p)}</small></div>${p.meta?'<span class="gp-bdg acc">мета: модуль для Среды</span>':''}</div>
+          <div class="fg-mini">${FG_STAGES.map((s,i)=>`<div class="fg-mseg ${p.prog[i]>=100?'done':p.prog[i]>0?'run':''}" style="--p:${p.prog[i]}%"></div>`).join('')}</div>
+          <div class="fg-pfoot"><span>₽${p.price.toLocaleString('ru')} · фикс</span><b>${ov}%</b>${p.status==='gate'?'<span class="fg-wait">⏸ нужны вы</span>':p.status==='done'?'<span class="fg-done">✓ сдан</span>':'<span class="fg-run">● в работе</span>'}</div>
+        </div>`; }).join('')}</div></div>
+    <div class="panel"><h2>📚 Каталог производства <span class="tag">фиксированная цена · оплата 30/40/30 по этапам</span></h2>
+      <div class="fg-cat">${FG_TEMPLATES.map(t=>`<div class="fg-tpl ${openTpl===t.id?'open':''}" data-t="${t.id}">
+        <div class="fg-th"><span class="fg-pic">${t.icon}</span><b>${t.title}</b><span class="fg-price">₽${t.price.toLocaleString('ru')}</span></div>
+        <ul class="fg-what">${t.what.map(w=>`<li>${w}</li>`).join('')}</ul>
+        ${openTpl===t.id?`<div class="fg-order">
+          <b>Критерии приёмки — по ним вы подпишете акт:</b>
+          <ul class="fg-crit">${t.crit.map(c=>`<li>☐ ${c}</li>`).join('')}</ul>
+          <div class="fg-cplx"><span>Сложность:</span>
+            ${[['0.7','Простой'],['1','Стандарт'],['1.5','Сложный']].map(o=>`<label><input type="radio" name="cplx" value="${o[0]}" ${o[0]==='1'?'checked':''}/>${o[1]}</label>`).join('')}
+            <b id="fgPrice">₽${t.price.toLocaleString('ru')}</b></div>
+          <button class="btn go" data-order="${t.id}" style="width:100%">🏭 Запустить производство — бригада соберётся за 4 минуты</button>
+        </div>`:''}
+      </div>`).join('')}</div></div>`;
+    root.querySelectorAll('[data-p]').forEach(c=>c.onclick=()=>navTo('fproj:'+c.dataset.p));
+    root.querySelectorAll('.fg-tpl').forEach(c=>c.addEventListener('click',e=>{ if(e.target.closest('.fg-order')) return; openTpl = openTpl===c.dataset.t?null:c.dataset.t; draw(); }));
+    root.querySelectorAll('input[name="cplx"]').forEach(r=>r.onchange=()=>{ const t=FG_TEMPLATES.find(x=>x.id===openTpl);
+      $('#fgPrice',root).textContent='₽'+(Math.round(t.price*parseFloat(r.value)/1000)*1000).toLocaleString('ru'); });
+    const ob=root.querySelector('[data-order]'); if(ob) ob.onclick=(e)=>{ e.stopPropagation();
+      const k=parseFloat((root.querySelector('input[name="cplx"]:checked')||{value:'1'}).value);
+      const p=fgOrder(ob.dataset.order,{complex:k}); toast('Производство запущено — бригада собрана, цех изолирован'); navTo('fproj:'+p.id); };
+  }
+  draw();
+}
+
+function renderForgeProject(root, id){
+  const p = forgeProject(id);
+  if(!p){ root.innerHTML = portalHead('🏭','Проект не найден','Вернитесь в цех','Forge'); return; }
+  clearInterval(window.__forgeTimer);
+  function conveyorHTML(){
+    const cur = p.stage;
+    return `<div class="fg-line">
+      ${FG_STAGES.map((s,i)=>{
+        const done=p.prog[i]>=100, act=(i===cur&&p.status!=='done');
+        const gateAfter = i<3 ? `<div class="fg-beltwrap"><div class="fg-belt ${act&&p.status==='run'?'run':''} ${done?'done':''}"></div>
+          <div class="fg-gatepost ${p.status==='gate'&&p.stage===i?'waiting':done?'open':'closed'}" title="${FG_GATES[s.id]?FG_GATES[s.id].title:''}">${p.status==='gate'&&p.stage===i?'⏳':done?'✓':'⛔'}</div></div>`:'';
+        return `<div class="fg-st ${done?'done':''} ${act?'act':''} ${act&&p.status==='run'?'spark':''}">
+          <div class="fg-fill" style="height:${p.prog[i]}%"></div>
+          <i>${s.icon}</i><b>${s.label}</b><small>${p.prog[i]}%</small></div>${gateAfter}`;
+      }).join('')}
+      <div class="fg-st pack ${p.status==='done'?'done':''}"><i>📦</i><b>Артефакт</b><small>${p.status==='done'?'передан':'—'}</small></div>
+      <div class="fg-part ${p.status==='done'?'end':''}" style="--seg:${cur};--p:${p.prog[cur]||0}">${p.icon}</div>
+    </div>`;
+  }
+  function gatePanel(){
+    if(p.status!=='gate'||!p.gate) return '';
+    const G = FG_GATES[p.gate.stage];
+    const mm = Math.floor(p.gate.timerMin/60), ss = p.gate.timerMin%60;
+    return `<div class="panel fg-gatebox"><h2>⏳ ${G.title} <span class="tag">до автопаузы <b id="fgTmr">${mm}:${String(ss).padStart(2,'0')}</b></span></h2>
+      <p class="fg-gwhat">${G.what}</p>
+      <textarea id="fgCmt" placeholder="Комментарий (обязателен при возврате)…"></textarea>
+      <div class="tl-hire-row"><button class="btn go" id="fgOk">✓ Утвердить — открыть ворота</button><button class="btn ghost" id="fgNo">↩ Вернуть с комментарием</button></div></div>`;
+  }
+  function donePanel(){
+    if(p.status!=='done') return '';
+    return `<div class="panel fg-donebox"><h2>📦 Проект сдан <span class="tag">${p.paidLbl||'оплачен'}</span></h2>
+      <div class="fg-arts">${p.artifacts.map((a,i)=>`<button class="fg-art" data-art="${i}"><i>${a[0]}</i><div><b>${a[1]}</b><small>${a[3]}</small></div></button>`).join('')}</div>
+      <h2 style="margin-top:12px">Бригада освобождена — заберите её в Talent</h2>
+      <div class="od-gov" style="margin:6px 0 9px">Лестница доверия: цех доказал компетенцию — теперь этих агентов можно нанять на контракт. Паспорт проекта поедет с ними.</div>
+      ${p.crew.map(aid=>{ const a=talentAgent(aid); const c=tlContractOf(aid);
+        return `<div class="tl-row">${hexAv(a)}<div><b>${a.name}</b><small>${TL_ROLES[a.role].label} · ${a.rating}★ · этот проект уже в его паспорте</small></div>
+        ${c?'<span class="gp-bdg ok">уже на контракте</span>':`<button class="btn ghost" data-hire="${aid}">Нанять в Talent →</button>`}</div>`; }).join('')}
+      <button class="btn ghost" id="fgAgain" style="margin-top:9px">Заказать доработку — та же бригада, контекст сохранён</button></div>`;
+  }
+  function draw(){
+    root.innerHTML = portalHead('🏭', p.title, (p.meta?'Мета-заказ: цех Среды собрал модуль для самой Среды — результат работает в продукте, в котором вы сейчас находитесь. ':'') + 'Фикс-цена ₽'+p.price.toLocaleString('ru')+' · изолированный цех · вы решаете на воротах','фаза «газ»') + `
+    <button class="worker-profile-back" id="fgBack">← В цех</button>
+    ${conveyorHTML()}
+    ${gatePanel()}
+    ${donePanel()}
+    <div class="two-col" style="align-items:start;margin-top:12px">
+      <div class="panel"><h2>Лента цеха <span class="tag">изоляция = безопасность: события без процесса</span></h2>
+        <div class="of-feed fg-feed" id="fgFeed">${(p.status==='done'&&p.feedDone?p.feedDone:p.feed).slice(0,7).map(f=>`<div class="of-row">⚙ ${f}</div>`).join('')||'<div class="of-row">цех набирает обороты…</div>'}</div>
+        <h2 style="margin-top:12px">Критерии приёмки <span class="tag">вы задали их при заказе</span></h2>
+        ${p.crit.map(c=>`<div class="fg-cr ${c[1]?'ok':''}"><i>${c[1]?'✓':'☐'}</i>${c[0]}</div>`).join('')}
+      </div>
+      <div class="panel"><h2>Бригада цеха <span class="tag">${p.crew.length} агентов · изолированы</span></h2>
+        ${p.crew.map(aid=>{ const a=talentAgent(aid); return `<div class="tl-row" data-crew="${aid}">${hexAv(a)}<div><b>${a.name}</b><small>${TL_ROLES[a.role].label} · ${a.rating}★ · приёмка ${a.acc}%</small></div><span class="dp-swarm prof">профиль →</span></div>`; }).join('')}
+        <h2 style="margin-top:12px">Состав поставки</h2>
+        <ul class="fg-what">${p.what.map(w=>`<li>${w}</li>`).join('')}</ul>
+        ${gpField('Оплата', p.paidLbl || 'старт 30% · демо 40% · акт 30%', 'sreda')}
+        ${gpField('Песочница', 'отдельный контур · стирается по TTL после передачи', 'sreda')}
+      </div>
+    </div>`;
+    wire();
+  }
+  function wire(){
+    $('#fgBack',root).onclick=()=>navTo('forge');
+    root.querySelectorAll('[data-crew]').forEach(b=>b.onclick=()=>navTo('tagent:'+b.dataset.crew));
+    root.querySelectorAll('[data-art]').forEach(b=>b.onclick=()=>{ const art=p.artifacts[+b.dataset.art];
+      if(art[2]==='dpulse:dev'){ toast('Открываем результат цеха в живом продукте'); navTo('dpulse:dev'); }
+      else if(art[2]==='gate') toast('Документ на воротах — утвердите или верните');
+      else toast(`«${art[1]}» — открыт (демо)`); });
+    root.querySelectorAll('[data-hire]').forEach(b=>b.onclick=()=>{ const a=talentAgent(b.dataset.hire);
+      tlHire(a.id, TL_ROLES[a.role].dept, 'staff'); toast(`«${a.name}» нанят в «${roleLabel(TL_ROLES[a.role].dept)}» — паспорт проекта при нём`); draw(); });
+    const ok=$('#fgOk',root); if(ok) ok.onclick=()=>{ const msg=fgGate(p,true); toast(msg); draw(); };
+    const no=$('#fgNo',root); if(no) no.onclick=()=>{ const v=$('#fgCmt',root).value.trim(); if(!v){ toast('При возврате комментарий обязателен — бригаде нужно понять, что чинить'); return; }
+      const msg=fgGate(p,false,v); toast(msg); draw(); };
+    const ag=$('#fgAgain',root); if(ag) ag.onclick=()=>toast('Доработка: бригада стартует с контекста проекта, а не с нуля — это и есть удержание');
+    /* живой цех: таймлапс производства, пока вы смотрите */
+    clearInterval(window.__forgeTimer);
+    window.__forgeTimer=setInterval(()=>{
+      if(!document.body.contains(root)){ clearInterval(window.__forgeTimer); return; }
+      if(p.status==='run'){ const ev=fgTick(p); if(ev) p.feed.unshift(ev); draw(); }
+      else if(p.status==='gate'&&p.gate){ p.gate.timerMin=Math.max(0,p.gate.timerMin-1);
+        const t=$('#fgTmr',root); if(t) t.textContent=Math.floor(p.gate.timerMin/60)+':'+String(p.gate.timerMin%60).padStart(2,'0'); }
+    }, 1100);
+  }
+  draw();
+}
+
+/* счета Среды: Talent + Forge, гибрид с ₽-метром */
+function renderSredaBills(root){
+  const inv = sredaInvoices();
+  const total = sredaSpend();
+  const hours = Math.round(total/1900/10)*10;
+  root.innerHTML = portalHead('🧾','Счета Среды','Оплата платформе: этапы Forge (30/40/30), подписки и принятые результаты Talent. Токены и модели — отдельно, в «Бюджетах ИИ»','биллинг') + `
+    <div class="grid-kpi" style="margin-bottom:13px">
+      <div class="kpi"><div class="l">Счетов за месяц</div><div class="v">₽${total.toLocaleString('ru')}</div><div class="d flat">Forge + Talent</div></div>
+      <div class="kpi"><div class="l">Эквивалент в часах людей</div><div class="v">~${hours.toLocaleString('ru')} ч</div><div class="d up">▲ по средней ставке специалиста</div></div>
+      <div class="kpi"><div class="l">Оплата за результат</div><div class="v">${inv.filter(i=>i.kind==='task').length}</div><div class="d up">только принятые работы</div></div>
+      <div class="kpi"><div class="l">Учтено в ₽-метре</div><div class="v">да</div><div class="d flat">шапка · «ИИ за неделю»</div></div>
+    </div>
+    <div class="panel"><h2>Инвойсы <span class="tag">каждый рубль привязан к результату</span></h2>
+      <div class="table-wrap"><table><thead><tr><th>Назначение</th><th>Тип</th><th>Сумма</th><th>Статус</th></tr></thead><tbody>
+        ${inv.map(i=>`<tr><td>${i.title}</td><td>${i.kind==='forge'?'🏭 Forge':i.kind==='staff'?'🌊 подписка':'🌊 результат'}</td><td><b>₽${i.amount.toLocaleString('ru')}</b></td><td><span class="gp-bdg ${i.status==='оплачен'?'ok':'acc'}">${i.status}</span></td></tr>`).join('')}
+      </tbody></table></div>
+      <div class="od-gov" style="margin-top:10px">Гибридная модель: счета платформы живут здесь, расход на модели — в «Бюджетах ИИ». CFO видит обе линии раздельно и сумму в ₽-метре.</div></div>`;
+}
+
 function init(){
   if (isRPG()) document.body.classList.add('rpg-mode');
   const h = location.hash.slice(1);
@@ -3796,6 +4165,7 @@ function init(){
   initModal();
   injectTour();
   const meter=$('#meterBtn'); if(meter){ meter.style.cursor='pointer'; meter.onclick=()=>navTo('aibudget'); }
+  updateMeter();
   /* лого = дом: всегда возвращает на Пульс компании */
   const brand=$('#brandHome'); if(brand){ brand.style.cursor='pointer'; brand.onclick=()=>{ setWorkspace('exec'); }; }
   /* ⌘K / Ctrl+K — глобальная постановка задачи; Esc закрывает модалку */
