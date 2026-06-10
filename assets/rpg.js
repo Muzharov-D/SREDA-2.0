@@ -638,7 +638,7 @@ function questsOf(dept, name, task){
   if (typeof projTaskOf === 'function'){ const pt = projTaskOf(dept, name);
     if (pt && !out.some(q => q.t === pt.t)) out.unshift({ id:'🚀', t: pt.t,
       prog: pt.state === 'done' ? 100 : pt.state === 'blocked' ? 55 : pt.state === 'active' ? 62 : 8,
-      col: MEGA_PROJECT.title, gate: pt.state === 'blocked' }); }
+      col: pt.projTitle, gate: pt.state === 'blocked' }); }
   return out.slice(0, 4);
 }
 /* загрузка (HP): от числа активных задач */
@@ -764,10 +764,54 @@ const MEGA_PROJECT = {
   ],
 };
 const PROJ_STATE = { done:['✓','готово','#34d399'], active:['●','в работе','#fbbf24'], blocked:['⛔','гейт sev1','#f87171'], wait:['○','в очереди','#8e9288'] };
+/* очередь сформированных запросов — ждут кнопки «Запустить рой» у CEO */
+const PROJECT_QUEUE = [
+  { id:'uae', icon:'🌍', title:'Выход на рынок ОАЭ', sponsor:'CEO · Кирилл', deadline:'2 квартала',
+    ask:'Открыть продажи в ОАЭ: юрлицо, локализация, первые 3 пилота.',
+    phases:[
+      { title:'Разведка и юрбаза', tasks:[
+        { dept:'analytics', who:'Аля',   t:'Рынок ОАЭ: спрос и конкуренты',  out:'Карта рынка',        state:'active' },
+        { dept:'legal',     who:'Соня',  t:'Юрлицо и лицензии (DIFC)',       out:'Схема структуры',    state:'active' },
+        { dept:'finance',   who:'Лиза',  t:'Налоговая модель экспорта',      out:'Памятка + ставки',   state:'active' },
+      ]},
+      { title:'Выход', tasks:[
+        { dept:'marketing', who:'Кира',  t:'Локализация и кампания (EN/AR)', out:'Лендинг + контур',   state:'wait' },
+        { dept:'sales',     who:'Алла',  t:'3 пилота с якорными клиентами',  out:'LOI ×3',             state:'wait' },
+        { dept:'hr',        who:'Стас',  t:'Локальный пресейл-партнёр',      out:'Контракт партнёра',  state:'wait' },
+      ]},
+    ]},
+  { id:'churn', icon:'📉', title:'Снизить отток клиентов на 20%', sponsor:'CEO · Кирилл', deadline:'квартал',
+    ask:'Найти драйверы оттока, закрыть топ-3 причины, поставить раннее предупреждение.',
+    phases:[
+      { title:'Диагноз', tasks:[
+        { dept:'analytics', who:'Мира',  t:'Модель оттока: драйверы и сегменты', out:'Топ-3 причины',  state:'active' },
+        { dept:'sales',     who:'Нина',  t:'20 интервью с ушедшими',            out:'Карта причин',    state:'active' },
+      ]},
+      { title:'Лечение', tasks:[
+        { dept:'dev',       who:'Лена',  t:'Фикс: онбординг-яма в чекауте',     out:'Релиз',           state:'wait' },
+        { dept:'marketing', who:'Ия',    t:'Цепочка спасения сегмента риска',   out:'5 писем + триггеры', state:'wait' },
+        { dept:'finance',   who:'Ника',  t:'Скидочная политика удержания',      out:'Правила + лимиты', state:'wait' },
+      ]},
+    ]},
+];
 /* живые статусы: blocked привязан к реальному sev1-гейту рабочего стола;
-   фаза «Запуск» открывается, когда закрыты все предыдущие; done копится в сторе */
-function projStore(){ return window.__PROJST || (window.__PROJST = { done:{}, launched:false }); }
+   следующая фаза открывается, когда закрыта предыдущая; done копится в сторе */
+function projStore(){ return window.__PROJST || (window.__PROJST = { done:{}, launched:false, started:{} }); }
 function projComplete(dept, who){ projStore().done[dept + ':' + who] = true; }
+function mpLaunched(id){ return !!projStore().started[id]; }
+function mpLaunch(id){ projStore().started[id] = true; }
+function ALL_PROJECTS(){ return [ { ...MEGA_PROJECT, id:'sreda', launched:true } ]
+  .concat(PROJECT_QUEUE.map(p => ({ ...p, launched: mpLaunched(p.id) }))); }
+/* статус задачи проекта из очереди: done из стора; фаза 2 ждёт фазу 1 */
+function queueTaskState(p, t){
+  const S = projStore();
+  if (S.done[t.dept + ':' + t.who]) return 'done';
+  if (t.state === 'wait'){
+    const ph1 = p.phases[0].tasks.every(x => S.done[x.dept + ':' + x.who] || x.state === 'done');
+    return ph1 ? 'active' : 'wait';
+  }
+  return t.state;
+}
 function projTaskState(t){
   const S = projStore();
   if (S.done[t.dept + ':' + t.who]) return 'done';
@@ -783,7 +827,14 @@ function projTaskState(t){
   }
   return t.state;
 }
-function projTasks(){ return MEGA_PROJECT.phases.flatMap(p => p.tasks.map(t => ({ ...t, phase: p.title, state: projTaskState(t) }))); }
+/* все задачи запущенных проектов; у каждой — proj/projTitle */
+function projTasks(){
+  const out = MEGA_PROJECT.phases.flatMap(p => p.tasks.map(t => ({ ...t, phase: p.title, state: projTaskState(t), proj:'sreda', projTitle: MEGA_PROJECT.title, icon: MEGA_PROJECT.icon })));
+  PROJECT_QUEUE.filter(p => mpLaunched(p.id)).forEach(p => {
+    p.phases.forEach(ph => ph.tasks.forEach(t => out.push({ ...t, phase: ph.title, state: queueTaskState(p, t), proj: p.id, projTitle: p.title, icon: p.icon })));
+  });
+  return out;
+}
 function projTasksOf(dept){ return projTasks().filter(t => t.dept === dept); }
 function projTaskOf(dept, name){ return projTasks().find(t => t.dept === dept && t.who === name) || null; }
 function projProgress(){ const all = projTasks(); const done = all.filter(t => t.state === 'done').length;

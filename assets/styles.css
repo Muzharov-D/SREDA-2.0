@@ -4226,6 +4226,22 @@ body.rpg-mode .hc-ach{color:#e6d9b8}
 .ml-diff{color:var(--acc)!important;font-size:11.5px!important;border-left:2px solid var(--acc-deep);padding-left:9px}
 .ml-card .btn{margin-top:7px}
 .ml-arr{text-align:center;color:var(--faint);font-size:15px;padding:2px 0 2px 13px;width:34px}
+.ml-blocks{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.ml-block{display:flex;flex-direction:column;gap:3px;text-align:left;background:var(--panel2);border:1px solid var(--line2);
+  border-radius:11px;padding:10px 12px;cursor:pointer;color:var(--txt);font:inherit;transition:border-color .15s}
+.ml-block:hover{border-color:rgba(54,201,148,.4)}
+.ml-block i{font-style:normal;font-size:18px}
+.ml-block b{font-size:12.5px}
+.ml-block small{font-size:10.5px;color:var(--muted);flex:1}
+.ml-block span{font-size:10.5px;color:var(--acc)}
+/* пусковая: карточка сформированного запроса */
+.mp-q{display:flex;align-items:center;gap:9px;border:1px solid var(--line2);border-radius:10px;padding:8px 10px;margin:5px 0;background:var(--panel2)}
+.mp-qh{flex:1;display:flex;gap:8px;min-width:0}
+.mp-qh i{font-style:normal;font-size:16px}
+.mp-qh b{font-size:12px;display:block}
+.mp-qh small{font-size:10.5px;color:var(--muted);display:block}
+.mp-q .btn{flex:none;font-size:11px;padding:6px 10px}
+.dp-side .pls-surge{width:100%;justify-content:center;margin-bottom:2px}
 
 /* ============================================================================
    Конец дополнительных стилей

@@ -513,6 +513,7 @@ function renderPulse(root, d){
         <div class="od-gov">Каждый нейрон — сотрудник из штатки: наведите — имя и задача, клик — профиль. Цепочки сделок бегут между конкретными людьми. <b>Колесо мыши</b> — приблизиться; докрутите на отделе — нырнёте в его пульс.</div>
         </div>
         <div class="side-proj" id="pjPanel" style="display:none"></div>
+        <div class="side-proj" id="mpPanel" style="display:none"></div>
       </aside>
     </div>`;
 
@@ -551,23 +552,25 @@ function renderPulse(root, d){
   /* ── мегапроект CEO: трасса, живые статусы, доведение до конца ── */
   let projMode=false, projGen=0;
   const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
-  const projBtnLbl=()=>{ const P=projProgress();
-    return P.pct>=100 ? `✓ ${MEGA_PROJECT.title} — завершён` : `🚀 ${MEGA_PROJECT.title} · ${P.pct}%`; };
+  const projBtnLbl=()=>{ const P=projProgress(); const n=ALL_PROJECTS().filter(p=>p.launched).length;
+    return P.pct>=100 ? `✓ Проекты компании — завершены` : `🚀 Проекты компании · ${n} актив${n===1?'ен':'ны'} · ${P.pct}%`; };
   function projPanelHTML(){
-    const P=projProgress(); const tasks=projTasks();
-    const byPhase={}; tasks.forEach(t=>{ (byPhase[t.phase]=byPhase[t.phase]||[]).push(t); });
-    return `<div class="pj-head"><b>🚀 ${MEGA_PROJECT.title}</b><small>${MEGA_PROJECT.ask}</small>
-      <small class="pj-meta">спонсор: ${MEGA_PROJECT.sponsor} · дедлайн ${MEGA_PROJECT.deadline}</small>
-      ${rpgBar(P.pct,'ok')}<small class="pj-meta">${P.done}/${P.total} задач готово${P.pct>=100?' · 🎉 продукт запущен':''}</small></div>
-    ${MEGA_PROJECT.phases.map(ph=>{ const ts=byPhase[ph.title]||[]; const ds=ts.filter(t=>t.state==='done').length;
-      return `<div class="pj-phase"><b>${ph.title} <span>${ds}/${ts.length}</span></b>
-      ${ts.map(t=>{ const s=PROJ_STATE[t.state];
-        return `<button class="pj-task" data-pj="${t.dept}:${t.who}"><i style="color:${s[2]}">${s[0]}</i><div><b>${t.who} · ${roleLabel(t.dept)}</b><small>${t.t}</small></div><span style="color:${s[2]}">${s[1]}</span></button>`
-        + (t.state==='blocked'?`<button class="pj-fix" data-fix="${t.dept}">⛔ снять sev1-риск — рабочий стол «${roleLabel(t.dept)}» →</button>`:''); }).join('')}
-      </div>`; }).join('')}
-    <div class="od-gov">${P.pct>=100
-      ? 'Проект доведён до конца: юр-гейт снят человеком, запуск открылся, все 17 задач закрыты. Это и есть контур: ИИ ведёт, человек решает.'
-      : 'Трасса закрывает задачи «в работе». ⛔ — реальный гейт: снимите sev1 в рабочем столе юриста, и фаза «Запуск» откроется. Клик по задаче — профиль исполнителя.'}</div>`;
+    const tasks=projTasks();
+    return ALL_PROJECTS().filter(p=>p.launched).map(pr=>{
+      const ts=tasks.filter(t=>t.proj===pr.id);
+      const done=ts.filter(t=>t.state==='done').length, pct=Math.round(done/ts.length*100);
+      const byPhase={}; ts.forEach(t=>{ (byPhase[t.phase]=byPhase[t.phase]||[]).push(t); });
+      return `<div class="pj-head"><b>${pr.icon} ${pr.title}</b><small>${pr.ask}</small>
+        <small class="pj-meta">спонсор: ${pr.sponsor} · дедлайн ${pr.deadline}</small>
+        ${rpgBar(pct,'ok')}<small class="pj-meta">${done}/${ts.length} задач готово${pct>=100?' · 🎉 завершён':''}</small></div>
+      ${Object.keys(byPhase).map(phT=>{ const pts=byPhase[phT]; const ds=pts.filter(t=>t.state==='done').length;
+        return `<div class="pj-phase"><b>${phT} <span>${ds}/${pts.length}</span></b>
+        ${pts.map(t=>{ const s=PROJ_STATE[t.state];
+          return `<button class="pj-task" data-pj="${t.dept}:${t.who}"><i style="color:${s[2]}">${s[0]}</i><div><b>${t.who} · ${roleLabel(t.dept)}</b><small>${t.t}</small></div><span style="color:${s[2]}">${s[1]}</span></button>`
+          + (t.state==='blocked'?`<button class="pj-fix" data-fix="${t.dept}">⛔ снять sev1-риск — рабочий стол «${roleLabel(t.dept)}» →</button>`:''); }).join('')}
+        </div>`; }).join('')}`;
+    }).join('<div style="height:10px"></div>')
+    + `<div class="od-gov">Трасса закрывает задачи «в работе» по всем активным проектам. ⛔ — реальный гейт. Новые проекты — кнопка «⚡ Запустить рой».</div>`;
   }
   function refreshProj(){
     const pp=$('#pjPanel',root); if(pp && projMode){ pp.innerHTML=projPanelHTML(); wireProj(); }
@@ -615,6 +618,7 @@ function renderPulse(root, d){
   function setProj(on){
     projMode=on; projGen++;
     const pb=$('#plsProj',root), pn=root.querySelector('.side-normal'), pp=$('#pjPanel',root);
+    const mp=$('#mpPanel',root); if(mp&&on){ mp.style.display='none'; const sb=$('#plsSurge',root); if(sb) sb.innerHTML='⚡ Запустить рой'; }
     if(pb){ pb.classList.toggle('on',on); pb.innerHTML = on ? '← Обычный пульс' : projBtnLbl(); }
     if(pn) pn.style.display=on?'none':'';
     if(pp){ pp.style.display=on?'':'none'; if(on){ pp.innerHTML=projPanelHTML(); wireProj(); } }
@@ -622,7 +626,7 @@ function renderPulse(root, d){
     if(on){ pushAudit({ who:MEGA_PROJECT.sponsor, what:'Поставил задачу: '+MEGA_PROJECT.title+' — трасса проекта на пульсе', verdict:'allow' });
       toast('CEO поставил задачу — компания подсветила исполнителей, трасса побежала'); projTrace(projGen); }
   }
-  const pjBtn=$('#plsProj',root); if(pjBtn) pjBtn.onclick=()=>setProj(!projMode);
+  const pjBtn=$('#plsProj',root); if(pjBtn){ pjBtn.onclick=()=>setProj(!projMode); pjBtn.innerHTML=projBtnLbl(); }
 
   const synTotal=DEPT_SYN.reduce((a,s)=>a+s.w,0);
   const pickSyn=()=>{ let r=Math.random()*synTotal; for(const s of DEPT_SYN){ if((r-=s.w)<0) return s; } return DEPT_SYN[0]; };
@@ -703,17 +707,44 @@ function renderPulse(root, d){
       feed(f[0]==='d'?'d':f[0]==='x'?'x':DEPT_TASK[f[3]].c, f[1], f[2], f[0]==='d'); }
   }, 760);
 
-  /* всплеск роя — волна по коре + задачи из ядра во все отделы */
-  const surge = () => {
-    cx.surgeWave();
-    ROLE_IDS.forEach(r=>{ const dt=DEPT_TASK[r];
-      setTimeout(()=>cx.corePulse(r, dt.l[Math.floor(Math.random()*dt.l.length)], dt.c), Math.random()*600);
-      setTimeout(()=>cx.corePulse(r, '', dt.c), 600+Math.random()*600); });
-    pushAudit({ who:'CEO · Кирилл', what:'Запустил рой по всем отделам', verdict:'allow' });
-    toast('Рой запущен — волна прошла по всей коре компании');
-  };
-  $('#plsSurge',root).onclick = surge;
-  core.onclick = surge;
+  /* ── «Запустить рой» = пусковая установка: очередь сформированных запросов ── */
+  let launchMode=false;
+  function launchPanelHTML(){
+    const launched=ALL_PROJECTS().filter(p=>p.launched), queue=ALL_PROJECTS().filter(p=>!p.launched);
+    const tasks=projTasks();
+    return `<div class="pj-head"><b>⚡ Пусковая Среды</b><small>Сформированные запросы компании: бриф готов, исполнители подобраны. Запуск раздаёт задачи людям и цифровым — проект оживает на карте.</small></div>
+    ${launched.length?`<div class="pj-phase"><b>В полёте <span>${launched.length}</span></b>
+      ${launched.map(pr=>{ const ts=tasks.filter(t=>t.proj===pr.id); const pct=Math.round(ts.filter(t=>t.state==='done').length/ts.length*100);
+        return `<button class="pj-task" data-mpgo="1"><i>${pr.icon}</i><div><b>${pr.title}</b><small>${ts.length} задач · ${pct}%</small></div><span style="color:var(--acc)">трасса →</span></button>`; }).join('')}</div>`:''}
+    ${queue.length?`<div class="pj-phase"><b>Сформированные запросы <span>${queue.length}</span></b>
+      ${queue.map(pr=>{ const n=pr.phases.reduce((a,ph)=>a+ph.tasks.length,0);
+        const deps=[...new Set(pr.phases.flatMap(ph=>ph.tasks.map(t=>roleLabel(t.dept))))].join(' · ');
+        return `<div class="mp-q"><div class="mp-qh"><i>${pr.icon}</i><div><b>${pr.title}</b><small>${pr.ask}</small><small class="pj-meta">${n} задач · ${deps} · ${pr.deadline}</small></div></div>
+          <button class="btn go" data-mplaunch="${pr.id}">⚡ Запустить рой</button></div>`; }).join('')}</div>`
+      :'<div class="od-gov">Очередь пуста — все запросы запущены.</div>'}
+    <div class="od-gov">Уровни запуска: проекты компании — здесь · задачи отдела — «⚡» на пульсе отдела · обычная задача — ⌘K «Поставить задачу Среде».</div>`;
+  }
+  function setLaunch(on){
+    launchMode=on; if(on&&projMode) setProj(false);
+    const pn=root.querySelector('.side-normal'), mp=$('#mpPanel',root), sb=$('#plsSurge',root);
+    if(pn) pn.style.display=(on||projMode)?'none':'';
+    if(mp){ mp.style.display=on?'':'none'; if(on){ mp.innerHTML=launchPanelHTML(); wireLaunch(); } }
+    if(sb) sb.innerHTML = on?'← Закрыть пусковую':'⚡ Запустить рой';
+  }
+  function wireLaunch(){
+    root.querySelectorAll('[data-mpgo]').forEach(b=>b.onclick=()=>{ setLaunch(false); setProj(true); });
+    root.querySelectorAll('[data-mplaunch]').forEach(b=>b.onclick=()=>{
+      const pr=ALL_PROJECTS().find(p=>p.id===b.dataset.mplaunch); mpLaunch(pr.id);
+      cx.surgeWave();
+      pr.phases.flatMap(ph=>ph.tasks).forEach((t,i)=>setTimeout(()=>cx.corePulse(t.dept,'🚀 '+t.t,PROJ_STATE[queueTaskState(pr,t)][2]), 250*i));
+      pushAudit({ who:pr.sponsor, what:'Запустил рой: '+pr.title+' — задачи розданы исполнителям', verdict:'allow' });
+      toast(`«${pr.title}» запущен — ${pr.phases.reduce((a,ph)=>a+ph.tasks.length,0)} задач разлетелись по отделам`);
+      const pb=$('#plsProj',root); if(pb&&!projMode) pb.innerHTML=projBtnLbl();
+      setLaunch(true);
+    });
+  }
+  $('#plsSurge',root).onclick = ()=>setLaunch(!launchMode);
+  core.onclick = ()=>setLaunch(true);
 }
 
 /* ========================================================================== */
@@ -781,6 +812,8 @@ function renderDeptPulse(root, roleId){
     <div class="dp-wrap">
       <div class="dp-stage nm-stage" id="dpStage"></div>
       <aside class="dp-side">
+        <button class="btn go pls-surge" id="dpSurge">⚡ Запустить рой</button>
+        <div class="side-proj" id="dpQueue" style="display:none"></div>
         <div class="of-live"><span class="of-dot"></span><b id="dp-inflight">—</b> задач в работе <i>в отделе</i></div>
         <div class="of-live"><span class="lg-mark d"></span><b id="dp-inf-d">—</b> делают цифровые сотрудники</div>
         <div class="of-live"><span class="lg-mark h" style="--c:${dt.c}"></span><b id="dp-inf-h">—</b> делают люди</div>
@@ -800,6 +833,32 @@ function renderDeptPulse(root, roleId){
     onClick:(n)=>{ if(n.kind==='h') navTo('person:'+roleId+':'+n.p.i); else if(n.t) navTo('tagent:'+n.t.a.id); else if(n.kind==='d') navTo('worker:'+n.w.id); else navTo('team:'+roleId); } });
   root.querySelectorAll('[data-pjp]').forEach(b=>b.onclick=()=>{ const i=personIdxByName(roleId, b.dataset.pjp);
     if(i>=0) navTo('person:'+roleId+':'+i); });
+
+  /* ── пусковая отдела: запуск задач из бэклога доски ── */
+  let dq=false;
+  function dpQueueHTML(){
+    const bk=(cfg.board&&cfg.board.backlog)||[];
+    return `<div class="pj-head"><b>⚡ Очередь отдела</b><small>Бэклог доски «${cfg.role}»: запуск назначает исполнителя, задача уходит «В работу», импульс — на карте.</small></div>
+    ${bk.length?bk.map((it,i)=>`<div class="mp-q"><div class="mp-qh"><i>📋</i><div><b>${it.id}</b><small>${it.t}</small></div></div>
+      <button class="btn go" data-dql="${i}">⚡ Запустить</button></div>`).join('')
+      :'<div class="od-gov">Бэклог пуст. Обычная задача — ⌘K «Поставить задачу Среде».</div>'}`;
+  }
+  function setDQ(on){ dq=on; const q=$('#dpQueue',root), sb=$('#dpSurge',root);
+    if(q){ q.style.display=on?'':'none'; if(on){ q.innerHTML=dpQueueHTML(); wireDQ(); } }
+    if(sb) sb.innerHTML=on?'← Закрыть очередь':'⚡ Запустить рой'; }
+  function wireDQ(){
+    root.querySelectorAll('[data-dql]').forEach(b=>b.onclick=()=>{
+      const it=cfg.board.backlog[+b.dataset.dql]; if(!it) return;
+      const ex=team[1+Math.floor(Math.random()*(team.length-1))]||team[0];
+      cfg.board.backlog=cfg.board.backlog.filter(x=>x!==it);
+      (cfg.board.work=cfg.board.work||[]).push({ ...it, who:ex.name, agents:['backend','review'] });
+      map.impulse(leadId, 'h'+ex.i, { label:'⚡ '+it.id+' · '+it.t, color:dt.c, dur:1.6, pop:ex.name+': принял · '+it.id });
+      pushAudit({ who:(Array.isArray(cfg.team[0])?cfg.team[0][0]:cfg.team[0].name)+' · '+cfg.role, what:`Запустил из бэклога: ${it.id} «${it.t}» → ${ex.name}`, verdict:'allow' });
+      toast(`${it.id} запущена — исполнитель ${ex.name}, задача на доске «В работе»`);
+      setDQ(true);
+    });
+  }
+  const dsb=$('#dpSurge',root); if(dsb) dsb.onclick=()=>setDQ(!dq);
 
   const FEEDV=[['собрал черновик:',dt.l[0]],['закрыл',dt.l[1]||dt.l[0]],['проверил',dt.l[2]||dt.l[0]],['передал дальше','результат']];
   const baseInf=Math.round((hc+dhc)*0.6);
@@ -4256,41 +4315,41 @@ function renderForgeProject(root, id){
 /*  отдельно, в Inside они работают вместе. Вход — одно умение.                */
 /* ========================================================================== */
 function renderModules(root){
+  /* коммерческая лестница доверия: модули продаются отдельно */
   const STEPS = [
-    { icon:'🧠', t:'Умение', unit:'атом', price:'от ₽0', ttv:'минуты',
-      what:'Одна операция в личном чате одного человека: «сводка звонка», «риск-скан договора». Вызвал — получил.',
-      diff:'Ничего не требует: ни доверия, ни внедрения, ни штата.',
-      cta:'Открыть библиотеку умений', go:'market' },
-    { icon:'🧰', t:'Рой под должность', unit:'связка умений', price:'подписка на рабочее место', ttv:'день',
-      what:'Связка умений при одном человеке: рой готовит черновики, носитель правит и принимает. Ответственность — у человека.',
-      diff:'Отличие от умения: работает конвейером, а не по одному вызову. Но это всё ещё инструмент, не штат.',
-      cta:'Ассистент с роем', go:'asst:dev' },
-    { icon:'🤖', t:'Цифровой сотрудник', unit:'субъект', price:'₽28–68 тыс/мес или за результат', ttv:'4 минуты найма',
-      what:'Первая единица цифрового штата: имя, должностная инструкция, KPI, руководитель, испытательный срок, аудит.',
-      diff:'Отличие от роя: собственная ответственность. Ему ставят задачи все, кто имеет право, — не только хозяин.',
-      cta:'Нанять в «Цифровом найме»', go:'talent' },
-    { icon:'🏭', t:'Фабрика (Forge)', unit:'готовый продукт', price:'фикс-цена проекта', ttv:'вы решаете только на воротах',
-      what:'Бригада агентов в изолированном цехе собирает продукт под ключ: код, тесты, документация, развёрнутый сервис.',
-      diff:'Отличие от найма: вы платите за артефакт, а не за работу. Процесс невидим, контроль — на воротах.',
+    { icon:'📦', t:'Проект на аутсорс', unit:'одна задача за результат', price:'от ₽1 500 за принятый результат', ttv:'результат в день заказа',
+      what:'Отдаёте одну задачу агенту Среды: формулируете критерии приёмки, платите только за принятый результат. Ноль внедрения, ноль доступа к вашим системам сверх задачи.',
+      diff:'Цена страха — ноль: не понравилось — не приняли и не заплатили.',
+      cta:'Отдать первую задачу', go:'talent' },
+    { icon:'🏭', t:'Фабрика', unit:'продукт под ключ', price:'фикс-цена проекта · 30/40/30', ttv:'вы решаете только на воротах',
+      what:'Бригада агентов в изолированном цехе собирает продукт целиком: код, тесты, документация, развёрнутый сервис. Контроль — три ворот, между ними цех работает сам.',
+      diff:'Отличие от аутсорса: не задача, а готовый бизнес-актив. Бригаду после сдачи можно забрать к себе — с памятью проекта.',
       cta:'Заказать в цехе', go:'forge' },
-    { icon:'🧊', t:'Inside', unit:'операционная система', price:'корпоративная подписка', ttv:'вся компания на одном пульсе',
-      what:'Всё предыдущее — вместе и связно: люди и цифровые в одной нервной системе, передачи, гейты, governance, аудит.',
-      diff:'Отличие от модулей: умения, рои и сотрудники перестают быть россыпью — становятся организмом.',
+    { icon:'🧊', t:'Inside', unit:'операционная система компании', price:'корпоративная подписка', ttv:'вся компания на одном пульсе',
+      what:'Люди и цифровые — одна нервная система: пульс, передачи, гейты, governance, аудит. Всё, что вы пробовали по отдельности, начинает работать вместе.',
+      diff:'Отличие от модулей: память и контекст перестают жить в задачах — они живут в компании. Спускаться больно, подниматься легко.',
       cta:'Открыть Пульс компании', go:'pulse' },
   ];
-  root.innerHTML = portalHead('🪜','С чего начать','Модули продаются отдельно — лестница зрелости от одного умения до операционной системы. В Inside всё работает вместе','лестница') + `
+  const BLOCKS = [
+    { icon:'🧠', t:'Умение', d:'атом: одна операция, вызывается по запросу', go:'market', cta:'библиотека' },
+    { icon:'🧰', t:'Рой', d:'связка умений при человеке: черновики конвейером, отвечает носитель', go:'asst:dev', cta:'ассистент' },
+    { icon:'🤖', t:'Цифровой сотрудник', d:'субъект в штате: ДИ, KPI, собственная ответственность', go:'workers', cta:'штат' },
+  ];
+  root.innerHTML = portalHead('🪜','С чего начать','Лестница доверия: каждый модуль — отдельный продукт со своим счётом. В Inside всё работает вместе','лестница') + `
     <div class="ml-lad">${STEPS.map((s,i)=>`
       <div class="ml-step" style="--i:${i}">
         <div class="ml-n">${i+1}</div>
         <div class="ml-card">
-          <div class="ml-h"><span class="ml-ic">${s.icon}</span><div><b>${s.t}</b><small>${s.unit} · ${s.price} · ценность: ${s.ttv}</small></div></div>
+          <div class="ml-h"><span class="ml-ic">${s.icon}</span><div><b>${s.t}</b><small>${s.unit} · ${s.price} · ${s.ttv}</small></div></div>
           <p>${s.what}</p>
           <p class="ml-diff">${s.diff}</p>
-          <button class="btn ${i===4?'go':'ghost'}" data-go="${s.go}">${s.cta} →</button>
+          <button class="btn ${i===2?'go':'ghost'}" data-go="${s.go}">${s.cta} →</button>
         </div>
       </div>${i<STEPS.length-1?'<div class="ml-arr">↓</div>':''}`).join('')}
     </div>
-    <div class="od-gov" style="margin-top:12px">Каждая ступень — самостоятельный продукт со своим счётом. Клиент поднимается по мере доверия; память (паспорта агентов, контекст компании) переезжает наверх без потерь — спускаться больно, подниматься легко.</div>`;
+    <div class="panel" style="max-width:780px;margin:16px auto 0"><h2>Из чего всё сделано <span class="tag">онтология — не ступени продаж</span></h2>
+      <div class="ml-blocks">${BLOCKS.map(b=>`<button class="ml-block" data-go="${b.go}"><i>${b.icon}</i><b>${b.t}</b><small>${b.d}</small><span>${b.cta} →</span></button>`).join('')}</div>
+      <div class="od-gov" style="margin-top:9px">На любой ступени лестницы работают одни и те же строительные блоки. Память (паспорта агентов, контекст компании) переезжает по лестнице наверх без потерь.</div></div>`;
   root.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>navTo(b.dataset.go));
 }
 
