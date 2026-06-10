@@ -28,24 +28,39 @@ function cortexMap(stage, opts){
 
   const GOLD = Math.PI * (3 - Math.sqrt(5)); // филлотаксис
 
-  function buildCluster(c, gx, gy){
-    const total = c.people.length + c.digital.length;
-    const R = 30 + Math.sqrt(total) * 8.2;
-    const entry = { c, center: [gx, gy], R, nodes: [] };
+  /* геометрия кластера: люди — ядро, цифровой рой — кольцо вокруг */
+  function clusterGeom(c){
+    const Rh = 13 + Math.sqrt(c.people.length) * 7.4;
+    const Rd = Rh + 8 + Math.min(14, c.digital.length * 0.16);
+    return { Rh, Rd, R: Rd + 5 };
+  }
+
+  function buildCluster(c, gx, gy, scale){
+    const g = clusterGeom(c);
+    const Rh = g.Rh * scale, Rd = g.Rd * scale;
+    const entry = { c, center: [gx, gy], R: g.R * scale, nodes: [] };
     byCluster[c.id] = entry;
-    const put = (ref, type, named, i, N, off) => {
-      const rr = R * Math.sqrt((i + 0.6) / N);
-      const a = i * GOLD + off;
+    const push = (ref, type, named, x, y, r) => {
       const idx = nodes.length;
-      const nx = gx + Math.cos(a) * rr, ny = gy + Math.sin(a) * rr * 0.88;
-      nodes.push({ x0: nx, y0: ny, x: nx, y: ny,
-        r: type === 'h' ? (named ? 4.6 : 2.7) : (named ? 3.9 : 2.3),
-        type, named, color: type === 'h' ? c.color : '#36c994', ci: c.id, ref: ref || {},
+      nodes.push({ x0: x, y0: y, x, y, r, type, named,
+        color: type === 'h' ? c.color : '#36c994', ci: c.id, ref: ref || {},
         phase: (idx * 0.61) % (Math.PI * 2), flash: 0 });
       entry.nodes.push(idx);
     };
-    c.people.forEach((p, i) => put(p, 'h', !!p.named, i, total, entry.R));
-    c.digital.forEach((d, i) => put(d, 'd', !!d.named, c.people.length + i, total, entry.R));
+    const nH = c.people.length;
+    c.people.forEach((p, i) => {
+      const rr = Rh * Math.sqrt((i + 0.55) / nH);
+      const a = i * GOLD + gx * 0.01;
+      push(p, 'h', !!p.named, gx + Math.cos(a) * rr, gy + Math.sin(a) * rr * 0.92,
+        (p.named ? 4.6 : 2.7) * Math.max(0.8, scale));
+    });
+    const nD = c.digital.length;
+    c.digital.forEach((d, i) => {
+      const a = i / nD * Math.PI * 2 + gy * 0.013;
+      const rr = Rd + ((i % 2) ? -4 : 3);
+      push(d, 'd', !!d.named, gx + Math.cos(a) * rr, gy + Math.sin(a) * rr * 0.9,
+        (d.named ? 3.9 : 2.3) * Math.max(0.8, scale));
+    });
     return entry;
   }
 
@@ -56,11 +71,17 @@ function cortexMap(stage, opts){
     canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
     nodes.length = 0;
     const cx0 = W / 2, cy0 = H / 2;
-    const RX = Math.min(W * 0.385, 640), RY = Math.min(H * 0.385, 305);
+    /* эллипс считается от размера кластеров — всё гарантированно в кадре */
+    const maxR0 = Math.max(...clusters.map(c => clusterGeom(c).R));
+    const CHIP = 64;                              // место под чип-подпись (две строки + отступ)
+    let scale = 1, RY = H / 2 - maxR0 - CHIP;
+    if (RY < 140){ scale = Math.max(0.55, (H / 2 - CHIP - 140) / maxR0); RY = H / 2 - maxR0 * scale - CHIP; }
+    RY = Math.max(118, RY);
+    const RX = Math.max(200, Math.min(W / 2 - maxR0 * scale - 80, 660));
     clusters.forEach((c, i) => {
       const a = -Math.PI / 2 + i / clusters.length * Math.PI * 2;
-      const rf = (i % 2) ? 0.82 : 1;
-      buildCluster(c, cx0 + Math.cos(a) * RX * rf, cy0 + Math.sin(a) * RY * rf);
+      const rf = (i % 2) ? 0.86 : 1;
+      buildCluster(c, cx0 + Math.cos(a) * RX * rf, cy0 + Math.sin(a) * RY * rf, scale);
     });
     if (opts.coreEl){ opts.coreEl.style.left = cx0 + 'px'; opts.coreEl.style.top = cy0 + 'px'; }
   }
@@ -204,6 +225,19 @@ function cortexMap(stage, opts){
         ctx.fillRect(-n.r, -n.r, n.r * 2, n.r * 2); ctx.restore(); }
       ctx.globalAlpha = 1;
     });
+
+    /* семантический зум: приблизился — проявились имена живых сотрудников */
+    if (k > 1.4){
+      const aN = Math.min(1, (k - 1.4) / 0.45);
+      ctx.font = '600 9.5px Inter, sans-serif'; ctx.textAlign = 'center';
+      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(18,19,16,.85)';
+      nodes.forEach(n => { if (!n.named || !n.ref.name) return;
+        ctx.globalAlpha = aN * 0.92;
+        ctx.strokeText(n.ref.name, n.x, n.y + n.r + 10);
+        ctx.fillStyle = '#e6e7e0'; ctx.fillText(n.ref.name, n.x, n.y + n.r + 10);
+      });
+      ctx.globalAlpha = 1; ctx.textAlign = 'left';
+    }
 
     /* подсвеченный нейрон под курсором */
     if (hover != null){ const n = nodes[hover];
