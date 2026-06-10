@@ -52,7 +52,7 @@ const WORKSPACES = ROLE_IDS.map(id => { const d = DEPARTMENTS.find(x=>x.id===id)
   { id:'exec', kind:'mgmt', icon:'📊', label:'Менеджмент', persona:'CEO · Кирилл',
     nav:[ {id:'pulse',label:'Пульс компании',icon:'🫀'}, {id:'exec',label:'Дашборд компании',icon:'📊'}, {id:'company',label:'Оргструктура',icon:'🏢'}, {id:'flowx',label:'Передачи компании',icon:'🔄'}, {id:'project',label:'Проекты на ревью',icon:'📁'},
       {sep:'Платформа Среды'},
-      {id:'talent',label:'Цифровой найм',icon:'🌊'}, {id:'forge',label:'Цифровое производство',icon:'🏭'}, {id:'bills',label:'Счета Среды',icon:'🧾'} ] },
+      {id:'modules',label:'С чего начать',icon:'🪜'}, {id:'talent',label:'Цифровой найм',icon:'🌊'}, {id:'forge',label:'Цифровое производство',icon:'🏭'}, {id:'bills',label:'Счета Среды',icon:'🧾'} ] },
   { id:'owner', kind:'owner', icon:'⚙️', label:'Владелец платформы', persona:'Платформа · Авандок',
     nav:[ {id:'workers',label:'Штат цифровых сотрудников',icon:'🤖'},{id:'aibudget',label:'Бюджеты ИИ',icon:'💰'},{id:'router',label:'Маршрутизатор моделей',icon:'🔀'},{id:'audit',label:'Аудит и доступ',icon:'🛡️'},{id:'market',label:'Полная библиотека',icon:'📚'},{id:'studio',label:'Студия',icon:'🛠️'},
       {sep:'Видение'},
@@ -178,7 +178,7 @@ function renderTeam(root, id){ const cfg=COCKPITS[id]; const d=DEPARTMENTS.find(
             ${R.ach.map(a=>`<div class="hc-ach">🏆 ${a}</div>`).join('')}</div>
           <button class="btn go ji-prof" data-pprof="${id}:${sel.i}">${LEX('fullProfile')}</button>
         </div>
-        <h2 style="margin-top:14px">🤝 Общие цифровые сотрудники команды</h2><div class="dev-shared">${SH.map(a=>`<div class="dev-sh"><span>${a.e}</span>${a.n}</div>`).join('')}</div>`;
+        <h2 style="margin-top:14px">🧰 Командные рои <span class="tag">инструменты отдела · не штат</span></h2><div class="dev-shared">${SH.map(a=>`<div class="dev-sh"><span>${a.e}</span>${a.n}</div>`).join('')}</div>`;
     } else {
       const w=DS[sel.i]; const st=DW_STATUS[w.status]||DW_STATUS.active;
       const C=workerRPG(w); const manaPct=Math.round(C.mana.cur/C.mana.max*100);
@@ -1046,6 +1046,7 @@ function renderStage(id){
   if (id==='forge'){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderForge($('#work')); return; }
   if (id.indexOf('fproj:')===0){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderForgeProject($('#work'), id.slice(6)); return; }
   if (id==='bills'){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderSredaBills($('#work')); return; }
+  if (id==='modules'){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderModules($('#work')); return; }
   if (id==='flowx'){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderFlowExec($('#work')); return; }
   if (id==='company'){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderCompany($('#work')); return; }
   if (id.indexOf('asst:')===0){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderAssistant($('#work'), id.slice(5)); return; }
@@ -1993,7 +1994,14 @@ function buildLibrary(){
       LIB_SPEC.slice(0,3).forEach(sp => { agents.push(dec({ ...base, id:'ag'+(ai), name:a[0]+' · '+sp, focus:a[1]+' · '+sp, featured:false, skills:6+(ai%9) }, ai)); ai++; });
     });
   });
-  return { agents, skills };
+  /* рои под должность: связки умений при человеке — из ROLE_SWARM */
+  const deptOfRole = (role) => { for (const rid of ROLE_IDS){ const t = COCKPITS[rid] && COCKPITS[rid].team;
+    if (t && t.some(p => (Array.isArray(p) ? p[1] : p.role) === role)) return rid; } return null; };
+  const swarms = Object.keys(ROLE_SWARM).map((role, i) => { const sw = ROLE_SWARM[role];
+    const rid = deptOfRole(role); const dep = DEPT_CATALOG.find(x => CAT2ROLE[x.id] === rid) || DEPT_CATALOG[i % DEPT_CATALOG.length];
+    return { id:'sw'+i, role, d:sw.d, a:sw.a, dept:dep.id, dl:dep.label, emoji:'🧰', color:dep.color,
+      rating:(4.5 + (i*7%5)/10).toFixed(1), installs:((i*61)%29+4)+'0', featured:i%4===0 }; });
+  return { agents, skills, swarms };
 }
 
 function renderLibrary(root, d, opts){
@@ -2004,25 +2012,27 @@ function renderLibrary(root, d, opts){
 
   root.innerHTML = workHead(d, 'Библиотека цифровых сотрудников и умений — production-каталог, всё можно взять в работу') + `
     <div class="lib-stats">
-      <div class="ls-stat"><b>${LIB.agents.length}</b><span>цифровых сотрудников</span></div>
       <div class="ls-stat"><b>${LIB.skills.length.toLocaleString('ru')}</b><span>умений</span></div>
-      <div class="ls-stat"><b>${DEPT_CATALOG.length}</b><span>отделов</span></div>
+      <div class="ls-stat"><b>${LIB.swarms.length}</b><span>роёв под должность</span></div>
+      <div class="ls-stat"><b>${LIB.agents.length}</b><span>цифровых сотрудников</span></div>
       <div class="ls-stat"><b>★ 4.7</b><span>средний рейтинг</span></div>
-      <div class="lib-search"><input id="libQ" placeholder="Поиск по ${LIB.skills.length.toLocaleString('ru')} умениям и ${LIB.agents.length} цифровым сотрудникам…"/></div>
+      <div class="lib-search"><input id="libQ" placeholder="Поиск по ${LIB.skills.length.toLocaleString('ru')} умениям, ${LIB.swarms.length} роям и ${LIB.agents.length} цифровым сотрудникам…"/></div>
     </div>
     <div class="lib-controls">
-      <div class="mk-tabs" id="libType"><button data-t="skill" class="on">🧠 Умения</button><button data-t="agent">🤖 Цифровые сотрудники</button></div>
+      <div class="mk-tabs" id="libType"><button data-t="skill" class="on">🧠 Умения</button><button data-t="swarm">🧰 Рои под должность</button><button data-t="agent">🤖 Цифровые сотрудники</button></div>
     </div>
+    <div class="lib-gloss"><b>Умение</b> — атом: одна операция, вызывается по запросу · <b>Рой</b> — связка умений при человеке: готовит черновики, отвечает носитель · <b>Цифровой сотрудник</b> — субъект в штате: ДИ, KPI, собственная ответственность</div>
     <div class="lib-body ${lock?'lib-locked':''}">
       <aside class="lib-rail" id="libRail"></aside>
       <div class="lib-main"><div class="lib-grid" id="libGrid"></div>
         <div class="lib-more" id="libMore"></div></div>
     </div>`;
 
-  const countBy = (type, dep) => (type==='skill'?LIB.skills:LIB.agents).filter(x=>dep==='all'||x.dept===dep).length;
+  const listOf = (type) => type==='skill'?LIB.skills:type==='swarm'?LIB.swarms:LIB.agents;
+  const countBy = (type, dep) => listOf(type).filter(x=>dep==='all'||x.dept===dep).length;
 
   const drawRail = () => {
-    const arr = st.type==='skill'?LIB.skills:LIB.agents;
+    const arr = listOf(st.type);
     const rail = $('#libRail', root);
     rail.innerHTML = `<button class="lib-dep ${st.dept==='all'?'on':''}" data-d="all"><span>📚 Все отделы</span><b>${arr.length.toLocaleString('ru')}</b></button>` +
       DEPT_CATALOG.map(dep=>`<button class="lib-dep ${st.dept===dep.id?'on':''}" data-d="${dep.id}" style="--c:${dep.color}">
@@ -2031,14 +2041,23 @@ function renderLibrary(root, d, opts){
   };
 
   const drawGrid = () => {
-    const arr = (st.type==='skill'?LIB.skills:LIB.agents)
-      .filter(x=> (st.dept==='all'||x.dept===st.dept) && (!st.q || x.name.toLowerCase().includes(st.q)))
+    const arr = listOf(st.type)
+      .filter(x=> (st.dept==='all'||x.dept===st.dept) && (!st.q || (x.name||x.role).toLowerCase().includes(st.q)))
       .sort((a,b)=> (b.featured?1:0)-(a.featured?1:0));
     const grid = $('#libGrid', root);
-    const btn = (x) => { const inst = roleId && isInstalled(roleId, st.type, x.name);
-      const lbl = inst ? '✓ установлено' : st.type==='agent' ? 'Нанять' : (x.price?'₽'+x.price:'Взять');
+    const btn = (x) => { const inst = roleId && isInstalled(roleId, st.type==='swarm'?'agent':st.type, st.type==='swarm'?x.a[0]:x.name);
+      const lbl = inst ? (st.type==='swarm'?'✓ подключён':'✓ установлено') : st.type==='agent' ? 'Нанять' : st.type==='swarm' ? 'Подключить' : (x.price?'₽'+x.price:'Взять');
       return `<button class="btn ${inst?'lc-done':'go'} lc-take" ${inst?'disabled':''}>${lbl}</button>`; };
-    grid.innerHTML = arr.slice(0, st.shown).map(x => st.type==='skill' ? `
+    grid.innerHTML = arr.slice(0, st.shown).map(x => st.type==='swarm' ? `
+      <div class="lib-card" style="--c:${x.color}">
+        <div class="lc-top"><span class="lc-emoji">${x.emoji}</span>
+          <div class="lc-meta"><b>Рой: ${x.role}</b><small>${x.dl} · инструмент, не штат</small></div>
+          ${x.featured?'<span class="lc-feat">★</span>':''}</div>
+        <p class="lc-does">${x.d}</p>
+        <div class="lc-swarm">${x.a.map(a=>`<span>${a}</span>`).join('')}</div>
+        <div class="lc-foot"><span class="lc-rate">★ ${x.rating} · ⤓ ${x.installs}</span>
+          ${btn(x)}</div>
+      </div>` : st.type==='skill' ? `
       <div class="lib-card" style="--c:${x.color}">
         <div class="lc-top"><span class="lc-emoji">${x.emoji}</span>
           <div class="lc-meta"><b>${x.name}</b><small>${x.dl}</small></div>
@@ -2057,10 +2076,13 @@ function renderLibrary(root, d, opts){
           ${btn(x)}</div>
       </div>`).join('');
     $$('.lc-take', grid).forEach((b,i)=>b.onclick=()=>{ const x=arr[i];
-      if (roleId){ installItem(roleId, st.type, x.name); drawGrid();
-        toast(st.type==='skill'?`Умение «${x.name}» установлен в ассистента → откройте «Мой ассистент»`:`Цифровой сотрудник «${x.name}» нанят в ваш рой`);
+      if (roleId){
+        if (st.type==='swarm'){ x.a.forEach(a=>installItem(roleId,'agent',a)); drawGrid();
+          toast(`Рой «${x.role}» подключён — ${x.a.length} инструментов в вашем ассистенте`); return; }
+        installItem(roleId, st.type, x.name); drawGrid();
+        toast(st.type==='skill'?`Умение «${x.name}» установлено в ассистента → откройте «Мой ассистент»`:`Цифровой сотрудник «${x.name}» нанят и закреплён за вашей должностью`);
       } else { b.textContent='✓'; b.disabled=true; b.style.opacity=.6;
-        toast(st.type==='skill'?`Умение «${x.name}» взят в работу`:`Цифровой сотрудник «${x.name}» нанят в команду`); } });
+        toast(st.type==='skill'?`Умение «${x.name}» взято в работу`:st.type==='swarm'?`Рой «${x.role}» подключён к должности`:`Цифровой сотрудник «${x.name}» нанят в команду`); } });
     $('#libMore', root).innerHTML = arr.length>st.shown
       ? `<button class="btn ghost" id="libMoreBtn">Показать ещё · ${arr.length-st.shown} из ${arr.length.toLocaleString('ru')}</button>`
       : `<span class="lib-allshown">показано всё (${arr.length.toLocaleString('ru')})</span>`;
@@ -4227,6 +4249,49 @@ function renderForgeProject(root, id){
     }, 1100);
   }
   draw();
+}
+
+/* ========================================================================== */
+/*  С ЧЕГО НАЧАТЬ — модульная лестница платформы: каждый модуль продаётся      */
+/*  отдельно, в Inside они работают вместе. Вход — одно умение.                */
+/* ========================================================================== */
+function renderModules(root){
+  const STEPS = [
+    { icon:'🧠', t:'Умение', unit:'атом', price:'от ₽0', ttv:'минуты',
+      what:'Одна операция в личном чате одного человека: «сводка звонка», «риск-скан договора». Вызвал — получил.',
+      diff:'Ничего не требует: ни доверия, ни внедрения, ни штата.',
+      cta:'Открыть библиотеку умений', go:'market' },
+    { icon:'🧰', t:'Рой под должность', unit:'связка умений', price:'подписка на рабочее место', ttv:'день',
+      what:'Связка умений при одном человеке: рой готовит черновики, носитель правит и принимает. Ответственность — у человека.',
+      diff:'Отличие от умения: работает конвейером, а не по одному вызову. Но это всё ещё инструмент, не штат.',
+      cta:'Ассистент с роем', go:'asst:dev' },
+    { icon:'🤖', t:'Цифровой сотрудник', unit:'субъект', price:'₽28–68 тыс/мес или за результат', ttv:'4 минуты найма',
+      what:'Первая единица цифрового штата: имя, должностная инструкция, KPI, руководитель, испытательный срок, аудит.',
+      diff:'Отличие от роя: собственная ответственность. Ему ставят задачи все, кто имеет право, — не только хозяин.',
+      cta:'Нанять в «Цифровом найме»', go:'talent' },
+    { icon:'🏭', t:'Фабрика (Forge)', unit:'готовый продукт', price:'фикс-цена проекта', ttv:'вы решаете только на воротах',
+      what:'Бригада агентов в изолированном цехе собирает продукт под ключ: код, тесты, документация, развёрнутый сервис.',
+      diff:'Отличие от найма: вы платите за артефакт, а не за работу. Процесс невидим, контроль — на воротах.',
+      cta:'Заказать в цехе', go:'forge' },
+    { icon:'🧊', t:'Inside', unit:'операционная система', price:'корпоративная подписка', ttv:'вся компания на одном пульсе',
+      what:'Всё предыдущее — вместе и связно: люди и цифровые в одной нервной системе, передачи, гейты, governance, аудит.',
+      diff:'Отличие от модулей: умения, рои и сотрудники перестают быть россыпью — становятся организмом.',
+      cta:'Открыть Пульс компании', go:'pulse' },
+  ];
+  root.innerHTML = portalHead('🪜','С чего начать','Модули продаются отдельно — лестница зрелости от одного умения до операционной системы. В Inside всё работает вместе','лестница') + `
+    <div class="ml-lad">${STEPS.map((s,i)=>`
+      <div class="ml-step" style="--i:${i}">
+        <div class="ml-n">${i+1}</div>
+        <div class="ml-card">
+          <div class="ml-h"><span class="ml-ic">${s.icon}</span><div><b>${s.t}</b><small>${s.unit} · ${s.price} · ценность: ${s.ttv}</small></div></div>
+          <p>${s.what}</p>
+          <p class="ml-diff">${s.diff}</p>
+          <button class="btn ${i===4?'go':'ghost'}" data-go="${s.go}">${s.cta} →</button>
+        </div>
+      </div>${i<STEPS.length-1?'<div class="ml-arr">↓</div>':''}`).join('')}
+    </div>
+    <div class="od-gov" style="margin-top:12px">Каждая ступень — самостоятельный продукт со своим счётом. Клиент поднимается по мере доверия; память (паспорта агентов, контекст компании) переезжает наверх без потерь — спускаться больно, подниматься легко.</div>`;
+  root.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>navTo(b.dataset.go));
 }
 
 /* счета Среды: Talent + Forge, гибрид с ₽-метром */

@@ -4202,5 +4202,31 @@ body.rpg-mode .hc-ach{color:#e6d9b8}
 .nm-node.proj .nm-name::after{content:' 🚀';font-size:9px}
 
 /* ============================================================================
+   БИБЛИОТЕКА: рои + глоссарий · ЛЕСТНИЦА МОДУЛЕЙ «С чего начать»
+   ========================================================================== */
+.lib-gloss{font-size:11.5px;color:var(--muted);border:1px dashed var(--line2);border-radius:10px;
+  padding:7px 12px;margin:-4px 0 12px}
+.lib-gloss b{color:var(--txt2)}
+.lc-swarm{display:flex;flex-wrap:wrap;gap:5px;margin:7px 0}
+.lc-swarm span{font-size:10.5px;color:var(--txt2);border:1px solid var(--line2);border-radius:7px;padding:2px 7px;background:var(--bg2)}
+.ml-lad{max-width:780px;margin:14px auto 0}
+.ml-step{display:flex;gap:14px;align-items:stretch}
+.ml-n{flex:none;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:14px;color:var(--bg);background:linear-gradient(160deg,var(--acc),var(--acc-deep));
+  margin-top:14px;box-shadow:0 0 12px var(--acc-glow)}
+.ml-card{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 16px;
+  transition:border-color .2s,transform .2s}
+.ml-step:hover .ml-card{border-color:rgba(54,201,148,.4);transform:translateX(4px)}
+.ml-step[style*="--i:4"] .ml-card{border-color:rgba(54,201,148,.45);box-shadow:0 0 24px rgba(54,201,148,.08)}
+.ml-h{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.ml-ic{font-size:22px}
+.ml-h b{font-size:14.5px;display:block}
+.ml-h small{color:var(--muted);font-size:11px}
+.ml-card p{font-size:12.5px;color:var(--txt2);margin:4px 0}
+.ml-diff{color:var(--acc)!important;font-size:11.5px!important;border-left:2px solid var(--acc-deep);padding-left:9px}
+.ml-card .btn{margin-top:7px}
+.ml-arr{text-align:center;color:var(--faint);font-size:15px;padding:2px 0 2px 13px;width:34px}
+
+/* ============================================================================
    Конец дополнительных стилей
    ========================================================================== */
