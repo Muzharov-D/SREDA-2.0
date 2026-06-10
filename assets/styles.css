@@ -1048,6 +1048,7 @@ button{font-family:inherit;cursor:pointer;color:inherit;border:0;background:none
 .dp-chip{position:absolute;transform:translate(-50%,-50%);z-index:1;font-size:10px;font-weight:700;color:#06121f;
   background:var(--c);border-radius:20px;padding:2px 9px;white-space:nowrap;pointer-events:none;opacity:.96;
   box-shadow:0 3px 10px -3px rgba(0,0,0,.6);transition:transform 1.15s cubic-bezier(.3,.5,.2,1),opacity 1.15s ease-in}
+.dp-chip.dgt{border:1.5px solid var(--vio);box-shadow:0 3px 10px -3px rgba(0,0,0,.6),0 0 14px color-mix(in srgb,var(--vio) 60%,transparent)}
 .dp-side{display:flex;flex-direction:column;gap:8px}
 @media(max-width:900px){.dp-wrap{grid-template-columns:1fr}.dp-stage{height:440px}}
 
@@ -3615,8 +3616,8 @@ button.fx-node{cursor:pointer}button.fx-node:hover{transform:translateY(-2px);bo
 .pls-chip{position:absolute;left:0;top:0;z-index:1;offset-distance:0%;offset-rotate:0deg;opacity:.95;pointer-events:none;
   width:9px;height:9px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c),0 0 22px color-mix(in srgb,var(--c) 55%,transparent);
   will-change:offset-distance,opacity}
-.pls-chip.lbl{width:auto;height:auto;border-radius:999px;padding:3px 9px;font-size:10px;font-weight:800;color:#0c1410;
-  box-shadow:0 0 14px color-mix(in srgb,var(--c) 60%,transparent);white-space:nowrap}
+.pls-chip.lbl.dgt{background:var(--vio);box-shadow:0 0 14px color-mix(in srgb,var(--vio) 60%,transparent)}
+.pls-chip.dgt{background:var(--vio);box-shadow:0 0 10px var(--vio),0 0 22px color-mix(in srgb,var(--vio) 55%,transparent)}
 
 /* боковая панель */
 .pls-side{display:flex;flex-direction:column;gap:9px;background:var(--panel);border:1px solid var(--line);

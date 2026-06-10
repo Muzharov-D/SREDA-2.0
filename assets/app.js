@@ -111,7 +111,7 @@ function toggleFsMenu(e){ e&&e.stopPropagation(); let m=$('#fsMenu'); if(m){ m.r
 function closeFsMenu(e){ const m=$('#fsMenu'); if(m && !m.contains(e.target)){ m.remove(); document.removeEventListener('click', closeFsMenu); } }
 function toggleWsMenu(e){ e&&e.stopPropagation(); let m=$('#wsMenu'); if(m){ m.remove(); return; }
   m=el(`<div id="wsMenu" class="ws-menu"></div>`);
-  [['Кабинеты ролей','role'],['Управление','mgmt'],['Платформа','owner']].forEach(([t,k])=>{
+  [['Управление','mgmt'],['Платформа','owner'],['Кабинеты ролей','role']].forEach(([t,k])=>{
     m.appendChild(el(`<div class="ws-menu-g">${t}</div>`));
     WORKSPACES.filter(w=>w.kind===k).forEach(w=>{ const it=el(`<button class="ws-menu-i ${w.id===state.ws?'on':''}"><span class="wm-ic">${w.icon}</span><div><b>${w.label}</b><small>${w.persona}</small></div></button>`);
       it.onclick=()=>{ m.remove(); setWorkspace(w.id); }; m.appendChild(it); }); });
@@ -143,13 +143,13 @@ function renderTeam(root, id){ const cfg=COCKPITS[id]; const d=DEPARTMENTS.find(
     let side='';
     if (sel.kind==='h'){
       const p=TEAM[sel.i], sw=swarmOf(p.role);
-      side=`<h2>🤖 Рой под должность</h2>
+      side=`<button class="btn go ji-prof" data-pprof="${id}:${sel.i}" style="margin-top:10px">Открыть полный профиль →</button>
+        <div class="od-gov" style="margin-top:11px">Рой каждого собран под его <b>должностную инструкцию</b>. Кликните человека — его рой; кликните цифрового сотрудника — его должностную инструкцию.</div>
+        <h2>🤖 Рой под должность</h2>
         <div class="rolecard"><div class="rc-h"><span class="rc-av">${p.emoji||'🧑'}</span><div><b>${p.name}</b><small>${p.role}${p.fn&&p.fn!==p.role?' · '+p.fn:''}</small></div></div>
           <div class="rc-duty"><b>Должностная зона:</b> ${sw.d}</div>
           <div class="rc-swarm-h">Персональный рой · ${sw.a.length} цифровых сотрудников под позицию:</div>
           <div class="rc-swarm">${sw.a.map(a=>`<div class="rc-a">${a}</div>`).join('')}</div></div>
-        <button class="btn ghost ji-prof" data-pprof="${id}:${sel.i}" style="margin-top:10px">Открыть полный профиль →</button>
-        <div class="od-gov" style="margin-top:11px">Рой каждого собран под его <b>должностную инструкцию</b>. Кликните человека — его рой; кликните цифрового сотрудника — его должностную инструкцию.</div>
         <h2 style="margin-top:14px">🤝 Общие цифровые сотрудники команды</h2><div class="dev-shared">${SH.map(a=>`<div class="dev-sh"><span>${a.e}</span>${a.n}</div>`).join('')}</div>`;
     } else {
       const w=DS[sel.i]; const st=DW_STATUS[w.status]||DW_STATUS.active;
@@ -494,10 +494,10 @@ function renderPulse(root, d){
   window.addEventListener('resize', layout);
 
   /* частица: летит по кривой от a к b (через лёгкий изгиб), с меткой задачи */
-  const fly = (from, to, label, color, dur) => {
+  const fly = (from, to, label, color, dur, isDigital) => {
     const [fx,fy]=pos[from]||pos.core, [tx,ty]=pos[to]||pos.core; if(fx==null||tx==null) return;
     const mx=(fx+tx)/2+(ty-fy)*0.18, my=(fy+ty)/2-(tx-fx)*0.18;
-    const c = el(`<div class="pls-chip ${label?'lbl':''}" style="--c:${color};offset-path:path('M${fx} ${fy} Q${mx} ${my} ${tx} ${ty}')">${label||''}</div>`);
+    const c = el(`<div class="pls-chip ${label?'lbl':''} ${isDigital?'dgt':''}" style="--c:${color};offset-path:path('M${fx} ${fy} Q${mx} ${my} ${tx} ${ty}')">${label||''}</div>`);
     stage.appendChild(c);
     requestAnimationFrame(()=>{ c.style.transition=`offset-distance ${dur||1.5}s cubic-bezier(.45,.05,.35,1), opacity .4s ${((dur||1.5)-0.4)}s`; c.style.offsetDistance='100%'; c.style.opacity='0'; });
     setTimeout(()=>c.remove(), (dur||1.5)*1000+150);
@@ -509,7 +509,9 @@ function renderPulse(root, d){
   const emit = () => {
     const to = randDept(), dt = DEPT_TASK[to];
     const labeled = Math.random()<0.4;
-    fly('core', to, labeled?dt.l[Math.floor(Math.random()*dt.l.length)]:'', dt.c, 1.3+Math.random()*0.6);
+    const isDigital = Math.random()<0.5;
+    const label = labeled ? (isDigital ? '🤖 ' : '👤 ') + dt.l[Math.floor(Math.random()*dt.l.length)] : '';
+    fly('core', to, label, dt.c, 1.3+Math.random()*0.6, isDigital);
     if (Math.random()<0.3){ // передача между отделами — соединительная ткань
       let a=randDept(), b=randDept(); if(a!==b) fly(a, b, Math.random()<0.5?'передача →':'', '#34d399', 1.6);
     }
@@ -567,7 +569,7 @@ function renderDeptPulse(root, roleId){
       <div class="dp-stage" id="dpStage">
         <svg class="dp-links" id="dpLinks" preserveAspectRatio="none"></svg>
         <div class="dp-core" id="dpCore"><b>${d.icon}</b><span>${cfg.role}</span><i>${hc} чел.</i></div>
-        ${fns.map((f,i)=>`<div class="dp-fn" data-i="${i}"><span class="dp-fn-dot" style="--c:${dt.c}"></span><b>${f}</b><i>${groups[f].length}</i></div>`).join('')}
+        ${fns.map((f,i)=>`<div class="dp-fn" data-i="${i}" data-fn="${f}"><span class="dp-fn-dot" style="--c:${dt.c}"></span><b>${f}</b><i>${groups[f].length}</i></div>`).join('')}
       </div>
       <aside class="dp-side">
         <div class="of-live"><span class="of-dot"></span><b id="dp-inflight">—</b> задач в работе <i>в отделе</i></div>
@@ -588,10 +590,13 @@ function renderDeptPulse(root, roleId){
       lines+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}"/>`; });
     if(links){ links.setAttribute('viewBox',`0 0 ${r.width} ${r.height}`); links.innerHTML=lines; } };
   layout(); requestAnimationFrame(layout);
+  $$('.dp-fn',stage).forEach(n=>n.onclick=()=>navTo('team:'+roleId));
   const chip=()=>{ const arr=$$('.dp-fn',stage); if(!arr.length) return; const tgt=arr[Math.floor(Math.random()*arr.length)];
-    const cross=Math.random()<0.28, task=cross?DP_CROSS[Math.floor(Math.random()*DP_CROSS.length)]:{t:dt.l[Math.floor(Math.random()*dt.l.length)],c:dt.c};
+    const cross=Math.random()<0.28, baseTask=cross?DP_CROSS[Math.floor(Math.random()*DP_CROSS.length)]:{t:dt.l[Math.floor(Math.random()*dt.l.length)],c:dt.c};
+    const isDigital = Math.random()<0.5;
+    const task={...baseTask,t:(isDigital?'🤖 ':'👤 ')+baseTask.t};
     const cx=+core.dataset.x, cy=+core.dataset.y, tx=+tgt.dataset.x, ty=+tgt.dataset.y;
-    const c=el(`<div class="dp-chip" style="--c:${task.c};left:${cx}px;top:${cy}px">${task.t}</div>`); stage.appendChild(c);
+    const c=el(`<div class="dp-chip ${isDigital?'dgt':''}" style="--c:${task.c};left:${cx}px;top:${cy}px">${task.t}</div>`); stage.appendChild(c);
     requestAnimationFrame(()=>{ c.style.transform=`translate(-50%,-50%) translate(${tx-cx}px,${ty-cy}px)`; c.style.opacity='0'; });
     setTimeout(()=>c.remove(),1250);
     tgt.classList.add('hit'); setTimeout(()=>tgt.classList.remove('hit'),420);
