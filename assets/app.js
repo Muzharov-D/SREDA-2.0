@@ -143,19 +143,23 @@ function renderTeam(root, id){ const cfg=COCKPITS[id]; const d=DEPARTMENTS.find(
     let side='';
     if (sel.kind==='h'){
       const p=TEAM[sel.i], sw=swarmOf(p.role);
-      side=`<button class="btn go ji-prof" data-pprof="${id}:${sel.i}" style="margin-top:10px">Открыть полный профиль →</button>
-        <div class="od-gov" style="margin-top:11px">Рой каждого собран под его <b>должностную инструкцию</b>. Кликните человека — его рой; кликните цифрового сотрудника — его должностную инструкцию.</div>
-        <h2>🤖 Рой под должность</h2>
-        <div class="rolecard"><div class="rc-h"><span class="rc-av">${p.emoji||'🧑'}</span><div><b>${p.name}</b><small>${p.role}${p.fn&&p.fn!==p.role?' · '+p.fn:''}</small></div></div>
+      side=`<h2>👤 Сотрудник</h2>
+        <div class="rolecard">
+          <div class="rc-h">${humanAv(id, p.name, DEPT_TASK[id].c, 'sm')}<div><b>${p.name}</b><small>${p.role}${p.fn&&p.fn!==p.role?' · '+p.fn:''}</small></div></div>
+          <button class="btn go ji-prof" data-pprof="${id}:${sel.i}">Открыть полный профиль →</button>
+        </div>
+        <h2 style="margin-top:14px">🤖 Рой под должность</h2>
+        <div class="rolecard">
           <div class="rc-duty"><b>Должностная зона:</b> ${sw.d}</div>
           <div class="rc-swarm-h">Персональный рой · ${sw.a.length} цифровых сотрудников под позицию:</div>
           <div class="rc-swarm">${sw.a.map(a=>`<div class="rc-a">${a}</div>`).join('')}</div></div>
         <h2 style="margin-top:14px">🤝 Общие цифровые сотрудники команды</h2><div class="dev-shared">${SH.map(a=>`<div class="dev-sh"><span>${a.e}</span>${a.n}</div>`).join('')}</div>`;
     } else {
       const w=DS[sel.i]; const st=DW_STATUS[w.status]||DW_STATUS.active;
-      side=`<h2>📋 Должностная инструкция</h2>
+      side=`<h2>📋 Цифровой сотрудник</h2>
         <div class="rolecard ji-card">
           <div class="rc-h"><span class="rc-av dgt">${w.emoji}</span><div><b>${w.name} <i class="dgt-tag">цифровой сотрудник</i></b><small>${w.title} · ${w.fn}</small></div></div>
+          <button class="btn go ji-prof" data-jiprof="${w.id}">Открыть полный профиль →</button>
           <div class="ji-meta">
             <span class="ji-st ${st[1]}">${st[0]}</span>
             <span class="ji-lead">руководитель: <b>${w.lead}</b></span>
@@ -168,7 +172,6 @@ function renderTeam(root, id){ const cfg=COCKPITS[id]; const d=DEPARTMENTS.find(
           <div class="ji-sec esc"><b>Эскалация человеку</b><p>${w.ji.esc}</p></div>
           <div class="ji-now">сейчас в работе: <b data-jinow>${w.now}</b></div>
           <div class="ji-ask"><input type="text" placeholder="Задача для «${w.name}»…" data-jiask/><button class="btn go" data-jigo>→</button></div>
-          <button class="btn ghost ji-prof" data-jiprof="${w.id}">Открыть полный профиль →</button>
         </div>`;
     }
 
@@ -463,13 +466,19 @@ function renderPulse(root, d){
       <aside class="pls-side">
         <button class="btn go pls-surge" id="plsSurge">⚡ Запустить рой</button>
         <div class="of-live"><span class="of-dot"></span><b id="pls-inflight">—</b> задач в работе <i>прямо сейчас</i></div>
+        <div class="of-live"><span class="lg-mark d"></span><b id="pls-inf-d">—</b> делают цифровые сотрудники</div>
+        <div class="of-live"><span class="lg-mark h" style="--c:#9aa096"></span><b id="pls-inf-h">—</b> делают люди</div>
         <div class="of-live"><b id="pls-done">—</b> выполнено сегодня</div>
         <div class="of-live"><b id="pls-flows">—</b> сквозных потока активно</div>
-        <div class="of-live"><b>${DIGITAL_SIZE}</b> цифровых в штате <i>· ${DIGITAL_SHARE}% компании</i></div>
+        <div class="of-legend kind-legend">
+          <span class="lg-d">задача цифрового</span>
+          <span class="lg-h" style="--c:#9aa096">задача человека</span>
+          <span style="--c:#34d399">передача →</span>
+        </div>
         <div class="of-legend pls-legend">${ROLE_IDS.map(r=>{ const dep=DEPARTMENTS.find(x=>x.id===r);
           return `<span style="--c:${DEPT_TASK[r].c}">${dep.label.toLowerCase()}</span>`; }).join('')}</div>
         <div class="of-feed" id="plsFeed"></div>
-        <div class="od-gov">Каждая частица — реальная задача: черновик готовит цифровой сотрудник, человек правит и принимает. Кликните отдел — провалитесь в его пульс.</div>
+        <div class="od-gov">На каждой частице — исполнитель: <b style="color:var(--acc)">цифровой сотрудник</b> готовит черновик, <b>человек</b> правит и принимает. Кликните отдел — провалитесь в его пульс.</div>
       </aside>
     </div>`;
 
@@ -508,9 +517,16 @@ function renderPulse(root, d){
   const randDept = () => ROLE_IDS[Math.floor(Math.random()*ROLE_IDS.length)];
   const emit = () => {
     const to = randDept(), dt = DEPT_TASK[to];
-    const labeled = Math.random()<0.4;
-    const isDigital = Math.random()<0.5;
-    const label = labeled ? (isDigital ? '🤖 ' : '👤 ') + dt.l[Math.floor(Math.random()*dt.l.length)] : '';
+    const labeled = Math.random()<0.45;
+    const isDigital = Math.random()<0.62;
+    let label = '';
+    if (labeled){
+      const task = dt.l[Math.floor(Math.random()*dt.l.length)];
+      let who = '';
+      if (isDigital){ const pool=DIGITAL_STAFF[to]||[]; if(pool.length) who=pool[Math.floor(Math.random()*pool.length)].name; }
+      else { const t=COCKPITS[to]&&COCKPITS[to].team; if(t&&t.length){ const p=t[Math.floor(Math.random()*t.length)]; who=Array.isArray(p)?p[0]:p.name; } }
+      label = (isDigital?'🤖 ':'👤 ') + (who ? who+' · '+task : task);
+    }
     fly('core', to, label, dt.c, 1.3+Math.random()*0.6, isDigital);
     if (Math.random()<0.3){ // передача между отделами — соединительная ткань
       let a=randDept(), b=randDept(); if(a!==b) fly(a, b, Math.random()<0.5?'передача →':'', '#34d399', 1.6);
@@ -523,7 +539,23 @@ function renderPulse(root, d){
     if(n){ n.textContent='→ '+dt.l[Math.floor(Math.random()*dt.l.length)]; n.classList.remove('tick'); void n.offsetWidth; n.classList.add('tick'); }
   };
 
-  const FEED=[['🛠️','Бэкенд-Алгоритм','собрал PR #'+(480+(Date.now()%40)),'dev'],['📈','Сейлз-Скоринг','квалифицировал 9 лидов','sales'],['✍️','Копирайтер-Голос','текст лендинга готов','marketing'],['📊','Аналитик-Витрина','пересчитал воронку','analytics'],['⚖️','Комплаенс-Страж','проверка по 38-ФЗ','legal'],['🎨','Дизайн-Кит','вариант макета','design'],['🧪','QA-Регресс','прогон тестов · 143 ✓','dev'],['🧲','Рекрутёр-Сорсер','скрининг 48 откликов','hr'],['💰','Финмодель-Прогноз','пересчёт сценария','finance'],['🔄','Оля → Ира','КП «Гамма» передано в Юр','sales'],['🧭','Онбординг-План','план адаптации готов','hr'],['🔍','Ревьюер-Страж','код-ревью завершено','dev']];
+  const FEED=[
+    ['d','Алгоритм','собрал черновик PR #'+(480+(Date.now()%40)),'dev'],
+    ['d','Скоринг','квалифицировал 9 лидов','sales'],
+    ['h','Оля','поправила скидку и приняла КП «Гамма»','sales'],
+    ['d','Голос','текст лендинга готов — на проверку Поле','marketing'],
+    ['h','Игорь','утвердил merge PR #482','dev'],
+    ['d','Витрина','пересчитал воронку','analytics'],
+    ['h','Ира','сняла sev1-риск в договоре','legal'],
+    ['d','Кодекс','проверка по 38-ФЗ пройдена','legal'],
+    ['d','Кит','4 варианта макета — на ревью Вере','design'],
+    ['h','Вера','приняла вариант B чекаута','design'],
+    ['d','Регресс','прогон тестов · 143 ✓','dev'],
+    ['d','Скрин','скрининг 48 откликов готов','hr'],
+    ['h','Марина','утвердила оффер финалисту','hr'],
+    ['d','Модель','пересчёт сценария кэш-флоу','finance'],
+    ['h','Рома','подтвердил сверку июня','finance'],
+    ['x','Оля → Ира','КП «Гамма» передано в Юр','sales']];
   let done = 12480 + Math.floor(Math.random()*200);
   const baseInf = Math.round(DIGITAL_SIZE*1.6);
   clearInterval(window.__pulseTimer);
@@ -532,11 +564,17 @@ function renderPulse(root, d){
     emit(); if(Math.random()<0.7) emit();
     nowLine();
     done += 3+Math.floor(Math.random()*4);
-    const inf=$('#pls-inflight',root); if(inf) inf.textContent=Math.max(1,baseInf+Math.round((Math.random()-0.5)*60)).toLocaleString('ru');
+    const infV=Math.max(1,baseInf+Math.round((Math.random()-0.5)*60));
+    const infD=Math.round(infV*0.62), infH=infV-infD;
+    const inf=$('#pls-inflight',root); if(inf) inf.textContent=infV.toLocaleString('ru');
+    const ifd=$('#pls-inf-d',root); if(ifd) ifd.textContent=infD.toLocaleString('ru');
+    const ifh=$('#pls-inf-h',root); if(ifh) ifh.textContent=infH.toLocaleString('ru');
     const dn=$('#pls-done',root); if(dn) dn.textContent=done.toLocaleString('ru');
     const FS=flowState(); const fl=$('#pls-flows',root); if(fl) fl.textContent=FLOWS.filter(f=>FS[f.id]<f.steps.length).length;
     const feed=$('#plsFeed',root); if(feed){ const f=FEED[Math.floor(Math.random()*FEED.length)];
-      const row=el(`<div class="of-row fade-in"><span style="color:${DEPT_TASK[f[3]].c}">●</span> <b>${f[0]} ${f[1]}</b> ${f[2]}</div>`);
+      const mark = f[0]==='d' ? '<span class="lg-mark d"></span>' : f[0]==='h' ? `<span class="lg-mark h" style="--c:${DEPT_TASK[f[3]].c}"></span>` : '<span style="color:#34d399">→</span>';
+      const tag = f[0]==='d' ? ' <i class="dgt-tag">цифровой</i>' : '';
+      const row=el(`<div class="of-row fade-in">${mark} <b>${f[1]}</b>${tag} ${f[2]}</div>`);
       feed.insertBefore(row,feed.firstChild); while(feed.children.length>6) feed.removeChild(feed.lastChild); }
   }, 700);
 
@@ -558,25 +596,46 @@ function renderPulse(root, d){
 /* ========================================================================== */
 /*  ПУЛЬС ОТДЕЛА — живой поток задач в границах одного отдела                */
 /* ========================================================================== */
+/* распределение штата по функциям пропорционально именным позициям (метод наибольших остатков) */
+function allocByWeights(total, weights){
+  const sumW = weights.reduce((a,b)=>a+b,0) || 1;
+  const raw = weights.map(w => total * w / sumW);
+  const base = raw.map(Math.floor);
+  let rest = total - base.reduce((a,b)=>a+b,0);
+  const order = raw.map((r,i)=>[r-base[i],i]).sort((a,b)=>b[0]-a[0]);
+  for(let k=0; k<rest; k++) base[order[k % order.length][1]]++;
+  return base;
+}
 function renderDeptPulse(root, roleId){
   const d = DEPARTMENTS.find(x=>x.id===roleId) || {icon:'🫀',label:roleId};
   const cfg = COCKPITS[roleId]; if(!cfg){ root.innerHTML=workHead(d,'Пульс отдела')+'<div class="flow-empty">нет данных отдела</div>'; return; }
-  const team = cfg.team.map(t=>Array.isArray(t)?{role:t[1],fn:t[4]}:{role:t.role,fn:t.fn});
+  const team = cfg.team.map(t=>Array.isArray(t)?{name:t[0],role:t[1],fn:t[4]}:{name:t.name,role:t.role,fn:t.fn});
   const groups={}; team.forEach(p=>{ const f=p.fn||'Команда'; (groups[f]=groups[f]||[]).push(p); });
+  const digs = DIGITAL_STAFF[roleId]||[];
+  const digsByFn = {}; digs.forEach(w=>{ (digsByFn[w.fn]=digsByFn[w.fn]||[]).push(w); });
   const fns=Object.keys(groups), hc=HEADCOUNT[roleId]||team.length, dhc=DIGITAL_HEADCOUNT[roleId]||0, dt=DEPT_TASK[roleId]||{c:'#34d399',l:['задача']};
+  /* числа в узлах сходятся со штатом: hc и dhc разложены по функциям */
+  const hAlloc = allocByWeights(hc, fns.map(f=>groups[f].length));
+  const dAlloc = allocByWeights(dhc, fns.map(f=>groups[f].length + (digsByFn[f]?digsByFn[f].length:0)));
   root.innerHTML = workHead(d, `Пульс отдела «${cfg.role}» · ${hc} людей + ${dhc} цифровых · живой поток задач`) + `
     <div class="dp-wrap">
       <div class="dp-stage" id="dpStage">
         <svg class="dp-links" id="dpLinks" preserveAspectRatio="none"></svg>
-        <div class="dp-core" id="dpCore"><b>${d.icon}</b><span>${cfg.role}</span><i>${hc} чел.</i></div>
-        ${fns.map((f,i)=>`<div class="dp-fn" data-i="${i}" data-fn="${f}"><span class="dp-fn-dot" style="--c:${dt.c}"></span><b>${f}</b><i>${groups[f].length}</i></div>`).join('')}
+        <div class="dp-core" id="dpCore"><b>${d.icon}</b><span>${cfg.role}</span><i>👤 ${hc} · 🤖 ${dhc}</i></div>
+        ${fns.map((f,i)=>`<div class="dp-fn" data-i="${i}" data-fn="${f}" title="Открыть команду отдела"><span class="dp-fn-dot" style="--c:${dt.c}"></span><b>${f}</b><i>👤 ${hAlloc[i]} · 🤖 ${dAlloc[i]}</i></div>`).join('')}
       </div>
       <aside class="dp-side">
         <div class="of-live"><span class="of-dot"></span><b id="dp-inflight">—</b> задач в работе <i>в отделе</i></div>
+        <div class="of-live"><span class="lg-mark d"></span><b id="dp-inf-d">—</b> делают цифровые сотрудники</div>
+        <div class="of-live"><span class="lg-mark h" style="--c:${dt.c}"></span><b id="dp-inf-h">—</b> делают люди</div>
         <div class="of-live"><b id="dp-done">—</b> выполнено сегодня</div>
-        <div class="of-legend"><span style="--c:${dt.c}">${cfg.role.toLowerCase()}</span><span style="--c:#34d399">передачи</span><span style="--c:#60a5fa">ревью</span><span style="--c:#f87171">согласования</span></div>
+        <div class="of-legend kind-legend">
+          <span class="lg-d">задача цифрового</span>
+          <span class="lg-h" style="--c:${dt.c}">задача человека</span>
+          <span style="--c:#34d399">передача →</span>
+        </div>
         <div class="of-feed" id="dpFeed"></div>
-        <div class="od-gov">Тот же пульс, что у компании, но в границах отдела: глава видит, чем занят его рой прямо сейчас и какие задачи летят к каждой функции.</div>
+        <div class="od-gov">На каждой частице видно исполнителя: <b style="color:var(--acc)">цифровой</b> готовит черновик, <b>человек</b> правит и принимает. Кликните функцию — провалитесь в команду.</div>
       </aside>
     </div>`;
   const stage=$('#dpStage',root), core=$('#dpCore',root), links=$('#dpLinks',root);
@@ -591,27 +650,40 @@ function renderDeptPulse(root, roleId){
     if(links){ links.setAttribute('viewBox',`0 0 ${r.width} ${r.height}`); links.innerHTML=lines; } };
   layout(); requestAnimationFrame(layout);
   $$('.dp-fn',stage).forEach(n=>n.onclick=()=>navTo('team:'+roleId));
-  const chip=()=>{ const arr=$$('.dp-fn',stage); if(!arr.length) return; const tgt=arr[Math.floor(Math.random()*arr.length)];
-    const cross=Math.random()<0.28, baseTask=cross?DP_CROSS[Math.floor(Math.random()*DP_CROSS.length)]:{t:dt.l[Math.floor(Math.random()*dt.l.length)],c:dt.c};
-    const isDigital = Math.random()<0.5;
-    const task={...baseTask,t:(isDigital?'🤖 ':'👤 ')+baseTask.t};
+  const chip=()=>{ const arr=$$('.dp-fn',stage); if(!arr.length) return;
+    const ti=Math.floor(Math.random()*arr.length), tgt=arr[ti], fn=fns[+tgt.dataset.i];
+    const cross=Math.random()<0.2;
+    const isDigital = !cross && Math.random()<0.62;
+    /* исполнитель: реальное имя из штата этой функции */
+    let who='';
+    if (isDigital){ const pool=(digsByFn[fn]&&digsByFn[fn].length)?digsByFn[fn]:digs; if(pool.length) who=pool[Math.floor(Math.random()*pool.length)].name; }
+    else if (!cross){ const pool=groups[fn]; if(pool&&pool.length) who=pool[Math.floor(Math.random()*pool.length)].name; }
+    const baseTask=cross?DP_CROSS[Math.floor(Math.random()*DP_CROSS.length)]:{t:dt.l[Math.floor(Math.random()*dt.l.length)],c:dt.c};
+    const text = cross ? baseTask.t : (who ? who+' · '+baseTask.t : baseTask.t);
     const cx=+core.dataset.x, cy=+core.dataset.y, tx=+tgt.dataset.x, ty=+tgt.dataset.y;
-    const c=el(`<div class="dp-chip ${isDigital?'dgt':''}" style="--c:${task.c};left:${cx}px;top:${cy}px">${task.t}</div>`); stage.appendChild(c);
+    const c=el(`<div class="dp-chip ${cross?'':isDigital?'kd':'kh'}" style="--c:${baseTask.c};left:${cx}px;top:${cy}px">${cross?'':isDigital?'🤖 ':'👤 '}${text}</div>`); stage.appendChild(c);
     requestAnimationFrame(()=>{ c.style.transform=`translate(-50%,-50%) translate(${tx-cx}px,${ty-cy}px)`; c.style.opacity='0'; });
     setTimeout(()=>c.remove(),1250);
     tgt.classList.add('hit'); setTimeout(()=>tgt.classList.remove('hit'),420);
     core.classList.add('beat'); setTimeout(()=>core.classList.remove('beat'),300); };
-  const FEEDV=[['собрал',dt.l[0]],['закрыл',dt.l[1]||dt.l[0]],['проверил',dt.l[2]||dt.l[0]],['передал дальше','результат']];
-  const burst = hc>=40?4:hc>=20?3:2, baseInf=Math.round(hc*4*0.2);
+  const FEEDV=[['собрал черновик:',dt.l[0]],['закрыл',dt.l[1]||dt.l[0]],['проверил',dt.l[2]||dt.l[0]],['передал дальше','результат']];
+  const burst = hc>=40?4:hc>=20?3:2, baseInf=Math.round((hc+dhc)*0.6);
   let done=Math.round(hc*7 + Math.random()*40);
   clearInterval(window.__pulseTimer);
   window.__pulseTimer=setInterval(()=>{
     if(!document.body.contains(stage)){ clearInterval(window.__pulseTimer); return; }
     for(let k=0;k<burst;k++) chip();
     done+=burst*2; const di=$('#dp-done',root); if(di) di.textContent=done.toLocaleString('ru');
-    const inf=$('#dp-inflight',root); if(inf) inf.textContent=Math.max(1,baseInf+Math.round((Math.random()-0.5)*baseInf)).toLocaleString('ru');
-    const feed=$('#dpFeed',root); if(feed){ const who=team[Math.floor(Math.random()*team.length)], v=FEEDV[Math.floor(Math.random()*FEEDV.length)];
-      const row=el(`<div class="of-row fade-in"><span style="color:${dt.c}">●</span> <b>${who.role}</b> ${v[0]} ${v[1]}</div>`);
+    const inf=Math.max(1,baseInf+Math.round((Math.random()-0.5)*baseInf*0.4));
+    const infD=Math.round(inf*0.62), infH=inf-infD;
+    const i1=$('#dp-inflight',root); if(i1) i1.textContent=inf.toLocaleString('ru');
+    const i2=$('#dp-inf-d',root); if(i2) i2.textContent=infD.toLocaleString('ru');
+    const i3=$('#dp-inf-h',root); if(i3) i3.textContent=infH.toLocaleString('ru');
+    const feed=$('#dpFeed',root); if(feed){
+      const isD = Math.random()<0.6; const v=FEEDV[Math.floor(Math.random()*FEEDV.length)];
+      const row = isD && digs.length
+        ? el(`<div class="of-row fade-in"><span class="lg-mark d"></span> <b>${digs[Math.floor(Math.random()*digs.length)].name}</b> <i class="dgt-tag">цифровой</i> ${v[0]} ${v[1]}</div>`)
+        : el(`<div class="of-row fade-in"><span class="lg-mark h" style="--c:${dt.c}"></span> <b>${team[Math.floor(Math.random()*team.length)].name}</b> ${v[0]} ${v[1]}</div>`);
       feed.insertBefore(row,feed.firstChild); while(feed.children.length>5) feed.removeChild(feed.lastChild); }
   }, 560);
 }

@@ -3811,5 +3811,51 @@ h2 .ic{width:14px;height:14px;color:var(--acc);vertical-align:-0.1em}
 .aib-top .btn{padding:5px 10px;font-size:11.5px}
 
 /* ============================================================================
+   КТО ДЕЛАЕТ ЗАДАЧУ: цифровой vs человек — маркеры, чипы, легенда
+   ========================================================================== */
+/* маркер-точка: цифровой = изумрудное кольцо, человек = сплошная точка цвета отдела */
+.lg-mark{display:inline-block;width:9px;height:9px;border-radius:50%;flex-shrink:0;vertical-align:-0.5px}
+.lg-mark.d{background:rgba(54,201,148,.15);border:2px solid var(--acc);box-shadow:0 0 7px rgba(54,201,148,.45)}
+.lg-mark.h{background:var(--c,#9aa096);border:2px solid transparent}
+.kind-legend .lg-d::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;
+  background:rgba(54,201,148,.15);border:2px solid var(--acc);vertical-align:-1px}
+.kind-legend .lg-h::before{content:'';display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;
+  background:var(--c,#9aa096);vertical-align:-1px}
+.kind-legend .lg-d, .kind-legend .lg-h{display:inline-flex;align-items:center}
+
+/* частицы Пульса компании: точки без подписи */
+.pls-chip.dgt:not(.lbl){background:#121310;border:2px solid var(--acc);
+  box-shadow:0 0 10px rgba(54,201,148,.55),0 0 20px rgba(54,201,148,.3);width:10px;height:10px}
+/* частицы с подписью: цифровой = графит с изумрудной рамкой, человек = заливка цветом отдела */
+.pls-chip.lbl.dgt{background:#161814;color:var(--txt);border:1px solid rgba(54,201,148,.55);
+  box-shadow:0 0 12px rgba(54,201,148,.3);font-weight:700}
+.pls-chip.lbl.dgt .ic{color:var(--acc)}
+.pls-chip.lbl:not(.dgt) .ic{color:#0c1410}
+
+/* чипы Пульса отдела */
+.dp-chip.kd{background:#161814;color:var(--txt);border:1px solid rgba(54,201,148,.55);
+  box-shadow:0 0 12px rgba(54,201,148,.3)}
+.dp-chip.kd .ic{color:var(--acc)}
+.dp-chip.kh .ic{color:#06121f}
+
+/* узлы функций отдела: кликабельны и поднимаются при наведении */
+.dp-fn{cursor:pointer;transition:transform .22s var(--transition),box-shadow .22s,border-color .22s}
+.dp-fn:hover{transform:translate(-50%,-50%) translateY(-3px);border-color:var(--acc);
+  box-shadow:0 8px 22px rgba(0,0,0,.45),0 0 0 1px rgba(54,201,148,.35)}
+
+/* курсор-рука на всём кликабельном — никакой «цифровой дискриминации» */
+.dev-p{cursor:pointer}
+.channel-member{cursor:pointer}
+.workforce-row{cursor:pointer}
+.oc-p.hmn{cursor:pointer}
+.oc-p.hmn:hover{background:var(--acc-soft);color:var(--txt)}
+.dev-p:hover{background:var(--panel-hover)}
+.channel-member:hover{background:var(--panel-hover)}
+.workforce-row:hover td{background:var(--panel-hover)}
+
+/* зелёная кнопка «полный профиль» внутри карточек — единый вид */
+.rolecard .ji-prof{width:100%;justify-content:center;display:flex;margin-top:10px;font-size:12.5px;padding:9px}
+
+/* ============================================================================
    Конец дополнительных стилей
    ========================================================================== */
