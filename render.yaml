@@ -1,0 +1,11 @@
+services:
+  # Авандок Среда 2.0 — статический прототип, сборка не требуется
+  - type: web
+    name: avandok-sreda
+    runtime: static
+    staticPublishPath: .
+    buildCommand: ""
+    headers:
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=3600, must-revalidate

@@ -1,0 +1,12 @@
+{
+  "name": "sreda-platform",
+  "version": "2.0.0",
+  "description": "Среда — операционная платформа с цифровыми сотрудниками",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
