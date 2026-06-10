@@ -2271,10 +2271,10 @@ button.fx-node{cursor:pointer}button.fx-node:hover{transform:translateY(-2px);bo
 /* данные с правами (роль × уровень) */
 .ds-sub{font-size:11.5px;color:var(--muted);line-height:1.45;margin-bottom:9px}.ds-sub b{color:var(--txt)}
 .ds-list{display:flex;flex-direction:column;gap:5px}
-.ds-row{display:flex;align-items:center;gap:8px;font-size:12px;padding:6px 9px;border-radius:8px;background:var(--bg2);border:1px solid var(--line)}
+.ds-row{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:12px;padding:6px 9px;border-radius:8px;background:var(--bg2);border:1px solid var(--line)}
 .ds-row .ds-ic{font-size:12px;width:15px;text-align:center;flex-shrink:0}
-.ds-row .ds-n{flex:1;min-width:0}
-.ds-row .ds-s{font-size:10.5px;color:var(--muted);white-space:nowrap}
+.ds-row .ds-n{flex:1 1 auto;min-width:45%}
+.ds-row .ds-s{font-size:10.5px;color:var(--muted);white-space:normal;margin-left:auto;text-align:right;max-width:100%}
 .ds-row.ok{border-color:rgba(52,211,153,.3)}.ds-row.ok .ds-n{color:var(--txt)}.ds-row.ok .ds-s{color:var(--acc)}
 .ds-row.locked{opacity:.7}.ds-row.locked .ds-n{color:var(--muted)}
 .ds-row.denied{border-color:rgba(248,113,113,.28)}.ds-row.denied .ds-n{color:var(--muted);text-decoration:line-through;text-decoration-color:rgba(248,113,113,.5)}.ds-row.denied .ds-s{color:var(--red)}
