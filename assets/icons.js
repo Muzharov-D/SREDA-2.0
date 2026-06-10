@@ -121,6 +121,7 @@ const EMOJI_ICON = {
   '💡':'bulb','📥':'inbox','📤':'send','🕸':'network','🕸️':'network','🗺':'map','🗺️':'map','🚦':'gauge','🟡':'circle','🟢':'circle','🔴':'circle','⛔':'ban','🚫':'ban','🔘':'target','🔻':'trending-down','📏':'ruler','⚑':'flag',
   '⚠':'alert','⚖':'scale','🛠':'wrench','🛡':'shield','✍':'pen','⌨':'keyboard','♾':'infinity','™':'tag','✉':'mail','☁':'cloud','🖥':'monitor','🎞':'film','🗄':'database','👁':'eye','🗂':'archive','⚙':'settings','❤':'heart','🏷':'tag','🖌':'pen','🗨':'message','🗓':'clipboard',
   '😐':'user','😠':'user','🤨':'user','🤩':'user','🦈':'user','👔':'user','😤':'user','🤔':'user','🙂':'user','😎':'user',
+  '🛂':'card','🏗':'factory','🏗️':'factory','🪧':'flag','🔌':'link','🎙':'mic',
   '➤':'send','🧯':'shield','🛟':'shield','📍':'target','🗓️':'clipboard','📅':'clipboard','🪄':'sparkles','🧰':'wrench','⭐':'sparkles','🌟':'sparkles','💼':'card','🪪':'card','📞':'headphones','☎️':'headphones','🆓':'tag','🆕':'sparkles','🎟️':'tag','🥇':'trophy','🥈':'trophy','🏅':'trophy','🪙':'coins','💵':'coins','💸':'coins','🤑':'coins','📌':'target','🖇️':'link','✂️':'pen','🗳️':'archive','⚗️':'flask','🩺':'heart-pulse','🚚':'package','✈️':'send','🛫':'send',
 };
 
