@@ -2029,7 +2029,7 @@ const MARKETPLACE_SERVICES = [
    ═══════════════════════════════════════════════════════════════ */
 const DIGITAL_WORKFORCE = [
   { id:'ds-001', name:'Копирайтер-α', role:'copy', dept:'marketing', 
-    avatar:'https://api.dicebear.com/7.x/bottts/svg?seed=copy-alpha&backgroundColor=e11d48',
+    avatar:'assets/avatars/ds-001.svg',
     version:'v2.3', status:'active', 
     kpi:{ tasksDone: 142, errors: 2, timeSaved: 340, cost: 12400, quality: 4.6 },
     budget:{ daily: 500, spent: 340, currency:'₽' },
@@ -2040,7 +2040,7 @@ const DIGITAL_WORKFORCE = [
     bio:'Генерирует тексты в голосе бренда. Прошёл 47 кампаний. Любит короткие заголовки и сильные CTA.' },
   
   { id:'ds-002', name:'Дизайнер-β', role:'design', dept:'design',
-    avatar:'https://api.dicebear.com/7.x/bottts/svg?seed=design-beta&backgroundColor=7c3aed',
+    avatar:'assets/avatars/ds-002.svg',
     version:'v1.8', status:'active',
     kpi:{ tasksDone: 89, errors: 1, timeSaved: 280, cost: 15600, quality: 4.8 },
     budget:{ daily: 800, spent: 620, currency:'₽' },
@@ -2051,7 +2051,7 @@ const DIGITAL_WORKFORCE = [
     bio:'Создаёт визуальные системы. 156 макетов, 23 бренд-бука. Не терпит плохой контрастности.' },
   
   { id:'ds-003', name:'Аналитик-γ', role:'analyst', dept:'analytics',
-    avatar:'https://api.dicebear.com/7.x/bottts/svg?seed=analyst-gamma&backgroundColor=3b82f6',
+    avatar:'assets/avatars/ds-003.svg',
     version:'v3.1', status:'active',
     kpi:{ tasksDone: 234, errors: 0, timeSaved: 520, cost: 8900, quality: 4.9 },
     budget:{ daily: 300, spent: 210, currency:'₽' },
@@ -2062,7 +2062,7 @@ const DIGITAL_WORKFORCE = [
     bio:'Находит инсайты в данных. 47 дашбордов, 12 прогнозных моделей. Верит только в p-value < 0.05.' },
   
   { id:'ds-004', name:'Бэкенд-δ', role:'backend', dept:'dev',
-    avatar:'https://api.dicebear.com/7.x/bottts/svg?seed=backend-delta&backgroundColor=10b981',
+    avatar:'assets/avatars/ds-004.svg',
     version:'v4.0', status:'active',
     kpi:{ tasksDone: 178, errors: 3, timeSaved: 410, cost: 18200, quality: 4.7 },
     budget:{ daily: 1000, spent: 780, currency:'₽' },
@@ -2073,7 +2073,7 @@ const DIGITAL_WORKFORCE = [
     bio:'Пишет код, который работает. 142 PR, 98% покрытие тестами. Не доверяет магическим числам.' },
   
   { id:'ds-005', name:'Сейлз-ε', role:'sales', dept:'sales',
-    avatar:'https://api.dicebear.com/7.x/bottts/svg?seed=sales-epsilon&backgroundColor=f59e0b',
+    avatar:'assets/avatars/ds-005.svg',
     version:'v2.0', status:'active',
     kpi:{ tasksDone: 67, errors: 1, timeSaved: 190, cost: 10200, quality: 4.5 },
     budget:{ daily: 600, spent: 450, currency:'₽' },
@@ -2084,7 +2084,7 @@ const DIGITAL_WORKFORCE = [
     bio:'Квалифицирует лиды и ведёт follow-up. 214 сделок в воронке. Знает, когда позвонить.' },
   
   { id:'ds-006', name:'HR-аналитик-ζ', role:'hr', dept:'hr',
-    avatar:'https://api.dicebear.com/7.x/bottts/svg?seed=hr-zeta&backgroundColor=ec4899',
+    avatar:'assets/avatars/ds-006.svg',
     version:'v1.5', status:'active',
     kpi:{ tasksDone: 45, errors: 0, timeSaved: 160, cost: 7600, quality: 4.8 },
     budget:{ daily: 400, spent: 280, currency:'₽' },
@@ -2095,7 +2095,7 @@ const DIGITAL_WORKFORCE = [
     bio:'Ищет таланты и следит за здоровьем команды. 48 откликов обработано. Не терпит дискриминации.' },
   
   { id:'ds-007', name:'Комплаенс-η', role:'legal', dept:'legal',
-    avatar:'https://api.dicebear.com/7.x/bottts/svg?seed=legal-eta&backgroundColor=6366f1',
+    avatar:'assets/avatars/ds-007.svg',
     version:'v2.1', status:'active',
     kpi:{ tasksDone: 56, errors: 0, timeSaved: 220, cost: 13400, quality: 5.0 },
     budget:{ daily: 700, spent: 520, currency:'₽' },
@@ -2106,7 +2106,7 @@ const DIGITAL_WORKFORCE = [
     bio:'Проверяет каждую запятую. 0 рисков пропущено. Спит спокойно, когда все sev1 закрыты.' },
   
   { id:'ds-008', name:'Финансист-θ', role:'finance', dept:'finance',
-    avatar:'https://api.dicebear.com/7.x/bottts/svg?seed=finance-theta&backgroundColor=14b8a6',
+    avatar:'assets/avatars/ds-008.svg',
     version:'v1.9', status:'active',
     kpi:{ tasksDone: 78, errors: 1, timeSaved: 250, cost: 11200, quality: 4.7 },
     budget:{ daily: 550, spent: 410, currency:'₽' },
@@ -2117,7 +2117,7 @@ const DIGITAL_WORKFORCE = [
     bio:'Считает деньги и видит будущее. 12 сценариев всегда под рукой. Не верит в «примерно».' },
   
   { id:'ds-009', name:'Видеомонтажёр-ι', role:'video', dept:'marketing',
-    avatar:'https://api.dicebear.com/7.x/bottts/svg?seed=video-iota&backgroundColor=8b5cf6',
+    avatar:'assets/avatars/ds-009.svg',
     version:'v1.2', status:'active',
     kpi:{ tasksDone: 34, errors: 2, timeSaved: 180, cost: 9800, quality: 4.4 },
     budget:{ daily: 450, spent: 340, currency:'₽' },
@@ -2128,7 +2128,7 @@ const DIGITAL_WORKFORCE = [
     bio:'Режет видео как шеф-повар. 6 клипов за день — норма. Любит динамичные переходы.' },
   
   { id:'ds-010', name:'QA-инженер-κ', role:'qa', dept:'dev',
-    avatar:'https://api.dicebear.com/7.x/bottts/svg?seed=qa-kappa&backgroundColor=22c55e',
+    avatar:'assets/avatars/ds-010.svg',
     version:'v3.2', status:'active',
     kpi:{ tasksDone: 198, errors: 1, timeSaved: 380, cost: 14500, quality: 4.9 },
     budget:{ daily: 750, spent: 580, currency:'₽' },

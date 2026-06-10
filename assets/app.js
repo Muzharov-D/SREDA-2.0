@@ -53,8 +53,8 @@ const WORKSPACES = ROLE_IDS.map(id => { const d = DEPARTMENTS.find(x=>x.id===id)
     nav:[ {id:'pulse',label:'Пульс компании',icon:'🫀'}, {id:'exec',label:'Дашборд компании',icon:'📊'}, {id:'company',label:'Оргструктура',icon:'🏢'}, {id:'flowx',label:'Передачи компании',icon:'🔄'}, {id:'project',label:'Проекты на ревью',icon:'📁'} ] },
   { id:'owner', kind:'owner', icon:'⚙️', label:'Владелец платформы', persona:'Платформа · Авандок',
     nav:[ {id:'workers',label:'Штат цифровых сотрудников',icon:'🤖'},{id:'aibudget',label:'Бюджеты ИИ',icon:'💰'},{id:'router',label:'Маршрутизатор моделей',icon:'🔀'},{id:'audit',label:'Аудит и доступ',icon:'🛡️'},{id:'market',label:'Полная библиотека',icon:'📚'},{id:'studio',label:'Студия',icon:'🛠️'},
-      {sep:'Демо · Вижн'},
-      {id:'power',label:'Суперсила',icon:'⚡'},{id:'path',label:'Путь',icon:'🧭'},{id:'core',label:'Контур',icon:'♾️'},{id:'battle',label:'Battle · стресс-тест',icon:'⚔️'} ] },
+      {sep:'Видение'},
+      {id:'power',label:'Суперсила',icon:'⚡'},{id:'path',label:'Путь',icon:'🧭'},{id:'core',label:'Контур',icon:'♾️'} ] },
 ]);
 
 function renderNav(){
@@ -694,7 +694,7 @@ function renderFlowExec(root){
     </div>
     <div class="panel"><h2>🔄 Сквозные потоки <span class="tag">кликните этап — провалитесь в кабинет роли</span></h2>
       <div class="fx-list">${flowStatusHTML(true)}</div>
-      <div class="od-gov" style="margin-top:11px">Это ответ инвестору на «как 10 000 личных чатов = Среда»: личный чат — атом, а потоки передач — соединительная ткань компании.</div></div>`;
+      <div class="od-gov" style="margin-top:11px">Личный кабинет — атом, потоки передач — соединительная ткань: так ${COMPANY_SIZE} рабочих мест действуют как одна компания, и ни одна задача не теряется в переписках.</div></div>`;
   root.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>navTo('flow:'+b.dataset.go));
 }
 function renderFlow(root, roleId){
@@ -2245,8 +2245,8 @@ function renderRoadmap(root){
       </div>
 
       <div class="rm-cta">
-        <b>Среда сейчас — это Сезон 3.</b> Мы строим ступени 4–5, пока конкуренты продают автодополнение.
-        Инвестируешь не в инструмент, а в <b>вход на лестницу</b>, по которой компания идёт вверх.
+        <b>Среда сейчас — это Сезон 3.</b> Мы строим ступени 4–5, пока рынок продаёт автодополнение.
+        Компания получает не инструмент, а <b>вход на лестницу</b>, по которой растёт вся организация.
       </div>
     </div>`;
 
@@ -3540,7 +3540,7 @@ function renderPersonProfile(root, dept, idx){
     root.querySelectorAll('[data-wgo]').forEach(b=>b.onclick=()=>navTo('worker:'+b.dataset.wgo));
     const ch=root.querySelector('[data-go-ch]'); if(ch) ch.onclick=()=>navTo('channel:'+dept);
     const tm=root.querySelector('[data-go-team]'); if(tm) tm.onclick=()=>navTo('team:'+dept);
-    root.querySelectorAll('[data-doc]').forEach(b=>b.onclick=()=>toast(`«${b.dataset.doc}» — открыт из КЭДО (демо)`));
+    root.querySelectorAll('[data-doc]').forEach(b=>b.onclick=()=>toast(`«${b.dataset.doc}» — открыт из КЭДО`));
     const ask=root.querySelector('[data-ppask]'), go=root.querySelector('[data-ppgo]');
     if(ask&&go){ const send=()=>{ const v=ask.value.trim(); if(!v){ toast('Опишите задачу'); return; } ask.value='';
       pushAudit({ who:p.name+' '+p.surname, emoji:'👤', act:'поставил(а) задачу рою: '+v, dept:dep.label });
@@ -3624,5 +3624,12 @@ function init(){
   initModal();
   injectTour();
   const meter=$('#meterBtn'); if(meter){ meter.style.cursor='pointer'; meter.onclick=()=>navTo('aibudget'); }
+  /* лого = дом: всегда возвращает на Пульс компании */
+  const brand=$('#brandHome'); if(brand){ brand.style.cursor='pointer'; brand.onclick=()=>{ setWorkspace('exec'); }; }
+  /* ⌘K / Ctrl+K — глобальная постановка задачи; Esc закрывает модалку */
+  document.addEventListener('keydown', e=>{
+    if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); if(!state.running){ $('#overlay').classList.add('show'); $('#taskText').focus(); } }
+    if(e.key==='Escape'){ $('#overlay').classList.remove('show'); const m=$('#wsMenu'); if(m) m.remove(); const f=$('#fsMenu'); if(f) f.remove(); }
+  });
 }
 document.addEventListener('DOMContentLoaded', init);
