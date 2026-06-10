@@ -143,34 +143,48 @@ function renderTeam(root, id){ const cfg=COCKPITS[id]; const d=DEPARTMENTS.find(
     let side='';
     if (sel.kind==='h'){
       const p=TEAM[sel.i], sw=swarmOf(p.role);
-      side=`<h2>👤 Сотрудник</h2>
-        <div class="rolecard">
-          <div class="rc-h">${humanAv(id, p.name, DEPT_TASK[id].c, 'sm')}<div><b>${p.name}</b><small>${p.role}${p.fn&&p.fn!==p.role?' · '+p.fn:''}</small></div></div>
-          <button class="btn go ji-prof" data-pprof="${id}:${sel.i}">Открыть полный профиль →</button>
+      const R=personRPG(id,p), Q=questsOf(id,p.name,p.task), load=loadOf(Q,R.lvl);
+      const gateOpen = stepGate({role:id}).gated;
+      side=`<h2>👤 ${LEX('emp')}</h2>
+        <div class="rolecard hc">
+          <div class="hc-h">${humanAv(id, p.name, dc, 'sm')}<div><b>${p.name}</b><small>${p.role}${p.fn&&p.fn!==p.role?' · '+p.fn:''}</small></div><span class="hc-lvl" title="${RPG_LVL_LBL[R.lvl]}">${LEX('lvlOf')(R.lvl)}</span></div>
+          <div class="hc-sec"><div class="hc-lab"><span>${LEX('load')}</span><b>${load}/100 · ${Q.length} в работе</b></div>${rpgBar(load, load>82?'hot':'')}</div>
+          <div class="hc-sec"><div class="hc-lab"><span>${LEX('skills')}</span></div>
+            ${R.sk.map(s=>`<div class="hc-skill"><span>${s[0]}</span>${rpgDots(s[1])}<b>${s[1]}/10</b></div>`).join('')}</div>
+          <div class="hc-sec"><div class="hc-lab"><span>${LEX('quests')}</span></div>
+            ${Q.map(q=>{ const blocked=q.gate&&gateOpen; const cls=blocked?'bad':q.prog>75?'ok':'';
+              return `<div class="hc-q"><div class="hc-q-t"><b>${q.id?q.id+' · ':''}${q.t}</b><i class="${blocked?'q-bad':q.prog>75?'q-ok':'q-mid'}">${blocked?'⛔ гейт: sev1-риск':q.col}</i></div>${rpgBar(q.prog,cls)}</div>`; }).join('')}</div>
+          <div class="hc-sec"><div class="hc-lab"><span>${LEX('swarm')}</span><b>${sw.a.length} ${LEX('swarmSub')}</b></div>
+            <div class="rc-duty"><b>Зона:</b> ${sw.d}</div>
+            <div class="rc-swarm">${sw.a.map(a=>`<div class="rc-a">${a}</div>`).join('')}</div></div>
+          <div class="hc-sec"><div class="hc-lab"><span>${LEX('ach')}</span></div>
+            ${R.ach.map(a=>`<div class="hc-ach">🏆 ${a}</div>`).join('')}</div>
+          <button class="btn go ji-prof" data-pprof="${id}:${sel.i}">${LEX('fullProfile')}</button>
         </div>
-        <h2 style="margin-top:14px">🤖 Рой под должность</h2>
-        <div class="rolecard">
-          <div class="rc-duty"><b>Должностная зона:</b> ${sw.d}</div>
-          <div class="rc-swarm-h">Персональный рой · ${sw.a.length} цифровых сотрудников под позицию:</div>
-          <div class="rc-swarm">${sw.a.map(a=>`<div class="rc-a">${a}</div>`).join('')}</div></div>
         <h2 style="margin-top:14px">🤝 Общие цифровые сотрудники команды</h2><div class="dev-shared">${SH.map(a=>`<div class="dev-sh"><span>${a.e}</span>${a.n}</div>`).join('')}</div>`;
     } else {
       const w=DS[sel.i]; const st=DW_STATUS[w.status]||DW_STATUS.active;
-      side=`<h2>📋 Цифровой сотрудник</h2>
-        <div class="rolecard ji-card">
-          <div class="rc-h"><span class="rc-av dgt">${w.emoji}</span><div><b>${w.name} <i class="dgt-tag">цифровой сотрудник</i></b><small>${w.title} · ${w.fn}</small></div></div>
-          <button class="btn go ji-prof" data-jiprof="${w.id}">Открыть полный профиль →</button>
+      const C=workerRPG(w); const manaPct=Math.round(C.mana.cur/C.mana.max*100);
+      side=`<h2>🤖 ${LEX('dw')}</h2>
+        <div class="rolecard ji-card hc crd">
+          <div class="hc-h"><span class="rc-av dgt">${w.emoji}</span><div><b>${w.name} <i class="dgt-tag">цифровой</i></b><small>${w.title} · ${w.fn}</small></div><span class="hc-lvl dgt">${LEX('lvlOf')(C.lvl)}</span></div>
           <div class="ji-meta">
             <span class="ji-st ${st[1]}">${st[0]}</span>
             <span class="ji-lead">руководитель: <b>${w.lead}</b></span>
             ${modelBadge(w.model)}
           </div>
-          <div class="ji-sec"><b>Миссия</b><p>${w.ji.mission}</p></div>
-          <div class="ji-sec"><b>Обязанности</b><ul>${w.ji.duties.map(x=>`<li>${x}</li>`).join('')}</ul></div>
-          <div class="ji-sec lim"><b>Границы (что запрещено)</b><ul>${w.ji.limits.map(x=>`<li>${x}</li>`).join('')}</ul></div>
-          <div class="ji-sec"><b>KPI</b><div class="ji-kpi">${w.ji.kpi.map(k=>`<div><span>${k[0]}</span><b>${k[1]}</b></div>`).join('')}</div></div>
-          <div class="ji-sec esc"><b>Эскалация человеку</b><p>${w.ji.esc}</p></div>
-          <div class="ji-now">сейчас в работе: <b data-jinow>${w.now}</b></div>
+          <div class="hc-sec"><div class="hc-lab"><span>${LEX('mana')}</span><b>${C.mana.cur}/${C.mana.max} · ${C.mana.unit}</b></div>${rpgBar(manaPct,'mp')}</div>
+          <div class="hc-sec"><div class="hc-lab"><span>${LEX('stats')}</span></div>
+            ${C.stats.map(s=>`<div class="hc-skill"><span>${s[0]}</span>${rpgDots(s[1])}<b>${s[1]}/10</b></div>`).join('')}</div>
+          <div class="ji-sec"><b>${LEX('mission')}</b><p>${w.ji.mission}</p></div>
+          <div class="hc-sec"><div class="hc-lab"><span>${LEX('duties')}</span></div>
+            ${C.spells.map(s=>`<div class="hc-spell"><span>${s[0]}</span>${rpgStars(s[1])}</div>`).join('')}</div>
+          <div class="ji-sec lim"><b>${LEX('limits')}</b><ul>${C.curses.map(x=>`<li>⛔ ${x}</li>`).join('')}</ul></div>
+          <div class="hc-sec"><div class="hc-lab"><span>${isRPG()?'Активный квест':'Активная задача'}</span></div>
+            <div class="hc-q"><div class="hc-q-t"><b data-jinow>${w.now}</b><i class="q-mid">${C.prog}%</i></div>${rpgBar(C.prog)}</div>
+            <div class="hc-art">${C.artifacts.map(a=>`<span>${a}</span>`).join('')}</div></div>
+          <div class="ji-sec esc"><b>${LEX('esc')}</b><p>${w.ji.esc}</p></div>
+          <button class="btn go ji-prof" data-jiprof="${w.id}">${LEX('fullProfile')}</button>
           <div class="ji-ask"><input type="text" placeholder="Задача для «${w.name}»…" data-jiask/><button class="btn go" data-jigo>→</button></div>
         </div>`;
     }
@@ -190,6 +204,7 @@ function renderTeam(root, id){ const cfg=COCKPITS[id]; const d=DEPARTMENTS.find(
     const pprof=root.querySelector('[data-pprof]'); if(pprof) pprof.onclick=()=>navTo('person:'+pprof.dataset.pprof);
     const ask=root.querySelector('[data-jiask]'), go=root.querySelector('[data-jigo]');
     if(ask&&go){ const send=()=>{ const v=ask.value.trim(); if(!v){ toast('Опишите задачу'); return; }
+      if (rpgPhraseCheck(v)){ ask.value=''; return; }
         const w=DS[sel.i]; w.now=v; root.querySelector('[data-jinow]').textContent=v; ask.value='';
         pushAudit({ who:cfg.role, what:`Задача цифровому сотруднику «${w.name}»: ${v}`, verdict:'allow' });
         toast(`Задача принята: «${w.name}» вернёт черновик руководителю (${w.lead.split(' · ')[0]})`); };
@@ -395,6 +410,7 @@ function renderAssistant(root, id){
     const addSk=$('#asstAddSk',root); if(addSk) addSk.onclick=()=>navTo('lib:'+id);
     const addAg=$('#asstAddAg',root); if(addAg) addAg.onclick=()=>navTo('lib:'+id);
     const send=()=>{ const v=$('#asstIn',root).value.trim(); if(!v) return; $('#asstIn',root).value='';
+      if (rpgPhraseCheck(v)) return;
       const lc=v.toLowerCase();
       const hit = P.tasks.find(t=> t.q.toLowerCase().split(/[^а-яёa-z0-9]+/i).some(w=>w.length>3 && lc.includes(w)));
       if (hit) ask({ q:v, draft:hit.draft });
@@ -497,6 +513,11 @@ function renderPulse(root, d){
       const mx=(cx+x)/2+(y-cy)*0.12, my=(cy+y)/2-(x-cx)*0.12;
       lines+=`<path d="M${cx} ${cy} Q${mx} ${my} ${x} ${y}" stroke="${DEPT_TASK[n.dataset.id].c}" stroke-opacity=".16" fill="none" class="pls-link"/>`;
     });
+    /* межотделовые синапсы: толщина = объём передач за период (DEPT_SYN) */
+    DEPT_SYN.forEach(s=>{ const A=pos[s.a], B=pos[s.b]; if(!A||!B) return;
+      const mx=(A[0]+B[0])/2+(B[1]-A[1])*0.10, my=(A[1]+B[1])/2-(B[0]-A[0])*0.10;
+      lines+=`<path d="M${A[0]} ${A[1]} Q${mx} ${my} ${B[0]} ${B[1]}" stroke="#34d399" stroke-opacity="${(0.07+s.w/260).toFixed(2)}" stroke-width="${Math.max(1,Math.min(6,s.w*0.15)).toFixed(1)}" fill="none" class="pls-syn"><title>${roleLabel(s.a)} ↔ ${roleLabel(s.b)} · ~${s.w} передач/нед</title></path>`;
+    });
     if(links){ links.setAttribute('viewBox',`0 0 ${r.width} ${r.height}`); links.innerHTML=lines; }
   };
   layout(); requestAnimationFrame(layout);
@@ -528,10 +549,14 @@ function renderPulse(root, d){
       label = (isDigital?'🤖 ':'👤 ') + (who ? who+' · '+task : task);
     }
     fly('core', to, label, dt.c, 1.3+Math.random()*0.6, isDigital);
-    if (Math.random()<0.3){ // передача между отделами — соединительная ткань
-      let a=randDept(), b=randDept(); if(a!==b) fly(a, b, Math.random()<0.5?'передача →':'', '#34d399', 1.6);
+    if (Math.random()<0.34){ // передача между отделами — по реальным синапсам, не случайно
+      const s=pickSyn(); const lbl=Math.random()<0.6?s.art[Math.floor(Math.random()*s.art.length)]:'';
+      fly(s.a, s.b, lbl, '#34d399', 1.7);
     }
   };
+  /* выбор синапса пропорционально объёму передач */
+  const synTotal=DEPT_SYN.reduce((a,s)=>a+s.w,0);
+  function pickSyn(){ let r=Math.random()*synTotal; for(const s of DEPT_SYN){ if((r-=s.w)<0) return s; } return DEPT_SYN[0]; }
 
   /* живая строка «чем занят отдел» */
   const nowLine = () => {
@@ -609,71 +634,82 @@ function allocByWeights(total, weights){
 function renderDeptPulse(root, roleId){
   const d = DEPARTMENTS.find(x=>x.id===roleId) || {icon:'🫀',label:roleId};
   const cfg = COCKPITS[roleId]; if(!cfg){ root.innerHTML=workHead(d,'Пульс отдела')+'<div class="flow-empty">нет данных отдела</div>'; return; }
-  const team = cfg.team.map(t=>Array.isArray(t)?{name:t[0],role:t[1],fn:t[4]}:{name:t.name,role:t.role,fn:t.fn});
-  const groups={}; team.forEach(p=>{ const f=p.fn||'Команда'; (groups[f]=groups[f]||[]).push(p); });
-  const digs = DIGITAL_STAFF[roleId]||[];
-  const digsByFn = {}; digs.forEach(w=>{ (digsByFn[w.fn]=digsByFn[w.fn]||[]).push(w); });
-  const fns=Object.keys(groups), hc=HEADCOUNT[roleId]||team.length, dhc=DIGITAL_HEADCOUNT[roleId]||0, dt=DEPT_TASK[roleId]||{c:'#34d399',l:['задача']};
-  /* числа в узлах сходятся со штатом: hc и dhc разложены по функциям */
-  const hAlloc = allocByWeights(hc, fns.map(f=>groups[f].length));
-  const dAlloc = allocByWeights(dhc, fns.map(f=>groups[f].length + (digsByFn[f]?digsByFn[f].length:0)));
-  root.innerHTML = workHead(d, `Пульс отдела «${cfg.role}» · ${hc} людей + ${dhc} цифровых · живой поток задач`) + `
+  const dt=DEPT_TASK[roleId]||{c:'#34d399',l:['задача']};
+  const team = cfg.team.map((t,i)=>Array.isArray(t)?{name:t[0],role:t[1],task:t[2],emoji:t[3],fn:t[4],i}:{...t,i});
+  const digs = (DIGITAL_STAFF[roleId]||[]).map((w,i)=>({...w,i}));
+  const hc=HEADCOUNT[roleId]||team.length, dhc=DIGITAL_HEADCOUNT[roleId]||digs.length;
+  const groupsH={}; team.forEach(p=>{ const f=p.fn||'Команда'; (groupsH[f]=groupsH[f]||[]).push(p); });
+  const fns=Object.keys(groupsH);
+  const digsByFn={}; digs.forEach(w=>{ const f=fns.indexOf(w.fn)>=0?w.fn:fns[0]; (digsByFn[f]=digsByFn[f]||[]).push(w); });
+  /* числа сходятся со штатом: hc и dhc разложены по функциям */
+  const hAlloc = allocByWeights(hc, fns.map(f=>groupsH[f].length));
+  const dAlloc = allocByWeights(dhc, fns.map(f=>groupsH[f].length + (digsByFn[f]?digsByFn[f].length:0)));
+  const gated = stepGate({role:roleId}).gated;
+  const leadId = 'h'+team[0].i;
+
+  /* нейроны: каждый узел — живой сотрудник из штата */
+  const nodes=[];
+  fns.forEach((f,fi)=>nodes.push({ id:'#'+f, kind:'cluster', label:f, sub:`👤 ${hAlloc[fi]} · 🤖 ${dAlloc[fi]}`, color:dt.c, title:'Открыть команду' }));
+  team.forEach(p=>{ const q=questsOf(roleId,p.name,p.task);
+    const st=(p.i===0&&gated)?'block':(rpgHash(p.name+roleId)%5===0?'wait':'ok');
+    nodes.push({ id:'h'+p.i, kind:'h', label:p.name, sub:p.role, av:humanAv(roleId,p.name,dt.c,'nm'),
+      color:dt.c, size:48+q.length*5, status:st, title:`${p.name} · ${p.role} — открыть профиль`, p }); });
+  digs.forEach(w=>nodes.push({ id:'d'+w.i, kind:'d', label:w.name, sub:'цифровой', av:`<span class="nm-em">${w.emoji}</span>`,
+    color:'#36c994', size:42, status:w.status==='paused'?'wait':'ok', title:`${w.name} · ${w.title} — открыть профиль`, w }));
+
+  /* синапсы: руководитель ↔ функции, цепочки внутри функций, цифровой → его человек */
+  const links=[];
+  fns.forEach(f=>{ if(!groupsH[f].some(p=>p.i===team[0].i)) links.push({ a:leadId, b:'#'+f, w:groupsH[f].length*1.7, color:dt.c, op:.13 }); });
+  fns.forEach(f=>{ const g=groupsH[f];
+    if(g.length) links.push({ a:'#'+f, b:'h'+g[0].i, w:2, color:dt.c, op:.16 });
+    for(let k=0;k<g.length-1;k++) links.push({ a:'h'+g[k].i, b:'h'+g[k+1].i, w:1.6, color:dt.c, op:.20 }); });
+  digs.forEach(w=>{ const ln=(w.lead||'').split(' · ')[0]; const t=team.find(p=>p.name===ln);
+    links.push({ a:'d'+w.i, b:t?'h'+t.i:'#'+(fns.indexOf(w.fn)>=0?w.fn:fns[0]), w:2.4, color:'#36c994', op:.26 }); });
+
+  root.innerHTML = workHead(d, `Пульс отдела «${cfg.role}» · ${hc} людей + ${dhc} цифровых · каждый нейрон — живой сотрудник`) + `
     <div class="dp-wrap">
-      <div class="dp-stage" id="dpStage">
-        <svg class="dp-links" id="dpLinks" preserveAspectRatio="none"></svg>
-        <div class="dp-core" id="dpCore"><b>${d.icon}</b><span>${cfg.role}</span><i>👤 ${hc} · 🤖 ${dhc}</i></div>
-        ${fns.map((f,i)=>`<div class="dp-fn" data-i="${i}" data-fn="${f}" title="Открыть команду отдела"><span class="dp-fn-dot" style="--c:${dt.c}"></span><b>${f}</b><i>👤 ${hAlloc[i]} · 🤖 ${dAlloc[i]}</i></div>`).join('')}
-      </div>
+      <div class="dp-stage nm-stage" id="dpStage"></div>
       <aside class="dp-side">
         <div class="of-live"><span class="of-dot"></span><b id="dp-inflight">—</b> задач в работе <i>в отделе</i></div>
         <div class="of-live"><span class="lg-mark d"></span><b id="dp-inf-d">—</b> делают цифровые сотрудники</div>
         <div class="of-live"><span class="lg-mark h" style="--c:${dt.c}"></span><b id="dp-inf-h">—</b> делают люди</div>
         <div class="of-live"><b id="dp-done">—</b> выполнено сегодня</div>
         <div class="of-legend kind-legend">
-          <span class="lg-d">задача цифрового</span>
-          <span class="lg-h" style="--c:${dt.c}">задача человека</span>
-          <span style="--c:#34d399">передача →</span>
+          <span class="lg-h" style="--c:${dt.c}">нейрон-человек</span>
+          <span class="lg-d">цифровой</span>
+          <span style="--c:#f87171">⛔ гейт: импульс застрял</span>
         </div>
         <div class="of-feed" id="dpFeed"></div>
-        <div class="od-gov">На каждой частице видно исполнителя: <b style="color:var(--acc)">цифровой</b> готовит черновик, <b>человек</b> правит и принимает. Кликните функцию — провалитесь в команду.</div>
+        <div class="od-gov">Размер нейрона — загрузка, свечение — статус. Импульс — реальная задача: дошёл → нейрон «возбудился». <b style="color:#f87171">Красный застрявший импульс</b> — гейт закрыт (sev1). Наведите на нейрон — увидите его связи. Клик — профиль.</div>
       </aside>
     </div>`;
-  const stage=$('#dpStage',root), core=$('#dpCore',root), links=$('#dpLinks',root);
-  const layout=()=>{ const r=stage.getBoundingClientRect(); if(!r.width) return; const cx=r.width/2, cy=r.height/2;
-    const rx=Math.min(r.width*0.40, 640), ry=Math.min(r.height*0.40, 235);
-    core.style.left=cx+'px'; core.style.top=cy+'px'; core.dataset.x=cx; core.dataset.y=cy;
-    const arr=$$('.dp-fn',stage); let lines='';
-    arr.forEach((n,i)=>{ const a=-Math.PI/2 + i/arr.length*Math.PI*2; const rf=(i%2)?0.82:1;
-      const x=cx+Math.cos(a)*rx*rf, y=cy+Math.sin(a)*ry*rf;
-      n.style.left=x+'px'; n.style.top=y+'px'; n.dataset.x=x; n.dataset.y=y;
-      lines+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}"/>`; });
-    if(links){ links.setAttribute('viewBox',`0 0 ${r.width} ${r.height}`); links.innerHTML=lines; } };
-  layout(); requestAnimationFrame(layout);
-  $$('.dp-fn',stage).forEach(n=>n.onclick=()=>navTo('team:'+roleId));
-  const chip=()=>{ const arr=$$('.dp-fn',stage); if(!arr.length) return;
-    const ti=Math.floor(Math.random()*arr.length), tgt=arr[ti], fn=fns[+tgt.dataset.i];
-    const cross=Math.random()<0.2;
-    const isDigital = !cross && Math.random()<0.62;
-    /* исполнитель: реальное имя из штата этой функции */
-    let who='';
-    if (isDigital){ const pool=(digsByFn[fn]&&digsByFn[fn].length)?digsByFn[fn]:digs; if(pool.length) who=pool[Math.floor(Math.random()*pool.length)].name; }
-    else if (!cross){ const pool=groups[fn]; if(pool&&pool.length) who=pool[Math.floor(Math.random()*pool.length)].name; }
-    const baseTask=cross?DP_CROSS[Math.floor(Math.random()*DP_CROSS.length)]:{t:dt.l[Math.floor(Math.random()*dt.l.length)],c:dt.c};
-    const text = cross ? baseTask.t : (who ? who+' · '+baseTask.t : baseTask.t);
-    const cx=+core.dataset.x, cy=+core.dataset.y, tx=+tgt.dataset.x, ty=+tgt.dataset.y;
-    const c=el(`<div class="dp-chip ${cross?'':isDigital?'kd':'kh'}" style="--c:${baseTask.c};left:${cx}px;top:${cy}px">${cross?'':isDigital?'🤖 ':'👤 '}${text}</div>`); stage.appendChild(c);
-    requestAnimationFrame(()=>{ c.style.transform=`translate(-50%,-50%) translate(${tx-cx}px,${ty-cy}px)`; c.style.opacity='0'; });
-    setTimeout(()=>c.remove(),1250);
-    tgt.classList.add('hit'); setTimeout(()=>tgt.classList.remove('hit'),420);
-    core.classList.add('beat'); setTimeout(()=>core.classList.remove('beat'),300); };
+  const stage=$('#dpStage',root);
+  const map = neuralMap(stage, { nodes, links,
+    layout:(W,H)=>neuralClusterLayout(W,H, fns.map(f=>({ id:f, items:[...groupsH[f].map(p=>'h'+p.i), ...(digsByFn[f]||[]).map(w=>'d'+w.i)] })), { memberR:50, rx:.36, ry:.34 }),
+    onClick:(n)=>{ if(n.kind==='h') navTo('person:'+roleId+':'+n.p.i); else if(n.kind==='d') navTo('worker:'+n.w.id); else navTo('team:'+roleId); } });
+
   const FEEDV=[['собрал черновик:',dt.l[0]],['закрыл',dt.l[1]||dt.l[0]],['проверил',dt.l[2]||dt.l[0]],['передал дальше','результат']];
-  const burst = hc>=40?4:hc>=20?3:2, baseInf=Math.round((hc+dhc)*0.6);
-  let done=Math.round(hc*7 + Math.random()*40);
+  const baseInf=Math.round((hc+dhc)*0.6);
+  let done=Math.round(hc*7 + Math.random()*40), tick=0;
   clearInterval(window.__pulseTimer);
   window.__pulseTimer=setInterval(()=>{
-    if(!document.body.contains(stage)){ clearInterval(window.__pulseTimer); return; }
-    for(let k=0;k<burst;k++) chip();
-    done+=burst*2; const di=$('#dp-done',root); if(di) di.textContent=done.toLocaleString('ru');
+    if(!document.body.contains(stage)){ clearInterval(window.__pulseTimer); map.destroy(); return; }
+    tick++;
+    for(let k=0;k<2;k++){
+      const l=links[Math.floor(Math.random()*links.length)];
+      const rev=Math.random()<0.5; const a=rev?l.b:l.a, b=rev?l.a:l.b;
+      const an=nodes.find(n=>n.id===a), bn=nodes.find(n=>n.id===b);
+      const isD=a[0]==='d'||b[0]==='d';
+      const task=(isRPG()&&Math.random()<0.06)?'🐴 Плотва · срочный квест':dt.l[Math.floor(Math.random()*dt.l.length)];
+      const who=an&&an.kind!=='cluster'?an.label:'';
+      const lbl=Math.random()<0.42?((isD?'🤖 ':'👤 ')+(who?who+' · ':'')+task):'';
+      const pop=(Math.random()<0.4&&bn&&bn.kind!=='cluster')?`${bn.label}: принял · ${task}`:'';
+      map.impulse(a,b,{ label:lbl, color:isD?'#36c994':dt.c, kind:isD?'d':'h', dur:1.3+Math.random()*0.7, pop });
+    }
+    /* тормозной синапс: сигнал идёт, но гейт закрыт — нейрон не возбуждается */
+    if(gated && tick%8===0){ const src=team[1]||team[0];
+      map.impulse('h'+src.i, leadId, { label: roleId==='dev'?'⛔ PR #482 · sev1-гейт':'⛔ '+cfg.gate+' · sev1-гейт', color:'#f87171', blocked:true, dur:1.7 }); }
+    done+=3+Math.floor(Math.random()*3); const di=$('#dp-done',root); if(di) di.textContent=done.toLocaleString('ru');
     const inf=Math.max(1,baseInf+Math.round((Math.random()-0.5)*baseInf*0.4));
     const infD=Math.round(inf*0.62), infH=inf-infD;
     const i1=$('#dp-inflight',root); if(i1) i1.textContent=inf.toLocaleString('ru');
@@ -685,7 +721,7 @@ function renderDeptPulse(root, roleId){
         ? el(`<div class="of-row fade-in"><span class="lg-mark d"></span> <b>${digs[Math.floor(Math.random()*digs.length)].name}</b> <i class="dgt-tag">цифровой</i> ${v[0]} ${v[1]}</div>`)
         : el(`<div class="of-row fade-in"><span class="lg-mark h" style="--c:${dt.c}"></span> <b>${team[Math.floor(Math.random()*team.length)].name}</b> ${v[0]} ${v[1]}</div>`);
       feed.insertBefore(row,feed.firstChild); while(feed.children.length>5) feed.removeChild(feed.lastChild); }
-  }, 560);
+  }, 820);
 }
 
 function flowState(){ return window.__FLOWST || (window.__FLOWST = { gamma:0, launch:2, hire:1 }); }
@@ -2636,6 +2672,7 @@ function initModal(){
     const v = $('#taskText').value.trim();
     if (!v){ toast('Опишите задачу своими словами'); $('#taskText').focus(); return; }
     ov.classList.remove('show'); $('#taskText').value='';
+    if (rpgPhraseCheck(v)) return;
     /* маршрутизация по ключевым словам → ассистент нужной роли */
     let role = 'marketing';
     if (/оплат|баг|код|деплой|3ds|чекаут|api|тест/i.test(v))      role = 'dev';
@@ -3344,7 +3381,8 @@ function renderWorkerProfile(root, workerId) {
   const leadName = w.lead.split(' · ')[0];
   const leadIdx = COCKPITS[w.dept] ? COCKPITS[w.dept].team.findIndex(t => (Array.isArray(t)?t[0]:t.name) === leadName) : -1;
   const logSeed = (DEPT_TASK[w.dept]||{l:['задача']}).l;
-  let tab = 'ji';
+  const C = workerRPG(w);
+  let tab = 'stats';
   function draw(){
     const st = DW_STATUS[w.status] || DW_STATUS.active;
     root.innerHTML = `
@@ -3360,6 +3398,7 @@ function renderWorkerProfile(root, workerId) {
           <p>${w.title} · ${dept.label} · функция «${w.fn}»</p>
           <div class="gp-badges">
             <span class="gp-bdg acc">v${1 + h % 4}.${h % 10}</span>
+            <span class="gp-bdg lvl">${LEX('lvlOf')(C.lvl)}</span>
             <span class="gp-bdg">${w.id}</span>
             <span class="ji-st ${st[1]}">${st[0]}</span>
             ${modelBadge(w.model)}
@@ -3375,13 +3414,36 @@ function renderWorkerProfile(root, workerId) {
         <span class="gp-sys-note">запущен ${String(1 + h % 12).padStart(2,'0')}.2025 · подотчётен: <b style="color:var(--txt)">${w.lead}</b></span>
       </div>
       <div class="gp-tabs">
-        ${[['ji','Должностная инструкция'],['kpi','KPI · SLA'],['access','Доступы и интеграции'],['budget','Бюджет'],['log','Журнал'],['mgmt','Управление']].map(t=>`<button class="gp-tab ${tab===t[0]?'on':''}" data-t="${t[0]}">${t[1]}</button>`).join('')}
+        ${[['stats',LEX('stats')],['ji','Должностная инструкция'],['kpi','KPI · SLA'],['access','Доступы и интеграции'],['budget','Бюджет'],['log','Журнал'],['mgmt','Управление']].map(t=>`<button class="gp-tab ${tab===t[0]?'on':''}" data-t="${t[0]}">${t[1]}</button>`).join('')}
       </div>
       <div class="gp-body">${body(st)}</div>
     </div>`;
     wire();
   }
   function body(st){
+    if (tab==='stats'){ const manaPct=Math.round(C.mana.cur/C.mana.max*100);
+      return `<div class="two-col" style="align-items:start">
+      <div class="panel gp-card hc crd">
+        <h2>${LEX('stats')} <span class="tag">${LEX('lvlOf')(C.lvl)} · модель ${MODELS[w.model].name}</span></h2>
+        <div class="hc-sec"><div class="hc-lab"><span>${LEX('mana')}</span><b>${C.mana.cur}/${C.mana.max} · ${C.mana.unit}</b></div>${rpgBar(manaPct,'mp')}</div>
+        <div class="hc-sec"><div class="hc-lab"><span>${LEX('stats')}</span></div>
+          ${C.stats.map(s=>`<div class="hc-skill"><span>${s[0]}</span>${rpgDots(s[1])}<b>${s[1]}/10</b></div>`).join('')}</div>
+        <div class="hc-sec"><div class="hc-lab"><span>${LEX('duties')}</span></div>
+          ${C.spells.map(s=>`<div class="hc-spell"><span>${s[0]}</span>${rpgStars(s[1])}</div>`).join('')}</div>
+        <div class="ji-sec lim"><b>${LEX('limits')}</b><ul>${C.curses.map(x=>`<li>⛔ ${x}</li>`).join('')}</ul></div>
+      </div>
+      <div class="panel gp-card hc">
+        <h2>${isRPG()?'Активный квест':'Активная задача'}</h2>
+        <div class="hc-q"><div class="hc-q-t"><b>${w.now}</b><i class="q-mid">${C.prog}%</i></div>${rpgBar(C.prog)}</div>
+        <div class="hc-art" style="margin-top:7px">${C.artifacts.map(a=>`<span>${a}</span>`).join('')}</div>
+        ${gpField('Руководитель', w.lead, 'sreda')}
+        ${gpField('Стоимость задачи', '~₽' + Math.round(MODELS[w.model].cost * 2.3), 'sreda')}
+        ${gpField('Эскалация', w.ji.esc, 'sreda')}
+        <div class="od-gov" style="margin-top:9px">${isRPG()
+          ? 'Существо призвано человеком и служит до отзыва: мана — недельный лимит задач, проклятия — жёсткие запреты из инструкции.'
+          : 'Характеристики выводятся из модели и ДИ: лимит — из KPI, ограничения — из инструкции. Каждый результат — черновик человеку.'}</div>
+      </div>
+    </div>`; }
     if (tab==='ji') return `<div class="two-col" style="align-items:start">
       <div class="panel ji-card">
         <h2>Должностная инструкция <span class="tag">версия 2.1 · утверждена ${leadName}</span></h2>
@@ -3461,6 +3523,7 @@ function renderWorkerProfile(root, workerId) {
     const rev=$('#wpReview',root); if(rev) rev.onclick = ()=>{ pushAudit({ who:w.lead, what:`Запрошен отчёт по «${w.name}» за неделю`, verdict:'allow' }); toast(`Отчёт по ${w.name} уйдёт руководителю: ${w.lead}`); };
     const ask=root.querySelector('[data-jiask]'), go=root.querySelector('[data-jigo]');
     if(ask&&go){ const send=()=>{ const v=ask.value.trim(); if(!v){ toast('Опишите задачу'); return; }
+      if (rpgPhraseCheck(v)){ ask.value=''; return; }
       w.now=v; root.querySelector('[data-jinow]').textContent=v; ask.value='';
       pushAudit({ who:'Вы', what:`Задача «${w.name}»: ${v}`, verdict:'allow' });
       toast(`Задача принята: «${w.name}» вернёт результат черновиком руководителю`); };
@@ -3525,6 +3588,8 @@ function renderPersonProfile(root, dept, idx){
   const c = DEPT_TASK[dept].c;
   const cfg = COCKPITS[dept];
   const M = cfg.metrics.slice(0,4).map(m=>Array.isArray(m)?{k:m[0],b:m[1],a:m[2]}:{k:m.k,b:m.before,a:m.after});
+  const R = personRPG(dept, p), Q = questsOf(dept, p.name, p.task), load = loadOf(Q, R.lvl);
+  const gateOpen = stepGate({role:dept}).gated;
   let tab = 'main';
   function draw(){
     root.innerHTML = `
@@ -3540,6 +3605,7 @@ function renderPersonProfile(root, dept, idx){
           <p>${p.role} · ${dep.label} · функция «${p.fn||'Команда'}»</p>
           <div class="gp-badges">
             <span class="gp-bdg acc">${p.grade}</span>
+            <span class="gp-bdg lvl">${LEX('lvlOf')(R.lvl)}</span>
             <span class="gp-bdg">${p.tab}</span>
             <span class="gp-bdg ok">● в штате</span>
             ${p.isLead?'<span class="gp-bdg">руководитель функции</span>':''}
@@ -3555,7 +3621,7 @@ function renderPersonProfile(root, dept, idx){
         <span class="gp-sys-note">профиль собран автоматически · у каждого поля — система-источник</span>
       </div>
       <div class="gp-tabs">
-        ${[['main','Основное'],['work','Трудовое'],['ai','Рой и ИИ'],['kpi','KPI'],['access','Доступы'],['act','Активность'],['docs','Документы']].map(t=>`<button class="gp-tab ${tab===t[0]?'on':''}" data-t="${t[0]}">${t[1]}</button>`).join('')}
+        ${[['main','Основное'],['rpg',LEX('skills')],['work','Трудовое'],['ai','Рой и ИИ'],['kpi','KPI'],['access','Доступы'],['act','Активность'],['docs','Документы']].map(t=>`<button class="gp-tab ${tab===t[0]?'on':''}" data-t="${t[0]}">${t[1]}</button>`).join('')}
       </div>
       <div class="gp-body">${body()}</div>
     </div>`;
@@ -3572,6 +3638,25 @@ function renderPersonProfile(root, dept, idx){
         ${gpField('Телефон', p.phone, '1c')}${gpField('Email', p.email, 'kedo')}
         ${gpField('Telegram', p.tg, 'kteam')}${gpField('Рабочее место', 'Среда · кабинет «'+dep.label+'»', 'sreda')}
         <div class="gp-actions"><button class="btn ghost" data-go-ch>Написать в канал отдела</button><button class="btn ghost" data-go-team>Открыть штат отдела</button></div></div>
+    </div>`;
+    if (tab==='rpg') return `<div class="two-col" style="align-items:start">
+      <div class="panel gp-card hc">
+        <h2>${LEX('skills')} <span class="tag">${LEX('lvlOf')(R.lvl)} · ${RPG_LVL_LBL[R.lvl]}</span></h2>
+        <div class="hc-sec"><div class="hc-lab"><span>${LEX('load')}</span><b>${load}/100 · ${Q.length} в работе</b></div>${rpgBar(load, load>82?'hot':'')}</div>
+        <div class="hc-sec"><div class="hc-lab"><span>${LEX('skills')}</span></div>
+          ${R.sk.map(s=>`<div class="hc-skill"><span>${s[0]}</span>${rpgDots(s[1])}<b>${s[1]}/10</b></div>`).join('')}</div>
+        <div class="hc-sec"><div class="hc-lab"><span>${LEX('quests')}</span></div>
+          ${Q.map(q=>{ const blocked=q.gate&&gateOpen; return `<div class="hc-q"><div class="hc-q-t"><b>${q.id?q.id+' · ':''}${q.t}</b><i class="${blocked?'q-bad':q.prog>75?'q-ok':'q-mid'}">${blocked?'⛔ гейт: sev1-риск':q.col}</i></div>${rpgBar(q.prog, blocked?'bad':q.prog>75?'ok':'')}</div>`; }).join('')}</div>
+        <div class="hc-sec"><div class="hc-lab"><span>${LEX('ach')}</span></div>
+          ${R.ach.map(a=>`<div class="hc-ach">🏆 ${a}</div>`).join('')}</div>
+      </div>
+      <div class="panel ji-card"><h2>Должностная инструкция <span class="tag">как у цифровых — у людей тоже есть</span></h2>
+        <div class="ji-sec"><b>${LEX('mission')}</b><p>${R.mi}</p></div>
+        <div class="ji-sec"><b>Обязанности</b><ul>${R.du.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+        <div class="ji-sec lim"><b>${LEX('limits')}</b><ul>${R.li.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+        <div class="ji-sec esc"><b>Эскалация</b><p>${R.esc}</p></div>
+        <div class="od-gov" style="margin-top:9px">Симметрия с цифровым штатом: у каждого человека — та же структура инструкции (миссия · обязанности · границы · эскалация). Источник: КЭДО + Среда.</div>
+      </div>
     </div>`;
     if (tab==='work') return `<div class="two-col" style="align-items:start">
       <div class="panel gp-card"><h2>Трудовые данные</h2>
@@ -3629,7 +3714,8 @@ function renderPersonProfile(root, dept, idx){
     const tm=root.querySelector('[data-go-team]'); if(tm) tm.onclick=()=>navTo('team:'+dept);
     root.querySelectorAll('[data-doc]').forEach(b=>b.onclick=()=>toast(`«${b.dataset.doc}» — открыт из КЭДО`));
     const ask=root.querySelector('[data-ppask]'), go=root.querySelector('[data-ppgo]');
-    if(ask&&go){ const send=()=>{ const v=ask.value.trim(); if(!v){ toast('Опишите задачу'); return; } ask.value='';
+    if(ask&&go){ const send=()=>{ const v=ask.value.trim(); if(!v){ toast('Опишите задачу'); return; }
+      if (rpgPhraseCheck(v)){ ask.value=''; return; } ask.value='';
       pushAudit({ who:p.name+' '+p.surname, emoji:'👤', act:'поставил(а) задачу рою: '+v, dept:dep.label });
       toast(`Рой принял задачу — черновик вернётся на проверку: ${p.name}`); };
       go.onclick=send; ask.onkeydown=e=>{ if(e.key==='Enter') send(); }; }
@@ -3701,6 +3787,7 @@ function renderAIBudgets(root){
 }
 
 function init(){
+  if (isRPG()) document.body.classList.add('rpg-mode');
   const h = location.hash.slice(1);
   const ws = h && WORKSPACES.find(w => w.nav.some(n => n.id === h));
   state.ws = ws ? ws.id : 'exec';

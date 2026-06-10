@@ -3857,5 +3857,120 @@ h2 .ic{width:14px;height:14px;color:var(--acc);vertical-align:-0.1em}
 .rolecard .ji-prof{width:100%;justify-content:center;display:flex;margin-top:10px;font-size:12.5px;padding:9px}
 
 /* ============================================================================
+   HERO CARD — карточка персонажа (человек и цифровой), нейтральная лексика,
+   RPG-наполнение приходит из LEX() · блоки .hc-*
+   ========================================================================== */
+.hc{display:flex;flex-direction:column;gap:2px}
+.hc-h{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.hc-h>div{flex:1;min-width:0}
+.hc-h b{display:block;font-size:13.5px}
+.hc-h small{color:var(--muted);font-size:11.5px;display:block}
+.hc-lvl{flex:none;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--acc);
+  border:1px solid rgba(54,201,148,.45);border-radius:8px;padding:3px 8px;background:var(--acc-soft);white-space:nowrap}
+.hc-lvl.dgt{color:var(--teal);border-color:rgba(45,212,191,.4);background:rgba(45,212,191,.08)}
+.hc-sec{padding:8px 0 4px;border-top:1px dashed var(--line)}
+.hc-lab{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px}
+.hc-lab span{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.hc-lab b{font-size:11.5px;color:var(--txt2)}
+.hc-bar{height:7px;border-radius:4px;background:var(--bg3);overflow:hidden;border:1px solid var(--line)}
+.hc-bar>div{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--acc-deep),var(--acc));
+  box-shadow:0 0 8px var(--acc-glow);transition:width .5s}
+.hc-bar.hot>div{background:linear-gradient(90deg,#b45309,var(--amber));box-shadow:0 0 8px rgba(251,191,36,.35)}
+.hc-bar.bad>div{background:linear-gradient(90deg,#991b1b,var(--red));box-shadow:0 0 8px rgba(248,113,113,.35)}
+.hc-bar.ok>div{background:linear-gradient(90deg,var(--acc-deep),var(--green))}
+.hc-bar.mp>div{background:linear-gradient(90deg,#1e5f8f,var(--blue));box-shadow:0 0 8px rgba(96,165,250,.35)}
+.hc-skill{display:flex;align-items:center;gap:8px;padding:2.5px 0;font-size:12px}
+.hc-skill span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--txt2)}
+.hc-skill b{flex:none;font-size:10.5px;color:var(--muted);min-width:32px;text-align:right}
+.hc-dots{display:inline-flex;gap:2.5px;flex:none}
+.hc-dots i{width:7px;height:7px;border-radius:2px;background:var(--bg3);border:1px solid var(--line2)}
+.hc-dots i.on{background:var(--acc);border-color:var(--acc);box-shadow:0 0 5px var(--acc-glow)}
+.hc-spell{display:flex;align-items:center;gap:8px;padding:2.5px 0;font-size:12px}
+.hc-spell span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--txt2)}
+.hc-stars{flex:none;color:var(--amber);font-size:11px;letter-spacing:1.5px}
+.hc-q{margin-bottom:7px}
+.hc-q-t{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px}
+.hc-q-t b{font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hc-q-t i{flex:none;font-style:normal;font-size:10.5px}
+.q-ok{color:var(--green)} .q-mid{color:var(--amber)} .q-bad{color:var(--red);font-weight:700}
+.hc-ach{font-size:12px;color:var(--txt2);padding:3px 0}
+.hc-art{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.hc-art span{font-size:11px;color:var(--txt2);border:1px solid var(--line2);border-radius:7px;padding:3px 8px;background:var(--bg2)}
+.gp-bdg.lvl{color:var(--acc);border-color:rgba(54,201,148,.45)}
+
+/* ============================================================================
+   НЕЙРОННАЯ КАРТА — нейроны-сотрудники, синапсы-передачи, импульсы-задачи
+   ========================================================================== */
+.nm-stage{position:relative;overflow:hidden}
+.nm-links{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.nm-links.dimmed .nm-syn{stroke-opacity:.05}
+.nm-links .nm-syn{transition:stroke-opacity .25s}
+.nm-links .nm-syn.hot{stroke-opacity:.75!important;filter:drop-shadow(0 0 4px var(--acc-glow))}
+.nm-links .nm-syn.live{stroke-opacity:.55}
+.nm-node{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;
+  gap:2px;cursor:pointer;z-index:3;transition:transform .2s;width:max-content;max-width:110px;text-align:center}
+.nm-node:hover{transform:translate(-50%,-50%) scale(1.12);z-index:6}
+.nm-node .nm-av{width:var(--sz,48px);height:var(--sz,48px);display:flex;align-items:center;justify-content:center;
+  border-radius:50%;background:var(--panel2);border:2px solid var(--c,var(--acc));position:relative;
+  box-shadow:0 0 10px rgba(0,0,0,.5),0 0 7px rgba(54,201,148,.18);transition:box-shadow .3s}
+.nm-node .nm-av .gp-av{width:100%;height:100%;font-size:15px;border:none}
+.nm-node .nm-av .gp-av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.nm-node.k-d .nm-av{border-radius:13px;transform:rotate(45deg);border-style:dashed;background:var(--bg2)}
+.nm-node.k-d .nm-av .nm-em{transform:rotate(-45deg);font-size:17px;line-height:1}
+.nm-node.k-cluster{z-index:2;opacity:.95}
+.nm-node.k-cluster .nm-av{display:none}
+.nm-node.k-cluster .nm-name{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+  border:1px dashed var(--line2);border-radius:9px;padding:4px 9px;background:rgba(18,19,16,.72)}
+.nm-node.k-cluster .nm-sub{color:var(--faint)}
+.nm-name{font-size:11.5px;font-weight:700;color:var(--txt);text-shadow:0 1px 6px rgba(0,0,0,.9);line-height:1.15}
+.nm-sub{font-size:9.5px;color:var(--muted);max-width:104px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* статус = цвет свечения: в потоке / ждёт / гейт-блок */
+.nm-node .nm-av::after{content:'';position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border-radius:50%;
+  border:2px solid var(--bg);background:var(--green)}
+.nm-node.k-cluster .nm-av::after{display:none}
+.nm-node.k-d .nm-av::after{right:auto;left:-4px;top:-4px;bottom:auto}
+.nm-node.st-wait .nm-av::after{background:var(--amber)}
+.nm-node.st-block .nm-av{border-color:var(--red);box-shadow:0 0 12px rgba(248,113,113,.4)}
+.nm-node.st-block .nm-av::after{background:var(--red);animation:nmBlink 1.1s infinite}
+@keyframes nmBlink{0%,100%{opacity:1}50%{opacity:.25}}
+/* возбуждение нейрона при приходе импульса */
+.nm-node.fire .nm-av{box-shadow:0 0 0 4px rgba(54,201,148,.30),0 0 22px rgba(54,201,148,.55);animation:nmFire .85s ease-out}
+@keyframes nmFire{0%{transform:scale(1)}28%{transform:scale(1.22)}100%{transform:scale(1)}}
+.nm-node.k-d.fire .nm-av{animation:nmFireD .85s ease-out}
+@keyframes nmFireD{0%{transform:rotate(45deg) scale(1)}28%{transform:rotate(45deg) scale(1.22)}100%{transform:rotate(45deg) scale(1)}}
+.nm-node.near .nm-av{box-shadow:0 0 0 2px rgba(54,201,148,.40)}
+.nm-node.gated .nm-av{animation:nmShake .5s}
+@keyframes nmShake{0%,100%{margin-left:0}25%{margin-left:-3px}75%{margin-left:3px}}
+/* импульс — волна возбуждения с подписью задачи */
+.nm-imp{position:absolute;left:0;top:0;width:9px;height:9px;border-radius:50%;background:var(--c,var(--acc));
+  box-shadow:0 0 9px var(--c,var(--acc)),0 0 18px rgba(54,201,148,.4);
+  offset-distance:0%;offset-rotate:0deg;z-index:5;pointer-events:none}
+.nm-imp.lbl{width:auto;height:auto;border-radius:8px;padding:3px 8px;font-size:10.5px;font-weight:600;color:var(--txt);
+  background:rgba(18,19,16,.88);border:1px solid var(--c,var(--acc));
+  box-shadow:0 0 10px rgba(0,0,0,.4);white-space:nowrap}
+.nm-imp.stuck{animation:nmStuck .5s infinite;border-color:var(--red);box-shadow:0 0 12px rgba(248,113,113,.6);color:#fecaca}
+@keyframes nmStuck{0%,100%{opacity:1}50%{opacity:.35}}
+.nm-imp.out{opacity:0;transition:opacity .45s}
+.nm-pop{position:absolute;transform:translate(-50%,-100%);z-index:7;font-size:10.5px;color:var(--txt);
+  background:rgba(26,28,24,.94);border:1px solid var(--line3);border-radius:8px;padding:4px 9px;white-space:nowrap;
+  box-shadow:0 6px 18px rgba(0,0,0,.5);pointer-events:none;animation:nmFadeUp .25s ease-out}
+.nm-pop.out{opacity:0;transition:opacity .4s}
+@keyframes nmFadeUp{from{opacity:0;margin-top:6px}to{opacity:1;margin-top:0}}
+/* межотделовые синапсы на Пульсе компании */
+.pls-syn{transition:stroke-opacity .3s}
+
+/* ============================================================================
+   RPG-РЕЖИМ («Шевелись, плотва») — золото ведьмачьего ордена поверх графита
+   ========================================================================== */
+body.rpg-mode .hc-lvl{color:#e8c468;border-color:rgba(232,196,104,.5);background:rgba(232,196,104,.08);
+  text-shadow:0 0 8px rgba(232,196,104,.35)}
+body.rpg-mode .hc-lab span{color:#caa84f}
+body.rpg-mode .hc-dots i.on{background:#e8c468;border-color:#e8c468;box-shadow:0 0 5px rgba(232,196,104,.45)}
+body.rpg-mode .hc .hc-bar:not(.mp):not(.bad):not(.hot)>div{background:linear-gradient(90deg,#7a5b18,#e8c468);box-shadow:0 0 8px rgba(232,196,104,.3)}
+body.rpg-mode .gp-bdg.lvl{color:#e8c468;border-color:rgba(232,196,104,.5)}
+body.rpg-mode .rolecard.hc{border-color:rgba(232,196,104,.25);box-shadow:inset 0 0 30px rgba(232,196,104,.04)}
+body.rpg-mode .hc-ach{color:#e6d9b8}
+
+/* ============================================================================
    Конец дополнительных стилей
    ========================================================================== */
