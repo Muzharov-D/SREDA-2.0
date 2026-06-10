@@ -138,7 +138,7 @@ function renderTeam(root, id){ const cfg=COCKPITS[id]; const d=DEPARTMENTS.find(
     const dc = DEPT_TASK[id].c;
     const teamHtml=Object.keys(groups).map(g=>`${grouped?`<div class="team-fn">${g}<span>${groups[g].length}</span></div>`:''}<div class="dev-team">${groups[g].map(pp=> pp.digital
       ? `<div class="dev-p dgt ${sel.kind==='d'&&sel.i===pp.i?'on':''}" data-dw="${pp.i}"><span class="dp-av">${pp.emoji}</span><div><b>${pp.name} <i class="dgt-tag">цифровой</i></b><small>${pp.title} · ${pp.now}</small></div><span class="dp-swarm dgt">ДИ →</span><span class="dp-swarm prof" data-wjump="${pp.id}" title="Полный профиль">профиль →</span></div>`
-      : `<div class="dev-p ${sel.kind==='h'&&sel.i===pp.i?'on':''}" data-p="${pp.i}"><span class="gp-av sm" style="--c:${dc}">${pp.name[0]}</span><div><b>${pp.name}</b><small>${pp.role} · ${pp.task}</small></div><span class="dp-swarm">рой · ${swarmOf(pp.role).a.length}</span><span class="dp-swarm prof" data-pjump="${id}:${pp.i}" title="Полный профиль">профиль →</span></div>`).join('')}</div>`).join('');
+      : `<div class="dev-p ${sel.kind==='h'&&sel.i===pp.i?'on':''}" data-p="${pp.i}">${humanAv(id, pp.name, dc, 'sm')}<div><b>${pp.name}</b><small>${pp.role} · ${pp.task}</small></div><span class="dp-swarm">рой · ${swarmOf(pp.role).a.length}</span><span class="dp-swarm prof" data-pjump="${id}:${pp.i}" title="Полный профиль">профиль →</span></div>`).join('')}</div>`).join('');
 
     let side='';
     if (sel.kind==='h'){
@@ -3078,7 +3078,7 @@ function renderDeptChannel(root, deptId) {
           <h4>👥 Команда</h4>
           ${humans.map((h,hi) => `
             <div class="channel-member human" data-pid="${deptId}:${hi}" title="Открыть профиль">
-              <span class="gp-av sm" style="--c:${(DEPT_TASK[deptId]||{}).c||'#8e9288'}">${h.name[0]}</span>
+              ${humanAv(deptId, h.name, (DEPT_TASK[deptId]||{}).c||'#8e9288', 'sm')}
               <div class="channel-member-info">
                 <b>${h.name}</b>
                 <span>${h.role}</span>
@@ -3125,7 +3125,11 @@ function renderDeptChannel(root, deptId) {
               </div>`;
             }
             const isDigital = m.type === 'agent';
-            const avatar = isDigital ? (m.avatar.startsWith('http') ? `<img src="${m.avatar}" alt="${m.who}"/>` : `<span>${m.avatar}</span>`) : `<span>${m.avatar}</span>`;
+            const avatar = isDigital
+              ? `<span>${m.avatar}</span>`
+              : (m.who && window.AVATARS && window.AVATARS[deptId+':'+m.who]
+                  ? `<img src="${window.AVATARS[deptId+':'+m.who]}" alt="${m.who}" class="ch-msg-ph"/>`
+                  : `<span>${m.avatar}</span>`);
             /* равноправие: автор любого сообщения кликабелен → его полный профиль */
             let au = '';
             if (isDigital){ const dw = digitalWorkers.find(x=>x.name===m.who); if (dw) au = `data-au="worker:${dw.id}"`; }
@@ -3427,6 +3431,12 @@ function personOf(dept, i){
     sw: swarmOf(p.role) };
 }
 const SRC = (s) => `<sup class="gp-src s-${s}">${({'1c':'1С','kedo':'КЭДО','sreda':'Среда','crm':'CRM','ats':'ATS','kteam':'K-TEAM'})[s]||s}</sup>`;
+/* аватар человека: локальный портрет, если есть в манифесте, иначе инициалы */
+function humanAv(dept, name, color, cls){
+  const src = window.AVATARS && window.AVATARS[dept + ':' + name];
+  if (src) return `<span class="gp-av ${cls||''} ph" style="--c:${color}"><img src="${src}" alt="${name}" loading="lazy"/></span>`;
+  return `<span class="gp-av ${cls||''}" style="--c:${color}">${name[0]}</span>`;
+}
 function gpField(label, value, src){ return `<div class="gp-f"><span>${label}</span><b>${value}${src?SRC(src):''}</b></div>`; }
 function initialsAv(name, surname, color, big){
   return `<span class="gp-av ${big?'big':''}" style="--c:${color}">${name[0]}${surname?surname[0]:''}</span>`;
@@ -3447,7 +3457,7 @@ function renderPersonProfile(root, dept, idx){
         <div class="worker-profile-title"><h1>Профиль сотрудника</h1><p>золотой профиль · данные собраны из всех систем компании</p></div>
       </div>
       <div class="gp-head">
-        ${initialsAv(p.name, p.surname, c, true)}
+        ${(window.AVATARS && window.AVATARS[dept+':'+p.name]) ? humanAv(dept, p.name, c, 'big') : initialsAv(p.name, p.surname, c, true)}
         <div class="gp-id">
           <h1>${p.name} ${p.surname}</h1>
           <p>${p.role} · ${dep.label} · функция «${p.fn||'Команда'}»</p>

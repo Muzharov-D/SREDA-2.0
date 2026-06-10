@@ -3723,6 +3723,9 @@ h2 .ic{width:14px;height:14px;color:var(--acc);vertical-align:-0.1em}
 .gp-av.sm{width:30px;height:30px;font-size:12.5px}
 .gp-av.big.dgt{border-radius:18px;font-size:26px}
 .gp-av.big.dgt .ic{width:28px;height:28px;color:var(--c)}
+.gp-av.ph{padding:0;overflow:hidden;background:color-mix(in srgb,var(--c,#8e9288) 16%,transparent)}
+.gp-av.ph img{width:100%;height:100%;object-fit:cover;display:block;transform:scale(1.08)}
+.ch-msg-ph{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
 .gp-id{flex:1;min-width:0}
 .gp-id h1{margin:0;font-size:21px;letter-spacing:-.01em}
 .gp-id p{margin:3px 0 0;font-size:13px;color:var(--muted)}
