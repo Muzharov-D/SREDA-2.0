@@ -24,6 +24,7 @@ function cortexMap(stage, opts){
   const byCluster = {};             // id → {c, center:[x,y], R, nodes:[indices]}
   const impulses = [];              // живые задачи в полёте
   let wave = null;                  // волна-дыхание от ядра
+  let focus = null;                 // Set(idx) — режим проекта: остальные гаснут
   const labels = {};                // DOM-чипы кластеров
 
   const GOLD = Math.PI * (3 - Math.sqrt(5)); // филлотаксис
@@ -208,22 +209,34 @@ function cortexMap(stage, opts){
     }
 
     /* нейроны */
-    nodes.forEach(n => {
+    nodes.forEach((n, ni) => {
       n.x = n.x0 + Math.sin(t * 0.7 + n.phase) * 1.7;
       n.y = n.y0 + Math.cos(t * 0.55 + n.phase * 1.3) * 1.7;
-      let glow = n.flash;
-      if (wave){ const d = Math.abs(Math.hypot(n.x - ccx, n.y - ccy) - wave.r); if (d < 46) glow = Math.max(glow, 0.55 * (1 - d / 46)); }
+      const foc = focus ? focus.has(ni) : null;
+      const dim = focus && !foc ? 0.13 : 1;
+      let glow = n.flash * dim;
+      if (wave){ const d = Math.abs(Math.hypot(n.x - ccx, n.y - ccy) - wave.r); if (d < 46) glow = Math.max(glow, 0.55 * (1 - d / 46) * dim); }
       if (n.flash > 0) n.flash = Math.max(0, n.flash - dt * 1.6);
       if (glow > 0.02){
         ctx.fillStyle = n.color; ctx.globalAlpha = 0.30 * glow;
         ctx.beginPath(); ctx.arc(n.x, n.y, n.r + 7 * glow, 0, 7); ctx.fill();
       }
-      ctx.globalAlpha = n.named ? 0.95 : 0.55;
+      ctx.globalAlpha = (n.named ? 0.95 : 0.55) * dim;
       ctx.fillStyle = n.color;
       if (n.type === 'h'){ ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, 7); ctx.fill(); }
       else { ctx.save(); ctx.translate(n.x, n.y); ctx.rotate(Math.PI / 4);
         ctx.fillRect(-n.r, -n.r, n.r * 2, n.r * 2); ctx.restore(); }
       ctx.globalAlpha = 1;
+      /* нейрон проекта: золотое кольцо + имя всегда видно */
+      if (foc){
+        ctx.strokeStyle = '#e8c468'; ctx.lineWidth = 1.6; ctx.globalAlpha = 0.95;
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r + 4.5, 0, 7); ctx.stroke();
+        ctx.font = '600 9.5px Inter, sans-serif'; ctx.textAlign = 'center';
+        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(18,19,16,.85)';
+        ctx.strokeText(n.ref.name || '', n.x, n.y + n.r + 12);
+        ctx.fillStyle = '#e8d9b0'; ctx.fillText(n.ref.name || '', n.x, n.y + n.r + 12);
+        ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+      }
     });
 
     /* семантический зум: приблизился — проявились имена живых сотрудников */
@@ -363,6 +376,7 @@ function cortexMap(stage, opts){
 
   return {
     impulse, corePulse, findNode, randNode,
+    setFocus(arr){ focus = arr && arr.length ? new Set(arr) : null; },
     localPulse(clusterId, label){
       const e = byCluster[clusterId]; if (!e || e.nodes.length < 2) return;
       const a = randNode(clusterId), b = randNode(clusterId);

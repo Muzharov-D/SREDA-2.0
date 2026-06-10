@@ -634,6 +634,11 @@ function questsOf(dept, name, task){
   }
   if (task && !out.some(q => q.t === task || task.indexOf(q.id) >= 0))
     out.unshift({ id: '', t: task, prog: 35 + rpgHash(name + task) % 50, col: 'в работе', gate: false });
+  /* мегапроект CEO: задача проекта — всегда первый квест исполнителя */
+  if (typeof projTaskOf === 'function'){ const pt = projTaskOf(dept, name);
+    if (pt && !out.some(q => q.t === pt.t)) out.unshift({ id:'🚀', t: pt.t,
+      prog: pt.state === 'done' ? 100 : pt.state === 'blocked' ? 55 : pt.state === 'active' ? 62 : 8,
+      col: MEGA_PROJECT.title, gate: pt.state === 'blocked' }); }
   return out.slice(0, 4);
 }
 /* загрузка (HP): от числа активных задач */
@@ -718,6 +723,52 @@ function rpgPhraseCheck(text){
   if (typeof renderStage === 'function' && typeof state !== 'undefined') setTimeout(()=>renderStage(state.screen), 60);
   return true;
 }
+
+/* ========================================================================== */
+/*  МЕГАПРОЕКТ «Запуск продукта Среда» — сквозная задача CEO через все отделы */
+/*  Виден на всех уровнях: трасса на Пульсе компании → полоса задач в пульсе  */
+/*  отдела → квест в карточке конкретного сотрудника.                         */
+/* ========================================================================== */
+const MEGA_PROJECT = {
+  id:'sreda-launch', icon:'🚀', title:'Запуск продукта «Среда»',
+  sponsor:'CEO · Кирилл', deadline:'Q3 2026',
+  ask:'Собрать и вывести на рынок «Среду»: платформу цифровых сотрудников для средних компаний.',
+  phases:[
+    { id:'p1', title:'Дискавери и стратегия', tasks:[
+      { dept:'analytics', who:'Лена',  t:'Рынок и сегменты: TAM/SAM',       out:'Отчёт: 5 сегментов',    state:'done' },
+      { dept:'sales',     who:'Денис', t:'Кастдев: 20 интервью клиентов',    out:'Карта болей',           state:'done' },
+      { dept:'finance',   who:'Юля',   t:'Юнит-экономика и прайсинг',        out:'Модель: 3 тарифа',      state:'done' },
+    ]},
+    { id:'p2', title:'Концепт и дизайн', tasks:[
+      { dept:'design',    who:'Дима',  t:'Прототип ключевых сценариев',      out:'Кликабельный прототип', state:'done' },
+      { dept:'design',    who:'Соня',  t:'Визуальный язык продукта',         out:'Дизайн-направление',    state:'done' },
+      { dept:'marketing', who:'Лео',   t:'Позиционирование и месседж-хаус',  out:'Месседж-хаус v1',       state:'done' },
+    ]},
+    { id:'p3', title:'Разработка MVP', tasks:[
+      { dept:'dev',       who:'Дан',   t:'Архитектура платформы',            out:'ADR пакета 0.9',        state:'done' },
+      { dept:'dev',       who:'Аня',   t:'Ядро: оплата и биллинг 3DS',       out:'Сервис оплат',          state:'active' },
+      { dept:'dev',       who:'Вера',  t:'Дизайн-система в коде',            out:'UI-кит v2',             state:'active' },
+      { dept:'dev',       who:'Ника',  t:'Автотесты ядра',                   out:'Покрытие 91%',          state:'active' },
+      { dept:'analytics', who:'Мира',  t:'Телеметрия и модель оттока',       out:'Дашборд здоровья',      state:'active' },
+    ]},
+    { id:'p4', title:'Юр и комплаенс', tasks:[
+      { dept:'legal',     who:'Ира',   t:'Договор-оферта и SLA',             out:'Оферта v1',             state:'blocked' },
+      { dept:'legal',     who:'Глеб',  t:'ПДн: реестр обработки и DPA',      out:'DPA-пакет',             state:'active' },
+    ]},
+    { id:'p5', title:'Запуск и продажи', tasks:[
+      { dept:'marketing', who:'Аня',   t:'Кампания запуска',                 out:'Лендинг + 5 писем',     state:'wait' },
+      { dept:'sales',     who:'Оля',   t:'Пилоты с якорными клиентами',      out:'3 пилота',              state:'wait' },
+      { dept:'hr',        who:'Поля',  t:'Найм саппорт-инженеров',           out:'2 оффера',              state:'wait' },
+      { dept:'finance',   who:'Аня',   t:'Биллинг и приём платежей',         out:'Счета в проде',         state:'wait' },
+    ]},
+  ],
+};
+const PROJ_STATE = { done:['✓','готово','#34d399'], active:['●','в работе','#fbbf24'], blocked:['⛔','гейт sev1','#f87171'], wait:['○','в очереди','#8e9288'] };
+function projTasks(){ return MEGA_PROJECT.phases.flatMap(p => p.tasks.map(t => ({ ...t, phase: p.title }))); }
+function projTasksOf(dept){ return projTasks().filter(t => t.dept === dept); }
+function projTaskOf(dept, name){ return projTasks().find(t => t.dept === dept && t.who === name) || null; }
+function projProgress(){ const all = projTasks(); const done = all.filter(t => t.state === 'done').length;
+  return { done, total: all.length, pct: Math.round(done / all.length * 100) }; }
 
 /* --- мелкие куски разметки, общие для карточек ----------------------------- */
 function rpgDots(v, max){ max = max || 10; let s = '';

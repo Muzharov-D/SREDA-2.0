@@ -494,6 +494,8 @@ function renderPulse(root, d){
       </div>
       <aside class="pls-side">
         <button class="btn go pls-surge" id="plsSurge">⚡ Запустить рой</button>
+        <button class="btn ghost pls-proj" id="plsProj">🚀 ${MEGA_PROJECT.title} · ${projProgress().pct}%</button>
+        <div class="side-normal">
         <div class="of-live"><span class="of-dot"></span><b id="pls-inflight">—</b> задач в работе <i>прямо сейчас</i></div>
         <div class="of-live"><span class="lg-mark d"></span><b id="pls-inf-d">—</b> делают цифровые сотрудники</div>
         <div class="of-live"><span class="lg-mark h" style="--c:#9aa096"></span><b id="pls-inf-h">—</b> делают люди</div>
@@ -509,6 +511,18 @@ function renderPulse(root, d){
           return `<span style="--c:${DEPT_TASK[r].c}">${dep.label.toLowerCase()}</span>`; }).join('')}</div>
         <div class="of-feed" id="plsFeed"></div>
         <div class="od-gov">Каждый нейрон — сотрудник из штатки: наведите — имя и задача, клик — профиль. Цепочки сделок бегут между конкретными людьми. <b>Колесо мыши</b> — приблизиться; докрутите на отделе — нырнёте в его пульс.</div>
+        </div>
+        <div class="side-proj" style="display:none">
+          <div class="pj-head"><b>🚀 ${MEGA_PROJECT.title}</b><small>${MEGA_PROJECT.ask}</small>
+            <small class="pj-meta">спонсор: ${MEGA_PROJECT.sponsor} · дедлайн ${MEGA_PROJECT.deadline}</small>
+            ${rpgBar(projProgress().pct,'ok')}<small class="pj-meta">${projProgress().done}/${projProgress().total} задач готово</small></div>
+          ${MEGA_PROJECT.phases.map(ph=>{ const ds=ph.tasks.filter(t=>t.state==='done').length;
+            return `<div class="pj-phase"><b>${ph.title} <span>${ds}/${ph.tasks.length}</span></b>
+            ${ph.tasks.map(t=>{ const s=PROJ_STATE[t.state];
+              return `<button class="pj-task" data-pj="${t.dept}:${t.who}"><i style="color:${s[2]}">${s[0]}</i><div><b>${t.who} · ${roleLabel(t.dept)}</b><small>${t.t}</small></div><span style="color:${s[2]}">${s[1]}</span></button>`; }).join('')}
+          </div>`; }).join('')}
+          <div class="od-gov">На карте подсвечены только нейроны проекта — трасса бежит по цепочке задач, ⛔ застревает на юр-гейте. Клик по задаче — профиль исполнителя (его первый квест — этот проект).</div>
+        </div>
       </aside>
     </div>`;
 
@@ -543,6 +557,39 @@ function renderPulse(root, d){
       else navTo('team:'+n.ci); },
   });
   window.__CX = cx; /* отладочный хук для e2e-проверок */
+
+  /* ── мегапроект CEO: трасса по нейронам, фокус-режим ── */
+  const projNodes = projTasks().map(t=>({ t, ni: cx.findNode(t.dept, t.who, 'h') }));
+  let projMode=false, projGen=0;
+  const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+  async function projTrace(gen){
+    while(projMode && gen===projGen && document.body.contains(stage)){
+      let prev=null;
+      for(const {t,ni} of projNodes){
+        if(!projMode||gen!==projGen||!document.body.contains(stage)) return;
+        if(ni==null) continue;
+        const col=PROJ_STATE[t.state][2], blocked=t.state==='blocked';
+        if(prev==null){ cx.corePulse(t.dept, '🚀 '+t.t, col); await sleep(1400); }
+        else await cx.impulse(prev, ni, { label:(blocked?'⛔ ':'')+t.t, color:col, dur:1.9, size:4, stuck:blocked });
+        if(blocked) feed('g', `${t.who} · ${roleLabel(t.dept)}`, `проект упёрся в гейт sev1 — «${t.t}» ждёт человека`);
+        prev=ni;
+      }
+      await sleep(2600);
+    }
+  }
+  function setProj(on){
+    projMode=on; projGen++;
+    const pb=$('#plsProj',root), pn=root.querySelector('.side-normal'), pp=root.querySelector('.side-proj');
+    if(pb){ pb.classList.toggle('on',on); pb.innerHTML = on ? '← Обычный пульс' : `🚀 ${MEGA_PROJECT.title} · ${projProgress().pct}%`; }
+    if(pn) pn.style.display=on?'none':'';
+    if(pp) pp.style.display=on?'':'none';
+    cx.setFocus(on ? projNodes.map(p=>p.ni).filter(x=>x!=null) : null);
+    if(on){ pushAudit({ who:MEGA_PROJECT.sponsor, what:'Поставил задачу: '+MEGA_PROJECT.title+' — трасса проекта на пульсе', verdict:'allow' });
+      toast('CEO поставил задачу — компания подсветила исполнителей, трасса побежала'); projTrace(projGen); }
+  }
+  const pjBtn=$('#plsProj',root); if(pjBtn) pjBtn.onclick=()=>setProj(!projMode);
+  root.querySelectorAll('[data-pj]').forEach(b=>b.onclick=()=>{ const [dp,who]=b.dataset.pj.split(':');
+    const i=personIdxByName(dp,who); if(i>=0) navTo('person:'+dp+':'+i); else navTo('team:'+dp); });
 
   const synTotal=DEPT_SYN.reduce((a,s)=>a+s.w,0);
   const pickSyn=()=>{ let r=Math.random()*synTotal; for(const s of DEPT_SYN){ if((r-=s.w)<0) return s; } return DEPT_SYN[0]; };
@@ -589,8 +636,8 @@ function renderPulse(root, d){
   window.__pulseTimer=setInterval(()=>{
     if(!document.body.contains(stage)){ clearInterval(window.__pulseTimer); cx.destroy(); return; }
     tick++;
-    /* фоновая жизнь: задачи бегут между нейронами внутри отделов */
-    for(let q=0;q<2;q++){
+    /* фоновая жизнь приглушается в режиме проекта — сцена принадлежит трассе */
+    if(!projMode) for(let q=0;q<2;q++){
       const r=randDept(), dt=DEPT_TASK[r];
       const isD=Math.random()<0.62;
       let who='';
@@ -602,14 +649,14 @@ function renderPulse(root, d){
       cx.localPulse(r, who?(isD?'🤖 ':'👤 ')+who+' · '+task:'');
     }
     /* задача из ядра в отдел */
-    if(tick%2===0){ const r=randDept(), dt=DEPT_TASK[r];
+    if(!projMode && tick%2===0){ const r=randDept(), dt=DEPT_TASK[r];
       cx.corePulse(r, Math.random()<0.4?dt.l[Math.floor(Math.random()*dt.l.length)]:'', dt.c); }
     /* передача по межотделовому синапсу — между конкретными людьми */
-    if(Math.random()<0.5){ const s=pickSyn();
+    if(!projMode && Math.random()<0.5){ const s=pickSyn();
       cx.impulse(cx.findNode(s.a,null,'h'), cx.findNode(s.b,null,'h'),
         { label:Math.random()<0.55?s.art[Math.floor(Math.random()*s.art.length)]:'', color:'#34d399', dur:2.3 }); }
     /* сюжетная цепочка сделки и волна-дыхание */
-    if(tick%12===5) runStory();
+    if(!projMode && tick%12===5) runStory();
     if(tick%9===2) cx.surgeWave();
     done += 3+Math.floor(Math.random()*4);
     const infV=Math.max(1,baseInf+Math.round((Math.random()-0.5)*60));
@@ -664,6 +711,9 @@ function renderDeptPulse(root, roleId){
   const dAlloc = allocByWeights(dhc, fns.map(f=>groupsH[f].length + (digsByFn[f]?digsByFn[f].length:0)));
   const gated = stepGate({role:roleId}).gated;
   const leadId = 'h'+team[0].i;
+  /* мегапроект CEO в этом отделе */
+  const PJ = (typeof projTasksOf==='function') ? projTasksOf(roleId) : [];
+  const pjByName = {}; PJ.forEach(t=>pjByName[t.who]=t);
 
   /* нейроны: каждый узел — живой сотрудник из штата */
   const nodes=[];
@@ -671,7 +721,8 @@ function renderDeptPulse(root, roleId){
   team.forEach(p=>{ const q=questsOf(roleId,p.name,p.task);
     const st=(p.i===0&&gated)?'block':(rpgHash(p.name+roleId)%5===0?'wait':'ok');
     nodes.push({ id:'h'+p.i, kind:'h', label:p.name, sub:p.role, av:humanAv(roleId,p.name,dt.c,'nm'),
-      color:dt.c, size:48+q.length*5, status:st, title:`${p.name} · ${p.role} — открыть профиль`, p }); });
+      color:dt.c, size:48+q.length*5, status:st, cls:pjByName[p.name]?'proj':'',
+      title:`${p.name} · ${p.role}${pjByName[p.name]?' · 🚀 в мегапроекте':''} — открыть профиль`, p }); });
   digs.forEach(w=>nodes.push({ id:'d'+w.i, kind:'d', label:w.name, sub:'цифровой', av:`<span class="nm-em">${w.emoji}</span>`,
     color:'#36c994', size:42, status:w.status==='paused'?'wait':'ok', title:`${w.name} · ${w.title} — открыть профиль`, w }));
   /* агенты Среды на контракте — «жидкие» нейроны на контактной поверхности */
@@ -691,6 +742,9 @@ function renderDeptPulse(root, roleId){
   tlh.forEach(x=>links.push({ a:'t'+x.i, b:leadId, w:2.2, color:'#2dd4bf', op:.32 }));
 
   root.innerHTML = workHead(d, `Пульс отдела «${cfg.role}» · ${hc} людей + ${dhc} цифровых · каждый нейрон — живой сотрудник`) + `
+    ${PJ.length?`<div class="pj-strip"><b>🚀 ${MEGA_PROJECT.title} в отделе · ${PJ.length}</b>
+      ${PJ.map(t=>{ const s=PROJ_STATE[t.state];
+        return `<button class="pj-chip" data-pjp="${t.who}" style="--c:${s[2]}"><i>${s[0]}</i><b>${t.who}</b><small>${t.t}</small></button>`; }).join('')}</div>`:''}
     <div class="dp-wrap">
       <div class="dp-stage nm-stage" id="dpStage"></div>
       <aside class="dp-side">
@@ -711,6 +765,8 @@ function renderDeptPulse(root, roleId){
   const map = neuralMap(stage, { nodes, links,
     layout:(W,H)=>neuralClusterLayout(W,H, fns.map(f=>({ id:f, items:[...groupsH[f].map(p=>'h'+p.i), ...(digsByFn[f]||[]).map(w=>'d'+w.i)] })), { memberR:50, rx:.36, ry:.34 }),
     onClick:(n)=>{ if(n.kind==='h') navTo('person:'+roleId+':'+n.p.i); else if(n.t) navTo('tagent:'+n.t.a.id); else if(n.kind==='d') navTo('worker:'+n.w.id); else navTo('team:'+roleId); } });
+  root.querySelectorAll('[data-pjp]').forEach(b=>b.onclick=()=>{ const i=personIdxByName(roleId, b.dataset.pjp);
+    if(i>=0) navTo('person:'+roleId+':'+i); });
 
   const FEEDV=[['собрал черновик:',dt.l[0]],['закрыл',dt.l[1]||dt.l[0]],['проверил',dt.l[2]||dt.l[0]],['передал дальше','результат']];
   const baseInf=Math.round((hc+dhc)*0.6);
@@ -733,6 +789,12 @@ function renderDeptPulse(root, roleId){
     /* тормозной синапс: сигнал идёт, но гейт закрыт — нейрон не возбуждается */
     if(gated && tick%8===0){ const src=team[1]||team[0];
       map.impulse('h'+src.i, leadId, { label: roleId==='dev'?'⛔ PR #482 · sev1-гейт':'⛔ '+cfg.gate+' · sev1-гейт', color:'#f87171', blocked:true, dur:1.7 }); }
+    /* импульсы мегапроекта: лид → исполнитель, у заблокированной задачи — стоп */
+    if(PJ.length && tick%6===2){ const t=PJ[Math.floor(Math.random()*PJ.length)];
+      const tn=team.find(p=>p.name===t.who);
+      if(tn && 'h'+tn.i!==leadId) map.impulse(leadId, 'h'+tn.i,
+        { label:'🚀 '+t.t, color:PROJ_STATE[t.state][2], blocked:t.state==='blocked', dur:1.6,
+          pop:t.state==='done'?t.who+': готово · '+t.out:'' }); }
     done+=3+Math.floor(Math.random()*3); const di=$('#dp-done',root); if(di) di.textContent=done.toLocaleString('ru');
     const inf=Math.max(1,baseInf+Math.round((Math.random()-0.5)*baseInf*0.4));
     const infD=Math.round(inf*0.62), infH=inf-infD;

@@ -4160,5 +4160,43 @@ body.rpg-mode .hc-ach{color:#e6d9b8}
 .fg-feed .of-row{font-size:11.5px}
 
 /* ============================================================================
+   МЕГАПРОЕКТ CEO — трасса на пульсе, полоса в отделе, золото исполнителей
+   ========================================================================== */
+.pls-proj{width:100%;justify-content:center;margin-top:-4px;border-color:rgba(232,196,104,.35);color:#e8c468}
+.pls-proj:hover{border-color:rgba(232,196,104,.6)}
+.pls-proj.on{border-color:var(--line3);color:var(--txt2)}
+.pj-head{border:1px solid rgba(232,196,104,.3);border-radius:12px;padding:10px 12px;margin-bottom:9px;
+  background:linear-gradient(180deg,rgba(232,196,104,.05),transparent)}
+.pj-head>b{font-size:13px;display:block}
+.pj-head small{display:block;font-size:11px;color:var(--txt2);margin:4px 0}
+.pj-head .pj-meta{color:var(--muted);font-size:10.5px}
+.pj-head .hc-bar{margin:7px 0 4px}
+.pj-phase{margin-bottom:8px}
+.pj-phase>b{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:flex;justify-content:space-between;padding:3px 2px}
+.pj-phase>b span{color:var(--faint)}
+.pj-task{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:var(--panel2);
+  border:1px solid var(--line);border-radius:9px;padding:6px 9px;margin:3px 0;cursor:pointer;color:var(--txt);font:inherit;transition:border-color .15s}
+.pj-task:hover{border-color:rgba(232,196,104,.45)}
+.pj-task i{font-style:normal;flex:none}
+.pj-task>div{flex:1;min-width:0}
+.pj-task b{font-size:11.5px;display:block}
+.pj-task small{font-size:10.5px;color:var(--muted);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pj-task>span{flex:none;font-size:10px}
+/* полоса проекта над пульсом отдела */
+.pj-strip{display:flex;align-items:center;gap:8px;overflow-x:auto;padding:8px 11px;margin-bottom:10px;
+  border:1px solid rgba(232,196,104,.3);border-radius:12px;
+  background:linear-gradient(90deg,rgba(232,196,104,.06),transparent 60%),var(--panel)}
+.pj-strip>b{flex:none;font-size:11.5px;color:#e8c468;white-space:nowrap}
+.pj-chip{flex:none;display:flex;align-items:center;gap:7px;background:var(--panel2);border:1px solid var(--line2);
+  border-radius:9px;padding:5px 10px;cursor:pointer;color:var(--txt);font:inherit;max-width:240px;transition:border-color .15s}
+.pj-chip:hover{border-color:var(--c,#e8c468)}
+.pj-chip i{font-style:normal;color:var(--c,#e8c468)}
+.pj-chip b{font-size:11.5px;white-space:nowrap}
+.pj-chip small{font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* исполнитель мегапроекта на нейрокарте отдела */
+.nm-node.proj .nm-av{border-color:#e8c468;box-shadow:0 0 10px rgba(0,0,0,.5),0 0 9px rgba(232,196,104,.35)}
+.nm-node.proj .nm-name::after{content:' 🚀';font-size:9px}
+
+/* ============================================================================
    Конец дополнительных стилей
    ========================================================================== */
