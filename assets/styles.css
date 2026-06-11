@@ -4360,10 +4360,14 @@ body.portal-mode .who,body.portal-mode .filial-sw{display:none}
    Навигация v2: вход экрана + хлебные крошки ВНУТРИ .work
    (каркас .app/.topbar/.stage не трогаем — никаких новых узлов в сетке)
    ========================================================================== */
-@keyframes stageIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.stage>.work{animation:stageIn .22s ease both}
-.org{animation:stageIn .22s ease both}
+/* stageIn НЕ трогает opacity: если кадр анимации застрянет (скрытая вкладка/троттлинг/
+   гонка первого кадра) — контент остаётся видимым, максимум слегка смещён. Пустого экрана быть не может. */
+@keyframes stageIn{from{transform:translateY(8px)}to{transform:none}}
+.stage>.work{opacity:1;animation:stageIn .22s ease}
+.org{opacity:1;animation:stageIn .22s ease}
 @media (prefers-reduced-motion: reduce){
+  /* вход экрана для reduce-motion полностью выключаем — контент виден сразу */
+  .stage>.work,.org{animation:none!important}
   *,*::before,*::after{
     animation-duration:.01ms!important;
     animation-iteration-count:1!important;
