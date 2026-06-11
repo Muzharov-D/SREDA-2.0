@@ -3,10 +3,18 @@
    Всё вымышленное. Никаких реальных вызовов моделей — только сценарии.
    ========================================================================== */
 
-/* --- API endpoint (same origin for prototype, override via env if needed) --- */
-const API_BASE = (typeof window !== 'undefined' && window.location.hostname === 'localhost')
-  ? 'http://localhost:3000'
-  : '';
+/* --- API endpoint -----------------------------------------------------------
+   локально → свой бэкенд на :3000; на *.onrender.com → same origin;
+   на Vercel и прочей статике → бэкенд на Render (CORS на сервере открыт).
+   Ручной override: window.__API_BASE = 'https://…' до подключения mock.js. */
+const API_BASE = (() => {
+  if (typeof window === 'undefined') return '';
+  if (window.__API_BASE !== undefined) return window.__API_BASE;
+  const h = window.location.hostname;
+  if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:3000';
+  if (h.endsWith('.onrender.com')) return '';
+  return 'https://sreda-2-0.onrender.com';
+})();
 
 const API_KEY = 'sreda-prototype-key-2026'; // prototype-only, no real auth
 

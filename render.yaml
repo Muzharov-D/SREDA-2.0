@@ -7,3 +7,11 @@ services:
     startCommand: node server/app.js
     # PORT задаёт сам Render; API_KEY не нужен — сервер использует
     # дефолтный ключ прототипа, фронт держит его захардкоженным.
+    # Фронт живёт на Vercel: пересобирать Render только при правках бэка,
+    # чтобы sqlite-база не пересеивалась на каждый пуш фронта.
+    # (для сервиса, созданного вручную: Settings → Build Filters → те же пути)
+    buildFilter:
+      paths:
+        - server/**
+        - package.json
+        - package-lock.json
