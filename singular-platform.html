@@ -14,9 +14,9 @@
   <meta property="og:image:width" content="1200"/>
   <meta property="og:image:height" content="630"/>
   <meta name="twitter:card" content="summary_large_image"/>
-  <link rel="stylesheet" href="assets/fonts/inter.css"/>
-  <link rel="stylesheet" href="assets/styles.css"/>
-  <link rel="stylesheet" href="assets/singular-theme.css"/>
+  <link rel="stylesheet" href="assets/fonts/inter.css?v=2"/>
+  <link rel="stylesheet" href="assets/styles.css?v=2"/>
+  <link rel="stylesheet" href="assets/singular-theme.css?v=2"/>
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg"/>
 </head>
 <body>
@@ -50,7 +50,9 @@
     <nav class="nav" id="nav"></nav>
 
     <!-- Рабочая область (меняет лицо под роль) -->
-    <main class="stage" id="stage"></main>
+    <main class="stage" id="stage">
+      <canvas id="stageCanvas"></canvas>
+    </main>
   </div>
 
   <!-- Модалка глобальной постановки задачи -->
@@ -157,6 +159,95 @@
       requestAnimationFrame(animate);
     }
     animate();
+
+    // ===== Stage Canvas: neuron network inside workspace =====
+    const stageCanvas = document.getElementById('stageCanvas');
+    const sCtx = stageCanvas.getContext('2d');
+    let sW, sH, sNodes = [];
+
+    function resizeStageCanvas(){
+      const stage = document.getElementById('stage');
+      if(!stage) return;
+      sW = stageCanvas.width = stage.clientWidth;
+      sH = stageCanvas.height = stage.clientHeight;
+    }
+    window.addEventListener('resize', resizeStageCanvas);
+    setTimeout(resizeStageCanvas, 100);
+
+    class SNode{
+      constructor(){
+        this.x = Math.random() * sW;
+        this.y = Math.random() * sH;
+        this.vx = (Math.random() - .5) * .15;
+        this.vy = (Math.random() - .5) * .15;
+        this.r = .8 + Math.random() * 1.5;
+        this.pulse = Math.random() * Math.PI * 2;
+        this.speed = .01 + Math.random() * .02;
+      }
+      update(){
+        this.x += this.vx;
+        this.y += this.vy;
+        if(this.x < 0 || this.x > sW) this.vx *= -1;
+        if(this.y < 0 || this.y > sH) this.vy *= -1;
+        this.pulse += this.speed;
+      }
+      draw(){
+        const glow = Math.sin(this.pulse) * .5 + .5;
+        sCtx.beginPath();
+        sCtx.arc(this.x, this.y, this.r * (1 + glow * .5), 0, Math.PI * 2);
+        sCtx.fillStyle = `rgba(176,106,238,${.15 + glow * .25})`;
+        sCtx.fill();
+      }
+    }
+
+    function initSNodes(){
+      sNodes = [];
+      const count = Math.min(60, Math.floor(sW * sH / 20000));
+      for(let i = 0; i < count; i++) sNodes.push(new SNode());
+    }
+    setTimeout(() => { resizeStageCanvas(); initSNodes(); }, 200);
+
+    function drawSConnections(){
+      for(let i = 0; i < sNodes.length; i++){
+        for(let j = i + 1; j < sNodes.length; j++){
+          const dx = sNodes[i].x - sNodes[j].x;
+          const dy = sNodes[i].y - sNodes[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if(dist < 100){
+            const alpha = (1 - dist / 100) * .08;
+            sCtx.beginPath();
+            sCtx.moveTo(sNodes[i].x, sNodes[i].y);
+            sCtx.lineTo(sNodes[j].x, sNodes[j].y);
+            sCtx.strokeStyle = `rgba(176,106,238,${alpha})`;
+            sCtx.lineWidth = .3;
+            sCtx.stroke();
+          }
+        }
+      }
+    }
+
+    function animateStage(){
+      if(sW && sH){
+        sCtx.clearRect(0, 0, sW, sH);
+        drawSConnections();
+        sNodes.forEach(n => { n.update(); n.draw(); });
+      }
+      requestAnimationFrame(animateStage);
+    }
+    animateStage();
+
+    // ===== Preserve stageCanvas across renderStage calls =====
+    const _origRenderStage = window.renderStage;
+    if(_origRenderStage){
+      window.renderStage = function(id){
+        const stage = document.getElementById('stage');
+        const canvas = document.getElementById('stageCanvas');
+        _origRenderStage(id);
+        if(canvas && stage && !stage.contains(canvas)){
+          stage.insertBefore(canvas, stage.firstChild);
+        }
+      };
+    }
 
     // ===== Label overrides for Singular Metropolis =====
     const LABELS = {

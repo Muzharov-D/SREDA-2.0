@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Среда Office · 3D</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: #121310;
+    color: #e8e6e3;
+    font-family: 'Inter', system-ui, sans-serif;
+    overflow: hidden;
+    width: 100vw; height: 100vh;
+  }
+  #canvas-container {
+    position: fixed;
+    inset: 0;
+  }
+  canvas { display: block; }
+
+  .ui-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .ui-layer > * { pointer-events: auto; }
+
+  .topbar {
+    position: fixed; top:0; left:0; right:0;
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 14px 24px;
+    background: linear-gradient(180deg, rgba(18,19,16,0.95) 0%, rgba(18,19,16,0) 100%);
+    z-index: 20;
+  }
+  .brand { display:flex; align-items:center; gap:10px; }
+  .brand img { width:32px; height:32px; }
+  .brand-text b { font-size:13px; letter-spacing:0.08em; color:#e8e6e3; }
+  .brand-text span { font-size:13px; letter-spacing:0.08em; color:#4A90D9; }
+  .brand-text small { display:block; font-size:11px; color:#8a8a8a; margin-top:2px; }
+  .metrics { display:flex; gap:20px; }
+  .metric { text-align:right; }
+  .metric b { display:block; font-size:15px; color:#e8e6e3; }
+  .metric span { font-size:11px; color:#8a8a8a; }
+
+  .panel {
+    position: fixed;
+    background: rgba(18,19,16,0.85);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 18px;
+    min-width: 260px;
+    max-width: 320px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04);
+    transition: opacity 0.25s, transform 0.25s;
+    z-index: 50;
+  }
+  .panel.hidden { opacity:0; transform:translateY(8px); pointer-events:none; }
+  .panel.visible { opacity:1; transform:translateY(0); pointer-events:auto; }
+  .panel-head {
+    display:flex; align-items:center; gap:10px;
+    margin-bottom:12px; padding-bottom:10px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .panel-avatar {
+    width:44px; height:44px; border-radius:50%;
+    object-fit: cover;
+    border: 2px solid rgba(255,255,255,0.08);
+    box-shadow: 0 0 12px rgba(74,144,217,0.3);
+  }
+  .panel-avatar.agent-avatar {
+    box-shadow: 0 0 12px rgba(155,126,217,0.35);
+    background: rgba(155,126,217,0.15);
+    display:flex; align-items:center; justify-content:center;
+    font-size: 20px;
+  }
+  .panel-title { font-size:14px; font-weight:600; color:#e8e6e3; }
+  .panel-sub { font-size:12px; color:#8a8a8a; }
+  .panel-row {
+    display:flex; justify-content:space-between;
+    padding: 6px 0;
+    font-size: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  .panel-row:last-child { border-bottom:none; }
+  .panel-label { color:#8a8a8a; }
+  .panel-value { color:#e8e6e3; font-weight:500; }
+  .panel-value.status-green { color:#7CB97F; }
+  .panel-value.status-yellow { color:#D4B46A; }
+  .panel-value.status-red { color:#C97B7B; }
+  .panel-badge {
+    display:inline-block;
+    padding: 2px 8px; border-radius: 4px;
+    font-size:11px; font-weight:500;
+    background: rgba(74,144,217,0.12);
+    color: #4A90D9;
+    border: 1px solid rgba(74,144,217,0.2);
+  }
+  .panel-badge.red {
+    background: rgba(201,123,123,0.12);
+    color: #C97B7B;
+    border-color: rgba(201,123,123,0.2);
+  }
+  .panel-badge.yellow {
+    background: rgba(212,180,106,0.12);
+    color: #D4B46A;
+    border-color: rgba(212,180,106,0.2);
+  }
+
+  .info-panel { left:24px; top:80px; }
+  .detail-panel { right:24px; top:80px; }
+  .project-panel { left:24px; bottom:24px; }
+
+  .legend {
+    position: fixed; right:24px; bottom:24px;
+    display:flex; flex-direction:column; gap:8px;
+    z-index: 50;
+  }
+  .legend-item {
+    display:flex; align-items:center; gap:8px;
+    font-size:11px; color:#8a8a8a;
+  }
+  .legend-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+
+  .tooltip {
+    position: fixed;
+    background: rgba(18,19,16,0.92);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: #e8e6e3;
+    pointer-events: none;
+    z-index: 100;
+    white-space: nowrap;
+    opacity: 0; transition: opacity 0.15s;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  }
+  .tooltip.visible { opacity: 1; }
+
+  .controls {
+    position: fixed; left:24px; bottom:24px;
+    display:flex; gap:8px;
+    z-index: 50;
+  }
+  .ctrl-btn {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #8a8a8a;
+    font-size: 18px;
+    display:flex; align-items:center; justify-content:center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .ctrl-btn:hover {
+    background: rgba(255,255,255,0.08);
+    color: #e8e6e3;
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<div class="ui-layer">
+  <div class="topbar">
+    <div class="brand">
+      <img src="assets/logo.svg" alt="Среда"/>
+      <div class="brand-text">
+        <b>ЦИФРОВОЙ ДВОЙНИК · <span>РАЗРАБОТКА</span></b>
+        <small>52 человека + 56 цифровых сотрудников · 80% IT-бюджета</small>
+      </div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><b>38 PR/день</b><span>в 12× больше</span></div>
+      <div class="metric"><b>4 часа</b><span>lead time → prod</span></div>
+      <div class="metric"><b>88%</b><span>покрытие тестами</span></div>
+    </div>
+  </div>
+
+  <div class="panel info-panel visible" id="infoPanel">
+    <div class="panel-head">
+      <div style="width:44px;height:44px;border-radius:50%;background:rgba(74,144,217,0.15);display:flex;align-items:center;justify-content:center;font-size:20px;">⌨️</div>
+      <div>
+        <div class="panel-title">Отдел разработки</div>
+        <div class="panel-sub">Тимлид · Игорь</div>
+      </div>
+    </div>
+    <div class="panel-row"><span class="panel-label">Людей в штате</span><span class="panel-value">52</span></div>
+    <div class="panel-row"><span class="panel-label">Цифровых сотрудников</span><span class="panel-value">56</span></div>
+    <div class="panel-row"><span class="panel-label">Активных задач</span><span class="panel-value status-green">12</span></div>
+    <div class="panel-row"><span class="panel-label">Блокеры</span><span class="panel-value status-red">1</span></div>
+    <div class="panel-row"><span class="panel-label">Текущий проект</span><span class="panel-value">Среда Lite</span></div>
+    <div style="margin-top:10px;font-size:11px;color:#8a8a8a;line-height:1.5;">
+      ЛКМ — вращение камеры · ПКМ — панорама · Scroll — зум<br>
+      Клик на сотрудника или станцию для деталей.
+    </div>
+  </div>
+
+  <div class="panel detail-panel hidden" id="detailPanel">
+    <div class="panel-head" id="detailHead">
+      <div class="panel-avatar agent-avatar" id="detailAvatar">🛠️</div>
+      <div>
+        <div class="panel-title" id="detailTitle">—</div>
+        <div class="panel-sub" id="detailSub">—</div>
+      </div>
+    </div>
+    <div id="detailBody"></div>
+  </div>
+
+  <div class="panel project-panel visible" id="projectPanel">
+    <div class="panel-head">
+      <div style="width:44px;height:44px;border-radius:50%;background:rgba(124,185,127,0.15);display:flex;align-items:center;justify-content:center;font-size:20px;">📁</div>
+      <div>
+        <div class="panel-title">Проект «Среда Lite»</div>
+        <div class="panel-sub">Дедлайн: до 2 июля</div>
+      </div>
+    </div>
+    <div class="panel-row">
+      <span class="panel-label">MVP-функционал</span>
+      <span class="panel-badge">в работе · s5</span>
+    </div>
+    <div class="panel-row">
+      <span class="panel-label">Тесты и QA</span>
+      <span class="panel-badge red">блокер · s6</span>
+    </div>
+    <div class="panel-row">
+      <span class="panel-label">Модель</span>
+      <span class="panel-value">Claude Opus / Haiku</span>
+    </div>
+    <div class="panel-row">
+      <span class="panel-label">Артефакт</span>
+      <span class="panel-value">build #128</span>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#7CB97F;box-shadow:0 0 6px rgba(124,185,127,0.35)"></div> Активен</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#D4B46A;box-shadow:0 0 6px rgba(212,180,106,0.35)"></div> На ревью</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#C97B7B;box-shadow:0 0 6px rgba(201,123,123,0.35)"></div> Блокер</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#9B7ED9;box-shadow:0 0 6px rgba(155,126,217,0.4)"></div> Цифровой сотрудник</div>
+  </div>
+
+  <div class="controls">
+    <button class="ctrl-btn" id="btnReset" title="Сбросить вид">⌖</button>
+    <button class="ctrl-btn" id="btnZoomIn" title="Приблизить">+</button>
+    <button class="ctrl-btn" id="btnZoomOut" title="Отдалить">−</button>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ================================================================
+   СРЕДА OFFICE · Three.js
+   3D holographic office visualization
+   ================================================================ */
+
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x121310);
+scene.fog = new THREE.FogExp2(0x121310, 0.02);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 25, 35);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.maxPolarAngle = Math.PI / 2.2;
+controls.minDistance = 10;
+controls.maxDistance = 80;
+controls.target.set(0, 0, 0);
+
+// Lights
+const ambientLight = new THREE.AmbientLight(0x404060, 0.5);
+scene.add(ambientLight);
+
+const dirLight = new THREE.DirectionalLight(0x4A90D9, 0.8);
+dirLight.position.set(10, 20, 10);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.width = 2048;
+dirLight.shadow.mapSize.height = 2048;
+scene.add(dirLight);
+
+const pointLight = new THREE.PointLight(0x9B7ED9, 0.6, 30);
+pointLight.position.set(0, 8, 0);
+scene.add(pointLight);
+
+const blueLight = new THREE.PointLight(0x4A90D9, 0.4, 25);
+blueLight.position.set(-10, 6, -10);
+scene.add(blueLight);
+
+// Floor
+const floorGeometry = new THREE.PlaneGeometry(40, 30);
+const floorMaterial = new THREE.MeshStandardMaterial({
+  color: 0x1a1a1e,
+  roughness: 0.8,
+  metalness: 0.2,
+});
+const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// Grid
+const gridHelper = new THREE.GridHelper(40, 40, 0x2a2a3e, 0x1a1a2e);
+gridHelper.position.y = 0.01;
+scene.add(gridHelper);
+
+// Materials
+const wallMat = new THREE.MeshStandardMaterial({ color: 0x2a2a3e, roughness: 0.9 });
+const deskMat = new THREE.MeshStandardMaterial({ color: 0x252530, roughness: 0.7, metalness: 0.1 });
+const monitorMat = new THREE.MeshStandardMaterial({ color: 0x1e2a3a, roughness: 0.5, metalness: 0.3 });
+const screenMat = new THREE.MeshStandardMaterial({ color: 0x0d1b2a, emissive: 0x4A90D9, emissiveIntensity: 0.3 });
+const chairMat = new THREE.MeshStandardMaterial({ color: 0x3a3a4a, roughness: 0.8 });
+const printerMat = new THREE.MeshStandardMaterial({ color: 0x2a2a35, roughness: 0.6 });
+const serverMat = new THREE.MeshStandardMaterial({ color: 0x1a1a24, roughness: 0.7 });
+const whiteboardMat = new THREE.MeshStandardMaterial({ color: 0x1e1e28, roughness: 0.9 });
+
+// Build office
+function createBox(w, h, d, mat, x, y, z, castShadow = true) {
+  const geo = new THREE.BoxGeometry(w, h, d);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(x, y, z);
+  mesh.castShadow = castShadow;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+  return mesh;
+}
+
+// Walls
+for (let x = -18; x <= 18; x += 36) {
+  createBox(1, 8, 30, wallMat, x, 4, 0, false);
+}
+for (let z = -14; z <= 14; z += 28) {
+  createBox(36, 8, 1, wallMat, 0, 4, z, false);
+}
+
+// Windows (glowing panels on walls)
+const windowGeo = new THREE.PlaneGeometry(3, 4);
+const windowMat = new THREE.MeshStandardMaterial({
+  color: 0x1a2332,
+  emissive: 0x4A90D9,
+  emissiveIntensity: 0.15,
+  transparent: true,
+  opacity: 0.8,
+});
+for (let z = -10; z <= 10; z += 10) {
+  const w1 = new THREE.Mesh(windowGeo, windowMat);
+  w1.position.set(-17.4, 4, z);
+  w1.rotation.y = Math.PI / 2;
+  scene.add(w1);
+  const w2 = new THREE.Mesh(windowGeo, windowMat);
+  w2.position.set(17.4, 4, z);
+  w2.rotation.y = -Math.PI / 2;
+  scene.add(w2);
+}
+
+// Desks
+const deskPositions = [
+  [-8, 0, -6], [-4, 0, -6], [0, 0, -6],
+  [-8, 0, 0], [-4, 0, 0], [0, 0, 0],
+  [-8, 0, 6], [-4, 0, 6], [0, 0, 6],
+];
+deskPositions.forEach(pos => {
+  // Desk
+  createBox(3, 1.2, 1.5, deskMat, pos[0], 0.6, pos[2]);
+  // Monitor
+  const mon = createBox(1.2, 0.9, 0.1, monitorMat, pos[0], 1.8, pos[2] - 0.5);
+  // Screen
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.7), screenMat);
+  screen.position.set(pos[0], 1.8, pos[2] - 0.46);
+  scene.add(screen);
+  // Chair
+  const chair = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.8, 16), chairMat);
+  chair.position.set(pos[0], 0.4, pos[2] + 1.2);
+  chair.castShadow = true;
+  scene.add(chair);
+});
+
+// Boss desk
+createBox(4, 1.2, 2, deskMat, 8, 0.6, 8);
+const bossMon = createBox(1.5, 1.1, 0.1, monitorMat, 8, 2, 7.2);
+const bossScreen = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.9), new THREE.MeshStandardMaterial({
+  color: 0x0d1b2a, emissive: 0x9B7ED9, emissiveIntensity: 0.4
+}));
+bossScreen.position.set(8, 2, 7.26);
+scene.add(bossScreen);
+const bossChair = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.9, 16), chairMat);
+bossChair.position.set(8, 0.45, 9.5);
+scene.add(bossChair);
+
+// Whiteboard
+const wb = createBox(0.2, 4, 6, whiteboardMat, 12, 4, -2, false);
+// Whiteboard frame glow
+const wbGlow = new THREE.PointLight(0xffffff, 0.3, 8);
+wbGlow.position.set(12, 4, -2);
+scene.add(wbGlow);
+
+// Printer
+createBox(1.5, 1, 1.2, printerMat, 10, 0.5, 6);
+const printerLed = new THREE.PointLight(0x7CB97F, 0.5, 3);
+printerLed.position.set(10, 1, 6);
+scene.add(printerLed);
+
+// Server racks
+for (let i = 0; i < 2; i++) {
+  const rack = createBox(1.5, 3, 1, serverMat, 12 + i * 2, 1.5, 8);
+  // LEDs
+  for (let j = 0; j < 5; j++) {
+    const led = new THREE.Mesh(
+      new THREE.SphereGeometry(0.08, 8, 8),
+      new THREE.MeshStandardMaterial({
+        color: j === 2 ? 0xff0000 : 0x00ff00,
+        emissive: j === 2 ? 0xff0000 : 0x00ff00,
+        emissiveIntensity: 0.8,
+      })
+    );
+    led.position.set(12 + i * 2, 2.5 - j * 0.4, 8.6);
+    scene.add(led);
+  }
+}
+
+// Data
+const EMPLOYEES = [
+  { id:'e1', name:'Игорь', role:'Тимлид', status:'active', avatar:'assets/avatars/dev-igor.jpg', pos:[-8, 2.5, -6], task:'Ревью архитектуры v3' },
+  { id:'e2', name:'Кира', role:'Senior Backend', status:'active', avatar:'assets/avatars/dev-kira.jpg', pos:[-4, 2.5, -6], task:'API платежей · 3DS' },
+  { id:'e3', name:'Дан', role:'Backend', status:'active', avatar:'assets/avatars/dev-dan.jpg', pos:[0, 2.5, -6], task:'Миграция БД · v2' },
+  { id:'e4', name:'Аня', role:'Frontend Lead', status:'review', avatar:'assets/avatars/dev-anya.jpg', pos:[-8, 2.5, 0], task:'Чекаут UI · ревью' },
+  { id:'e5', name:'Пётр', role:'Frontend', status:'active', avatar:'assets/avatars/dev-petr.jpg', pos:[-4, 2.5, 0], task:'Компоненты ДС' },
+  { id:'e6', name:'Гриша', role:'Fullstack', status:'active', avatar:'assets/avatars/dev-grisha.jpg', pos:[0, 2.5, 0], task:'Интеграция CRM' },
+  { id:'e7', name:'Оля', role:'QA Lead', status:'active', avatar:'assets/avatars/dev-olya.jpg', pos:[-8, 2.5, 6], task:'Регресс · 143 ✓' },
+  { id:'e8', name:'Тарас', role:'DevOps', status:'blocked', avatar:'assets/avatars/dev-taras.jpg', pos:[-4, 2.5, 6], task:'Пайплайн · блокер' },
+  { id:'e9', name:'Лена', role:'SRE', status:'active', avatar:'assets/avatars/dev-lena.jpg', pos:[0, 2.5, 6], task:'Алерт latency +18%' },
+  { id:'e10', name:'Макс', role:'AppSec', status:'active', avatar:'assets/avatars/dev-maks.jpg', pos:[8, 2.5, 8], task:'Аудит 3DS · 0 critical' },
+];
+
+const AGENTS = [
+  { id:'a1', name:'Алгоритм', emoji:'🛠️', role:'Цифр. бэкенд', status:'active', pos:[-6, 3, -4], now:'PR #483', model:'Sonnet', cost:'₽1,247' },
+  { id:'a2', name:'Пиксель', emoji:'🖼️', role:'Цифр. фронтенд', status:'active', pos:[-2, 3, -4], now:'чекаут UI', model:'Sonnet', cost:'₽892' },
+  { id:'a3', name:'Регресс', emoji:'🧪', role:'Цифр. QA', status:'active', pos:[-6, 3, 2], now:'регресс 143✓', model:'Haiku', cost:'₽340' },
+  { id:'a4', name:'Конвейер', emoji:'🔁', role:'Цифр. DevOps', status:'active', pos:[-2, 3, 2], now:'релиз 0.9.5', model:'Haiku', cost:'₽410' },
+  { id:'a5', name:'Страж', emoji:'🛡️', role:'Цифр. AppSec', status:'active', pos:[2, 3, -4], now:'аудит 3DS', model:'Opus', cost:'₽2,180' },
+  { id:'a6', name:'Хроника', emoji:'📜', role:'Цифр. техпис', status:'active', pos:[2, 3, 2], now:'API-доки v2', model:'Haiku', cost:'₽280' },
+  { id:'a7', name:'Дозор', emoji:'📡', role:'Цифр. SRE', status:'probation', pos:[6, 3, 2], now:'алерт latency', model:'Sonnet', cost:'₽1,560' },
+];
+
+const BOSS = { id:'boss', name:'Оркестратор', symbol:'◆', role:'Boss', pos:[8, 3, 8] };
+
+const PROJECT_STEPS = [
+  { id:'s5', title:'MVP-функционал', status:'running', pos:[10, 2, -6] },
+  { id:'s6', title:'Тесты и QA', status:'blocked', pos:[10, 2, 0] },
+];
+
+// Load avatar textures and create sprites
+const textureLoader = new THREE.TextureLoader();
+const interactables = [];
+
+EMPLOYEES.forEach((emp, i) => {
+  const group = new THREE.Group();
+  group.position.set(...emp.pos);
+
+  // Status glow
+  const statusColor = emp.status === 'active' ? 0x7CB97F : (emp.status === 'review' ? 0xD4B46A : 0xC97B7B);
+  const glowGeo = new THREE.SphereGeometry(1.2, 16, 16);
+  const glowMat = new THREE.MeshBasicMaterial({ color: statusColor, transparent: true, opacity: 0.15 });
+  const glow = new THREE.Mesh(glowGeo, glowMat);
+  glow.name = 'glow';
+  group.add(glow);
+
+  // Avatar sprite
+  const map = textureLoader.load(emp.avatar);
+  const material = new THREE.SpriteMaterial({ map, color: 0xffffff });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(1.5, 1.5, 1);
+  sprite.center.set(0.5, 0.3);
+  group.add(sprite);
+
+  // Border ring
+  const ringGeo = new THREE.RingGeometry(0.7, 0.8, 32);
+  const ringMat = new THREE.MeshBasicMaterial({ color: statusColor, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = -0.5;
+  group.add(ring);
+
+  // Name label (HTML overlay would be better, but using simple approach)
+  scene.add(group);
+
+  // Store for raycasting
+  sprite.userData = { type: 'employee', data: emp, group, glow, ring, statusColor, idx: i };
+  interactables.push(sprite);
+});
+
+// Agent stations
+AGENTS.forEach((agent, i) => {
+  const group = new THREE.Group();
+  group.position.set(...agent.pos);
+
+  // Hexagon base
+  const hexGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.3, 6);
+  const hexMat = new THREE.MeshStandardMaterial({
+    color: 0x9B7ED9,
+    emissive: 0x9B7ED9,
+    emissiveIntensity: 0.3,
+    transparent: true,
+    opacity: 0.6,
+  });
+  const hex = new THREE.Mesh(hexGeo, hexMat);
+  group.add(hex);
+
+  // Core
+  const coreGeo = new THREE.SphereGeometry(0.4, 16, 16);
+  const coreMat = new THREE.MeshStandardMaterial({
+    color: 0x9B7ED9,
+    emissive: 0x9B7ED9,
+    emissiveIntensity: 0.6,
+  });
+  const core = new THREE.Mesh(coreGeo, coreMat);
+  core.position.y = 0.5;
+  group.add(core);
+
+  // Glow light
+  const light = new THREE.PointLight(0x9B7ED9, 0.5, 5);
+  light.position.y = 0.5;
+  group.add(light);
+
+  scene.add(group);
+
+  // Invisible hit target
+  const hitGeo = new THREE.SphereGeometry(1, 8, 8);
+  const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+  const hitMesh = new THREE.Mesh(hitGeo, hitMat);
+  hitMesh.position.set(...agent.pos);
+  hitMesh.userData = { type: 'agent', data: agent };
+  scene.add(hitMesh);
+  interactables.push(hitMesh);
+});
+
+// Boss
+const bossGroup = new THREE.Group();
+bossGroup.position.set(...BOSS.pos);
+const bossGeo = new THREE.SphereGeometry(0.8, 16, 16);
+const bossMat = new THREE.MeshStandardMaterial({
+  color: 0x9B7ED9,
+  emissive: 0x9B7ED9,
+  emissiveIntensity: 0.4,
+  transparent: true,
+  opacity: 0.8,
+});
+const bossMesh = new THREE.Mesh(bossGeo, bossMat);
+bossGroup.add(bossMesh);
+const bossLight = new THREE.PointLight(0x9B7ED9, 0.8, 8);
+bossGroup.add(bossLight);
+scene.add(bossGroup);
+const bossHit = new THREE.Mesh(new THREE.SphereGeometry(1.2, 8, 8), new THREE.MeshBasicMaterial({ visible: false }));
+bossHit.position.set(...BOSS.pos);
+bossHit.userData = { type: 'boss', data: BOSS };
+scene.add(bossHit);
+interactables.push(bossHit);
+
+// Project steps
+PROJECT_STEPS.forEach(step => {
+  const group = new THREE.Group();
+  group.position.set(...step.pos);
+  const color = step.status === 'running' ? 0x7CB97F : 0xC97B7B;
+  const boxGeo = new THREE.BoxGeometry(1.5, 1, 1);
+  const boxMat = new THREE.MeshStandardMaterial({
+    color: 0x121310,
+    emissive: color,
+    emissiveIntensity: 0.3,
+    transparent: true,
+    opacity: 0.9,
+  });
+  const box = new THREE.Mesh(boxGeo, boxMat);
+  group.add(box);
+  const stepLight = new THREE.PointLight(color, 0.5, 4);
+  group.add(stepLight);
+  scene.add(group);
+
+  const hit = new THREE.Mesh(new THREE.BoxGeometry(2, 1.5, 1.5), new THREE.MeshBasicMaterial({ visible: false }));
+  hit.position.set(...step.pos);
+  hit.userData = { type: 'project', data: step };
+  scene.add(hit);
+  interactables.push(hit);
+});
+
+// Flow lines
+const flowMaterial = new THREE.LineBasicMaterial({ color: 0x4A90D9, transparent: true, opacity: 0.3 });
+const FLOWS = [
+  { from:'e1', to:'a1', active:true },
+  { from:'e2', to:'a1', active:true },
+  { from:'e4', to:'a2', active:true },
+  { from:'e7', to:'a3', active:true },
+  { from:'e9', to:'a7', active:true },
+  { from:'e10', to:'a5', active:true },
+  { from:'a1', to:'s5', active:true },
+  { from:'a3', to:'s6', active:true },
+  { from:'boss', to:'a1', active:true },
+];
+
+FLOWS.forEach(flow => {
+  const from = [...EMPLOYEES, ...AGENTS, BOSS].find(e => e.id === flow.from || (e.id === 'boss' && flow.from === 'boss'));
+  const to = [...EMPLOYEES, ...AGENTS, ...PROJECT_STEPS, BOSS].find(e => e.id === flow.to || (e.id === 'boss' && flow.to === 'boss'));
+  if (!from || !to) return;
+  const points = [
+    new THREE.Vector3(...from.pos),
+    new THREE.Vector3(...to.pos),
+  ];
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+  const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({
+    color: 0x4A90D9,
+    transparent: true,
+    opacity: flow.active ? 0.5 : 0.15,
+  }));
+  scene.add(line);
+});
+
+// Particles
+const particleCount = 100;
+const particleGeo = new THREE.BufferGeometry();
+const positions = new Float32Array(particleCount * 3);
+for (let i = 0; i < particleCount * 3; i += 3) {
+  positions[i] = (Math.random() - 0.5) * 30;
+  positions[i + 1] = Math.random() * 10;
+  positions[i + 2] = (Math.random() - 0.5) * 20;
+}
+particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+const particleMat = new THREE.PointsMaterial({
+  color: 0x4A90D9,
+  size: 0.15,
+  transparent: true,
+  opacity: 0.6,
+});
+const particles = new THREE.Points(particleGeo, particleMat);
+scene.add(particles);
+
+// Raycaster
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let hovered = null;
+
+function onMouseMove(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(interactables);
+
+  if (intersects.length > 0) {
+    const obj = intersects[0].object;
+    if (hovered !== obj) {
+      hovered = obj;
+      document.body.style.cursor = 'pointer';
+      const data = obj.userData.data;
+      showTooltip(data.name + ' · ' + (data.role || data.title || ''));
+    }
+  } else {
+    hovered = null;
+    document.body.style.cursor = 'default';
+    hideTooltip();
+  }
+
+  tooltip.style.left = (event.clientX + 14) + 'px';
+  tooltip.style.top = (event.clientY + 14) + 'px';
+}
+
+function onClick(event) {
+  if (hovered) {
+    showDetail(hovered.userData.data, hovered.userData.type);
+  } else {
+    hideDetail();
+  }
+}
+
+window.addEventListener('mousemove', onMouseMove);
+window.addEventListener('click', onClick);
+
+// UI functions
+const tooltip = document.getElementById('tooltip');
+function showTooltip(text) {
+  tooltip.textContent = text;
+  tooltip.classList.add('visible');
+}
+function hideTooltip() {
+  tooltip.classList.remove('visible');
+}
+
+const detailPanel = document.getElementById('detailPanel');
+function showDetail(ent, type) {
+  const isAgent = type === 'agent';
+  const isBoss = type === 'boss';
+  const isProject = type === 'project';
+
+  document.getElementById('detailTitle').textContent = ent.name;
+  document.getElementById('detailSub').textContent = ent.role || ent.title || '';
+
+  const avatarEl = document.getElementById('detailAvatar');
+  if (isAgent) {
+    avatarEl.textContent = ent.emoji;
+    avatarEl.className = 'panel-avatar agent-avatar';
+    avatarEl.style.background = 'rgba(155,126,217,0.15)';
+    avatarEl.style.backgroundImage = 'none';
+  } else if (isBoss) {
+    avatarEl.textContent = ent.symbol;
+    avatarEl.className = 'panel-avatar agent-avatar';
+    avatarEl.style.background = 'rgba(155,126,217,0.15)';
+    avatarEl.style.backgroundImage = 'none';
+  } else if (isProject) {
+    avatarEl.textContent = ent.status === 'running' ? '⚙️' : '🔴';
+    avatarEl.className = 'panel-avatar agent-avatar';
+    avatarEl.style.background = ent.status === 'running' ? 'rgba(124,185,127,0.15)' : 'rgba(201,123,123,0.15)';
+    avatarEl.style.backgroundImage = 'none';
+  } else {
+    avatarEl.innerHTML = '';
+    avatarEl.className = 'panel-avatar';
+    avatarEl.style.backgroundImage = 'url(' + ent.avatar + ')';
+    avatarEl.style.backgroundSize = 'cover';
+    avatarEl.style.background = '';
+  }
+
+  const body = document.getElementById('detailBody');
+  let html = '';
+  if (isAgent) {
+    html += `<div class="panel-row"><span class="panel-label">Статус</span><span class="panel-value ${ent.status === 'active' ? 'status-green' : 'status-yellow'}">${ent.status === 'active' ? 'Активен' : 'На испытательном сроке'}</span></div>`;
+    html += `<div class="panel-row"><span class="panel-label">Текущая задача</span><span class="panel-value">${ent.now}</span></div>`;
+    html += `<div class="panel-row"><span class="panel-label">Модель</span><span class="panel-value">${ent.model}</span></div>`;
+    html += `<div class="panel-row"><span class="panel-label">Стоимость</span><span class="panel-value">${ent.cost}</span></div>`;
+  } else if (isBoss) {
+    html += `<div class="panel-row"><span class="panel-label">Статус</span><span class="panel-value status-green">Делегирует</span></div>`;
+    html += `<div class="panel-row"><span class="panel-label">Роль</span><span class="panel-value">Оркестрация роя</span></div>`;
+  } else if (isProject) {
+    html += `<div class="panel-row"><span class="panel-label">Статус</span><span class="panel-value ${ent.status === 'running' ? 'status-green' : 'status-red'}">${ent.status === 'running' ? 'В работе' : 'Блокер'}</span></div>`;
+    html += `<div class="panel-row"><span class="panel-label">Шаг</span><span class="panel-value">${ent.id}</span></div>`;
+  } else {
+    const statusColor = ent.status === 'active' ? 'status-green' : (ent.status === 'review' ? 'status-yellow' : 'status-red');
+    const statusText = ent.status === 'active' ? 'Активен' : (ent.status === 'review' ? 'На ревью' : 'Блокер');
+    html += `<div class="panel-row"><span class="panel-label">Статус</span><span class="panel-value ${statusColor}">${statusText}</span></div>`;
+    html += `<div class="panel-row"><span class="panel-label">Текущая задача</span><span class="panel-value">${ent.task}</span></div>`;
+  }
+  body.innerHTML = html;
+  detailPanel.classList.remove('hidden');
+  detailPanel.classList.add('visible');
+}
+
+function hideDetail() {
+  detailPanel.classList.remove('visible');
+  detailPanel.classList.add('hidden');
+}
+
+// Controls
+document.getElementById('btnReset').addEventListener('click', () => {
+  camera.position.set(0, 25, 35);
+  controls.target.set(0, 0, 0);
+});
+document.getElementById('btnZoomIn').addEventListener('click', () => {
+  camera.position.multiplyScalar(0.8);
+});
+document.getElementById('btnZoomOut').addEventListener('click', () => {
+  camera.position.multiplyScalar(1.2);
+});
+
+// Animation
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const time = clock.getElapsedTime();
+  const delta = clock.getDelta();
+
+  controls.update();
+
+  // Animate employee glows
+  EMPLOYEES.forEach((emp, i) => {
+    const sprite = interactables.find(obj => obj.userData.type === 'employee' && obj.userData.data.id === emp.id);
+    if (sprite) {
+      const glow = sprite.userData.group.getObjectByName('glow');
+      if (glow) {
+        const pulse = Math.sin(time * 2 + i * 0.7) * 0.3 + 0.7;
+        glow.scale.setScalar(pulse);
+        glow.material.opacity = 0.1 * pulse;
+      }
+    }
+  });
+
+  // Animate particles
+  const positions = particles.geometry.attributes.position.array;
+  for (let i = 0; i < particleCount * 3; i += 3) {
+    positions[i + 1] += Math.sin(time + positions[i]) * 0.01;
+    if (positions[i + 1] > 10) positions[i + 1] = 0;
+  }
+  particles.geometry.attributes.position.needsUpdate = true;
+
+  // Animate boss
+  bossMesh.scale.setScalar(1 + Math.sin(time * 2) * 0.05);
+
+  renderer.render(scene, camera);
+}
+
+animate();
+
+// Resize
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>
