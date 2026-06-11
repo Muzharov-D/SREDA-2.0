@@ -27,6 +27,19 @@ function initPortal(){
   const brand = $('#brandHome'); if(brand){ brand.style.cursor='pointer'; brand.onclick=()=>{ portalState.screen='catalog'; portalState.selectedAgent=null; renderPortalStage(); }; }
   /* meter → bills */
   const meter = $('#meterBtn'); if(meter){ meter.style.cursor='pointer'; meter.onclick=()=>{ portalState.screen='bills'; renderPortalStage(); }; }
+  /* keyboard shortcuts */
+  document.addEventListener('keydown', e=>{
+    if(e.key==='Escape'){
+      if(portalState.screen==='agent'){ portalState.screen='catalog'; portalState.selectedAgent=null; renderPortalNav(); renderPortalStage(); }
+      else if(portalState.screen==='project'){ portalState.screen='orders'; portalState.selectedProject=null; renderPortalNav(); renderPortalStage(); }
+    }
+    if((e.metaKey||e.ctrlKey) && e.key>='1' && e.key<='4'){
+      e.preventDefault();
+      const ids = ['catalog','orders','bills','support'];
+      const idx = parseInt(e.key,10)-1;
+      if(ids[idx]){ portalState.screen=ids[idx]; portalState.selectedAgent=null; portalState.selectedProject=null; renderPortalNav(); renderPortalStage(); }
+    }
+  });
 }
 
 /* ── навигация ── */
@@ -44,7 +57,7 @@ function renderPortalNav(){
 /* ── рендер экрана ── */
 function renderPortalStage(){
   const stage = $('#stage'); if(!stage) return;
-  stage.className = 'stage full';
+  stage.className = 'stage full enter';
   stage.innerHTML = '<div class="work" id="work"></div>';
   const root = $('#work');
   switch(portalState.screen){
@@ -55,6 +68,32 @@ function renderPortalStage(){
     case 'bills':    renderBills(root); break;
     case 'support':  renderSupport(root); break;
     default:         renderCatalog(root);
+  }
+  requestAnimationFrame(()=>{
+    stage.classList.add('enter-active');
+    setTimeout(()=>stage.classList.remove('enter','enter-active'), 240);
+  });
+  renderPortalBreadcrumb();
+}
+
+/* ── breadcrumb для портала ── */
+function renderPortalBreadcrumb(){
+  const stage = $('#stage'); if(!stage) return;
+  let bar = stage.previousElementSibling;
+  if(!bar || !bar.classList.contains('bc-bar')){
+    bar = document.createElement('div');
+    bar.className = 'bc-bar';
+    stage.parentNode.insertBefore(bar, stage);
+  }
+  const names = {catalog:'Цифровой найм', orders:'Мои заказы', bills:'Счета', support:'Поддержка'};
+  const cur = portalState.screen;
+  const label = names[cur] || cur;
+  if(cur==='agent' && portalState.selectedAgent){
+    bar.innerHTML = `<button onclick="portalState.screen='catalog'; portalState.selectedAgent=null; renderPortalNav(); renderPortalStage();">🌊 Цифровой найм</button><span class="bc-sep">›</span><span class="bc-current">${escHtml(portalState.selectedAgent.name)}</span>`;
+  } else if(cur==='project' && portalState.selectedProject){
+    bar.innerHTML = `<button onclick="portalState.screen='orders'; portalState.selectedProject=null; renderPortalNav(); renderPortalStage();">🏭 Мои заказы</button><span class="bc-sep">›</span><span class="bc-current">${escHtml(portalState.selectedProject.title)}</span>`;
+  } else {
+    bar.innerHTML = `<span class="bc-current">${escHtml(label)}</span>`;
   }
 }
 
