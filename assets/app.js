@@ -143,6 +143,8 @@ function setWorkspace(id){ const ws=WORKSPACES.find(w=>w.id===id); if(!ws) retur
 
 /* --- Родительская цепочка детальных роутов: крошки + подсветка sidebar --- */
 function navParent(id){
+  if(id.indexOf('gperson:')===0) return 'dpulse:'+id.split(':')[1];
+  if(id.indexOf('gworker:')===0) return 'dpulse:'+id.split(':')[1];
   if(id.indexOf('person:')===0) return 'team:'+id.split(':')[1];
   if(id.indexOf('worker:')===0) return 'workers';
   if(id.indexOf('tagent:')===0) return 'talent';
@@ -674,9 +676,14 @@ function renderPulse(root, d){
       return { name:p.name, sub:p.role, now:p.task, named:true, i }; });
     const hc=HEADCOUNT[r]||named.length, dhc=DIGITAL_HEADCOUNT[r]||0;
     const digsN=(DIGITAL_STAFF[r]||[]).map(w=>({ name:w.name, sub:w.title, now:w.now, named:true, id:w.id }));
+    /* добивка до штата: КАЖДОМУ безымянному узлу — детерминированная личность */
+    const genP=Array.from({length:Math.max(0,hc-named.length)},(_,gi)=>{ const g=genPerson(r,gi);
+      return { name:g.full, sub:g.role, now:g.now, named:false, gen:true, gi, key:g.key }; });
+    const genD=Array.from({length:Math.max(0,dhc-digsN.length)},(_,gi)=>{ const g=genWorker(r,gi);
+      return { name:g.name, sub:g.title, now:g.now, named:false, gen:true, gi, key:g.key }; });
     return { id:r, label:dep.label, icon:dep.icon, color:dt.c, hc, dhc,
-      people:[...named, ...Array.from({length:Math.max(0,hc-named.length)},()=>({named:false}))],
-      digital:[...digsN, ...Array.from({length:Math.max(0,dhc-digsN.length)},()=>({named:false}))] };
+      people:[...named, ...genP],
+      digital:[...digsN, ...genD] };
   });
 
   const feed=(mark, who, text, dgt)=>{ const f=$('#plsFeed',root); if(!f) return;
@@ -693,6 +700,8 @@ function renderPulse(root, d){
     onDive:(id,fromZoom)=>{ if(fromZoom) toast(`Ныряем в пульс «${roleLabel(id)}»`); navTo('dpulse:'+id); },
     onNode:(n)=>{ if(n.named&&n.type==='h') navTo('person:'+n.ci+':'+n.ref.i);
       else if(n.named&&n.type==='d') navTo('worker:'+n.ref.id);
+      else if(n.ref&&n.ref.gen&&n.type==='h') navTo('gperson:'+n.ci+':'+n.ref.gi);
+      else if(n.ref&&n.ref.gen&&n.type==='d') navTo('gworker:'+n.ci+':'+n.ref.gi);
       else navTo('team:'+n.ci); },
   });
   window.__CX = cx; /* отладочный хук для e2e-проверок */
@@ -940,6 +949,22 @@ function renderDeptPulse(root, roleId){
       title:`${p.name} · ${p.role}${pjByName[p.name]?' · 🚀 в мегапроекте':''} — открыть профиль`, p }); });
   digs.forEach(w=>nodes.push({ id:'d'+w.i, kind:'d', label:w.name, sub:'цифровой', av:`<span class="nm-em">${w.emoji}</span>`,
     color:'#36c994', size:42, status:w.status==='paused'?'wait':'ok', title:`${w.name} · ${w.title} — открыть профиль`, w }));
+  /* добивка до штата: КАЖДОМУ безымянному нейрону — детерминированная личность.
+     Распределяем по функциям, как в Пульсе компании; роуты ведут в gperson/gworker. */
+  const genH=[], genD=[];
+  if (typeof genPerson==='function'){
+    const needH=Math.max(0,hc-team.length), needD=Math.max(0,dhc-digs.length);
+    for(let gi=0;gi<needH;gi++){ const g=genPerson(roleId,gi); const f=fns[gi%fns.length];
+      nodes.push({ id:'gh'+gi, kind:'h', gen:true, gi, fn:f, label:g.full, sub:g.role,
+        av:`<span class="nm-em" style="font-style:normal">${g.name[0]}</span>`,
+        color:'#60a5fa', size:40, status:'ok', title:`${g.full} · ${g.role} — открыть профиль` });
+      genH.push({ id:'gh'+gi, f }); }
+    for(let gi=0;gi<needD;gi++){ const g=genWorker(roleId,gi); const f=fns[gi%fns.length];
+      nodes.push({ id:'gd'+gi, kind:'d', gen:true, gi, fn:f, label:g.name, sub:'цифровой',
+        av:`<span class="nm-em">${g.emoji}</span>`,
+        color:'#36c994', size:36, status:'ok', title:`${g.name} · ${g.title} — открыть профиль` });
+      genD.push({ id:'gd'+gi, f }); }
+  }
   /* агенты Среды на контракте — «жидкие» нейроны на контактной поверхности */
   const tlh = tlHiredOf(roleId).map((h,i)=>({ h, a:talentAgent(h.aid), i }));
   tlh.forEach(x=>nodes.push({ id:'t'+x.i, kind:'d', cls:'tlq', label:x.a.name.split(' ')[0], sub:'агент Среды',
@@ -955,6 +980,8 @@ function renderDeptPulse(root, roleId){
   digs.forEach(w=>{ const ln=(w.lead||'').split(' · ')[0]; const t=team.find(p=>p.name===ln);
     links.push({ a:'d'+w.i, b:t?'h'+t.i:'#'+(fns.indexOf(w.fn)>=0?w.fn:fns[0]), w:2.4, color:'#36c994', op:.26 }); });
   tlh.forEach(x=>links.push({ a:'t'+x.i, b:leadId, w:2.2, color:'#2dd4bf', op:.32 }));
+  genH.forEach(x=>links.push({ a:x.id, b:'#'+x.f, w:1.3, color:dt.c, op:.10 }));
+  genD.forEach(x=>links.push({ a:x.id, b:'#'+x.f, w:1.3, color:'#36c994', op:.12 }));
 
   root.innerHTML = workHead(d, `Пульс отдела «${cfg.role}» · ${hc} людей + ${dhc} цифровых · каждый нейрон — живой сотрудник`) + `
     ${PJ.length?`<div class="pj-strip"><b>🚀 ${MEGA_PROJECT.title} в отделе · ${PJ.length}</b>
@@ -980,8 +1007,8 @@ function renderDeptPulse(root, roleId){
     </div>`;
   const stage=$('#dpStage',root);
   const map = neuralMap(stage, { nodes, links,
-    layout:(W,H)=>neuralClusterLayout(W,H, fns.map(f=>({ id:f, items:[...groupsH[f].map(p=>'h'+p.i), ...(digsByFn[f]||[]).map(w=>'d'+w.i)] })), { memberR:50, rx:.36, ry:.34 }),
-    onClick:(n)=>{ if(n.kind==='h') navTo('person:'+roleId+':'+n.p.i); else if(n.t) navTo('tagent:'+n.t.a.id); else if(n.kind==='d') navTo('worker:'+n.w.id); else navTo('team:'+roleId); } });
+    layout:(W,H)=>neuralClusterLayout(W,H, fns.map(f=>({ id:f, items:[...groupsH[f].map(p=>'h'+p.i), ...(digsByFn[f]||[]).map(w=>'d'+w.i), ...genH.filter(x=>x.f===f).map(x=>x.id), ...genD.filter(x=>x.f===f).map(x=>x.id)] })), { memberR:50, rx:.36, ry:.34 }),
+    onClick:(n)=>{ if(n.gen&&n.kind==='h') navTo('gperson:'+roleId+':'+n.gi); else if(n.gen&&n.kind==='d') navTo('gworker:'+roleId+':'+n.gi); else if(n.kind==='h') navTo('person:'+roleId+':'+n.p.i); else if(n.t) navTo('tagent:'+n.t.a.id); else if(n.kind==='d') navTo('worker:'+n.w.id); else navTo('team:'+roleId); } });
   root.querySelectorAll('[data-pjp]').forEach(b=>b.onclick=()=>{ const i=personIdxByName(roleId, b.dataset.pjp);
     if(i>=0) navTo('person:'+roleId+':'+i); });
 
@@ -1250,6 +1277,8 @@ function renderStage(id){
   if (id.indexOf('diplomat:')===0){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderWorkerDiplomat($('#work'), id.slice(9)); return; }
   if (id.indexOf('worker:')===0){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderWorkerProfile($('#work'), id.slice(7)); return; }
   if (id.indexOf('person:')===0){ const pp=id.split(':'); stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderPersonProfile($('#work'), pp[1], pp[2]); return; }
+  if (id.indexOf('gperson:')===0){ const pp=id.split(':'); stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderGenPerson($('#work'), pp[1], pp[2]); return; }
+  if (id.indexOf('gworker:')===0){ const pp=id.split(':'); stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderGenWorker($('#work'), pp[1], pp[2]); return; }
   if (id==='pulse'){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderPulse($('#work'), {icon:'🧠',label:'Пульс компании'}); return; }
   if (id==='talent'){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderTalent($('#work')); return; }
   if (id.indexOf('tagent:')===0){ stage.classList.add('full'); stage.innerHTML=`<div class="work" id="work"></div>`; renderTalentAgent($('#work'), id.slice(7)); return; }
@@ -4077,6 +4106,126 @@ function renderPersonProfile(root, dept, idx){
       go.onclick=send; ask.onkeydown=e=>{ if(e.key==='Enter') send(); }; }
   }
   draw();
+}
+
+/* ========================================================================== */
+/*  СГЕНЕРИРОВАННЫЕ ПРОФИЛИ — рядовой штат из «Пульса». Личность детерминирована */
+/*  (people-gen.js), вёрстка — родная (.worker-profile/.gp-head/gpField).        */
+/*  Цвет бинарный: человек #60a5fa, цифровой #36c994. Подаётся честно: рядовой   */
+/*  сотрудник штата, без громких достижений уровня featured.                    */
+/* ========================================================================== */
+const GEN_HUMAN_C = '#60a5fa', GEN_DIGIT_C = '#36c994';
+
+function renderGenPerson(root, dept, idx){
+  const dep = DEPARTMENTS.find(x=>x.id===dept) || {icon:'👤',label:dept};
+  if (typeof genPerson !== 'function'){ root.innerHTML = workHead(dep,'профиль недоступен')+'<div class="od-gov">Генератор личностей не загружен.</div>'; return; }
+  const p = genPerson(dept, +idx);
+  const c = GEN_HUMAN_C;
+  const back = ()=>goBack('dpulse:'+dept);
+  root.innerHTML = `
+    <div class="worker-profile animate-fade">
+      <div class="worker-profile-header">
+        <button class="worker-profile-back" id="gpBack">← Назад</button>
+        <div class="worker-profile-title"><h1>Профиль сотрудника</h1><p>рядовой состав штата · профиль собран автоматически</p></div>
+      </div>
+      <div class="gp-head">
+        ${initialsAv(p.name, p.surname, c, true)}
+        <div class="gp-id">
+          <h1>${p.name} ${p.surname}</h1>
+          <p>${p.role} · ${dep.label} · функция «${p.fn}»</p>
+          <div class="gp-badges">
+            <span class="gp-bdg acc">${p.grade}</span>
+            <span class="gp-bdg lvl">${LEX('lvlOf')(p.lvl)}</span>
+            <span class="gp-bdg ok">● в штате</span>
+          </div>
+        </div>
+        <div class="gp-rate">
+          <b>${p.rating} <span class="gp-stars">★★★★★</span></b>
+          <small>Индекс Среды · рядовой состав</small>
+        </div>
+      </div>
+      <div class="gp-sources">
+        ${['1С ЗУП','КЭДО','Среда'].map(s=>`<span class="gp-sys"><i></i>${s}</span>`).join('')}
+        <span class="gp-sys-note">профиль штатной единицы · собран автоматически из систем компании</span>
+      </div>
+      <div class="two-col" style="align-items:start">
+        <div class="panel gp-card"><h2>Основное</h2>
+          ${gpField('Имя', p.name, '1c')}${gpField('Фамилия', p.surname, '1c')}
+          ${gpField('Должность', p.role, '1c')}${gpField('Грейд', p.grade+' · '+RPG_LVL_LBL[p.lvl], 'kedo')}
+          ${gpField('Отдел', dep.label, '1c')}${gpField('Функция', p.fn, 'sreda')}
+          ${gpField('Руководитель', p.lead, 'sreda')}${gpField('В компании с', p.hired, '1c')}
+          ${gpField('Текущий фокус', p.now, 'sreda')}
+          <div class="gp-actions"><button class="btn ghost" data-go-team>Открыть штат отдела</button><button class="btn ghost" data-go-pulse>← В пульс отдела</button></div>
+        </div>
+        <div class="panel gp-card hc"><h2>${LEX('skills')} <span class="tag">${LEX('lvlOf')(p.lvl)}</span></h2>
+          <div class="hc-sec"><div class="hc-lab"><span>${LEX('skills')}</span></div>
+            ${p.skills.map(s=>`<div class="hc-skill"><span>${s.name}</span>${rpgDots(s.level)}<b>${s.level}/10</b></div>`).join('')}</div>
+          <div class="ji-sec esc" style="margin-top:9px"><b>Конверт полномочий</b><p>Специалист — принимает результат сам, лимит без апрува ₽500 / задача. Необратимые действия — только через руководителя.</p></div>
+          <div class="od-gov" style="margin-top:9px">Рядовая штатная единица отдела «${dep.label}». Грейд, навыки и текущая задача — из систем компании; профиль такой же, как у именных коллег.</div>
+        </div>
+      </div>
+    </div>`;
+  $('#gpBack',root).onclick = back;
+  const tm=root.querySelector('[data-go-team]'); if(tm) tm.onclick=()=>navTo('team:'+dept);
+  const pl=root.querySelector('[data-go-pulse]'); if(pl) pl.onclick=()=>navTo('dpulse:'+dept);
+}
+
+function renderGenWorker(root, dept, idx){
+  const dep = DEPARTMENTS.find(x=>x.id===dept) || {icon:'🤖',label:dept};
+  if (typeof genWorker !== 'function'){ root.innerHTML = workHead(dep,'профиль недоступен')+'<div class="od-gov">Генератор личностей не загружен.</div>'; return; }
+  const w = genWorker(dept, +idx);
+  const c = GEN_DIGIT_C;
+  const back = ()=>goBack('dpulse:'+dept);
+  const mName = (typeof MODELS!=='undefined' && MODELS[w.model]) ? MODELS[w.model].name : w.model;
+  root.innerHTML = `
+    <div class="worker-profile animate-fade">
+      <div class="worker-profile-header">
+        <button class="worker-profile-back" id="gwBack">← Назад</button>
+        <div class="worker-profile-title"><h1>Профиль цифрового сотрудника</h1><p>рядовой состав цифрового штата · должностная инструкция и навыки</p></div>
+      </div>
+      <div class="gp-head">
+        <span class="gp-av big dgt" style="--c:${c}">${w.emoji}</span>
+        <div class="gp-id">
+          <h1>${w.name} <i class="dgt-tag">цифровой сотрудник</i></h1>
+          <p>${w.title} · ${dep.label} · функция «${w.fn}»</p>
+          <div class="gp-badges">
+            <span class="gp-bdg">${w.id}</span>
+            ${typeof modelBadge==='function'?modelBadge(w.model):`<span class="gp-bdg">${mName}</span>`}
+            <span class="gp-bdg ok">● активен</span>
+          </div>
+        </div>
+        <div class="gp-rate">
+          <b>в штате</b>
+          <small>цифровая единица · подотчётен человеку</small>
+        </div>
+      </div>
+      <div class="gp-sources">
+        ${['Среда · Студия','Маршрутизатор','Аудит'].map(s=>`<span class="gp-sys"><i></i>${s}</span>`).join('')}
+        <span class="gp-sys-note">подотчётен: <b style="color:var(--txt)">${w.lead}</b></span>
+      </div>
+      <div class="two-col" style="align-items:start">
+        <div class="panel ji-card"><h2>Должностная инструкция</h2>
+          <div class="ji-sec"><b>Миссия</b><p>${w.ji.mission}</p></div>
+          <div class="ji-sec"><b>Обязанности</b><ul>${w.ji.duties.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+          <div class="ji-sec lim"><b>Границы (что запрещено)</b><ul>${w.ji.limits.map(x=>`<li>⛔ ${x}</li>`).join('')}</ul></div>
+          <div class="ji-sec esc"><b>Эскалация человеку</b><p>${w.ji.esc}</p></div>
+        </div>
+        <div class="panel gp-card hc"><h2>Навыки и подчинение</h2>
+          <div class="hc-sec"><div class="hc-lab"><span>Навыки</span></div>
+            ${w.skills.map(s=>`<div class="hc-skill"><span>${s.name}</span>${rpgDots(s.level)}<b>${s.level}/10</b></div>`).join('')}</div>
+          ${gpField('Руководитель', w.lead, 'sreda')}
+          ${gpField('Отдел', dep.label, 'sreda')}
+          ${gpField('Функция', w.fn, 'sreda')}
+          ${gpField('Модель', mName, 'sreda')}
+          ${gpField('Сейчас в работе', w.now, 'sreda')}
+          ${w.ji.kpi.map(k=>gpField(k[0], k[1], 'sreda')).join('')}
+          <div class="gp-actions"><button class="btn ghost" data-go-pulse>← В пульс отдела</button></div>
+          <div class="od-gov" style="margin-top:9px">Рядовая цифровая единица штата «${dep.label}». Каждый результат — черновик человеку; права не шире периметра отдела.</div>
+        </div>
+      </div>
+    </div>`;
+  $('#gwBack',root).onclick = back;
+  const pl=root.querySelector('[data-go-pulse]'); if(pl) pl.onclick=()=>navTo('dpulse:'+dept);
 }
 
 /* ========================================================================== */

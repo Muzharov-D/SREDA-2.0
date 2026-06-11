@@ -334,7 +334,8 @@ function cortexMap(stage, opts){
     if (hover != null){ const n = nodes[hover];
       tip.style.display = 'block';
       tip.style.left = (n.x * k + ox) + 'px'; tip.style.top = ((n.y - n.r - 8) * k + oy) + 'px';
-      tip.innerHTML = n.named
+      const hasName = (n.named || (n.ref && n.ref.gen)) && n.ref && n.ref.name;
+      tip.innerHTML = hasName
         ? `<b>${n.ref.name}</b><small>${n.ref.sub || ''}${n.ref.now ? ' · сейчас: ' + n.ref.now : ''}</small><i>клик — профиль</i>`
         : `<b>${n.type === 'h' ? 'Специалист' : 'Типовой цифровой'}</b><small>${byCluster[n.ci].c.label}${n.ref && n.ref.sub ? ' · ' + n.ref.sub : ''}</small><i>клик — команда отдела</i>`;
     } else tip.style.display = 'none';
