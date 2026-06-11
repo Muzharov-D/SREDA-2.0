@@ -566,7 +566,7 @@ function renderPulse(root, d){
       ${Object.keys(byPhase).map(phT=>{ const pts=byPhase[phT]; const ds=pts.filter(t=>t.state==='done').length;
         return `<div class="pj-phase"><b>${phT} <span>${ds}/${pts.length}</span></b>
         ${pts.map(t=>{ const s=PROJ_STATE[t.state];
-          return `<button class="pj-task" data-pj="${t.dept}:${t.who}"><i style="color:${s[2]}">${s[0]}</i><div><b>${t.who} · ${roleLabel(t.dept)}</b><small>${t.t}</small></div><span style="color:${s[2]}">${s[1]}</span></button>`
+          return `<button class="pj-task" data-pj="${t.dept}:${t.who}"><i style="color:${s[2]}">${s[0]}</i><div><b>${t.who} · ${roleLabel(t.dept)}</b><small>${t.t}${t.dw?' · 🤖 '+t.dw:''}</small></div><span style="color:${s[2]}">${s[1]}</span></button>`
           + (t.state==='blocked'?`<button class="pj-fix" data-fix="${t.dept}">⛔ снять sev1-риск — рабочий стол «${roleLabel(t.dept)}» →</button>`:''); }).join('')}
         </div>`; }).join('')}`;
     }).join('<div style="height:10px"></div>')
@@ -575,7 +575,7 @@ function renderPulse(root, d){
   function refreshProj(){
     const pp=$('#pjPanel',root); if(pp && projMode){ pp.innerHTML=projPanelHTML(); wireProj(); }
     const pb=$('#plsProj',root); if(pb && !projMode) pb.innerHTML=projBtnLbl();
-    cx.setFocus(projMode ? projTasks().map(t=>cx.findNode(t.dept,t.who,'h')).filter(x=>x!=null) : null);
+    cx.setFocus(projMode ? projTasks().flatMap(t=>[cx.findNode(t.dept,t.who,'h'), t.dw?cx.findNode(t.dept,t.dw,'d'):null]).filter(x=>x!=null) : null);
   }
   function wireProj(){
     root.querySelectorAll('[data-pj]').forEach(b=>b.onclick=()=>{ const [dp,who]=b.dataset.pj.split(':');
@@ -599,6 +599,9 @@ function renderPulse(root, d){
         if(!projMode||gen!==projGen||!document.body.contains(stage)) return;
         const ni=cx.findNode(t.dept, t.who, 'h'); if(ni==null) continue;
         const col=PROJ_STATE[t.state][2], blocked=t.state==='blocked';
+        /* цифровой напарник несёт черновик человеку — гибридная пара в деле */
+        if(t.dw && t.state!=='wait'){ const di=cx.findNode(t.dept, t.dw, 'd');
+          if(di!=null) cx.impulse(di, ni, { label:'🤖 '+t.dw+' · черновик', color:'#36c994', dur:1.3 }); }
         if(prev==null){ cx.corePulse(t.dept, '🚀 '+t.t, col); await sleep(1400); }
         else await cx.impulse(prev, ni, { label:(blocked?'⛔ ':'')+t.t, color:col, dur:1.8, size:4, stuck:blocked,
           pop:t.state==='done'?`${t.who}: готово · ${t.out}`:'' });
@@ -622,7 +625,7 @@ function renderPulse(root, d){
     if(pb){ pb.classList.toggle('on',on); pb.innerHTML = on ? '← Обычный пульс' : projBtnLbl(); }
     if(pn) pn.style.display=on?'none':'';
     if(pp){ pp.style.display=on?'':'none'; if(on){ pp.innerHTML=projPanelHTML(); wireProj(); } }
-    cx.setFocus(on ? projTasks().map(t=>cx.findNode(t.dept,t.who,'h')).filter(x=>x!=null) : null);
+    cx.setFocus(on ? projTasks().flatMap(t=>[cx.findNode(t.dept,t.who,'h'), t.dw?cx.findNode(t.dept,t.dw,'d'):null]).filter(x=>x!=null) : null);
     if(on){ pushAudit({ who:MEGA_PROJECT.sponsor, what:'Поставил задачу: '+MEGA_PROJECT.title+' — трасса проекта на пульсе', verdict:'allow' });
       toast('CEO поставил задачу — компания подсветила исполнителей, трасса побежала'); projTrace(projGen); }
   }
@@ -808,7 +811,7 @@ function renderDeptPulse(root, roleId){
   root.innerHTML = workHead(d, `Пульс отдела «${cfg.role}» · ${hc} людей + ${dhc} цифровых · каждый нейрон — живой сотрудник`) + `
     ${PJ.length?`<div class="pj-strip"><b>🚀 ${MEGA_PROJECT.title} в отделе · ${PJ.length}</b>
       ${PJ.map(t=>{ const s=PROJ_STATE[t.state];
-        return `<button class="pj-chip" data-pjp="${t.who}" style="--c:${s[2]}"><i>${s[0]}</i><b>${t.who}</b><small>${t.t}</small></button>`; }).join('')}</div>`:''}
+        return `<button class="pj-chip" data-pjp="${t.who}" style="--c:${s[2]}"><i>${s[0]}</i><b>${t.who}${t.dw?' + 🤖 '+t.dw:''}</b><small>${t.t}</small></button>`; }).join('')}</div>`:''}
     <div class="dp-wrap">
       <div class="dp-stage nm-stage" id="dpStage"></div>
       <aside class="dp-side">

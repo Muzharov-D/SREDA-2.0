@@ -827,11 +827,17 @@ function projTaskState(t){
   }
   return t.state;
 }
-/* все задачи запущенных проектов; у каждой — proj/projTitle */
+/* цифровой напарник задачи: готовит черновик, человек принимает */
+function projDW(t){
+  const pool = (typeof DIGITAL_STAFF !== 'undefined' && DIGITAL_STAFF[t.dept]) || [];
+  if (!pool.length) return null;
+  return pool[rpgHash(t.dept + t.who + t.t) % pool.length].name;
+}
+/* все задачи запущенных проектов; у каждой — proj/projTitle/dw */
 function projTasks(){
-  const out = MEGA_PROJECT.phases.flatMap(p => p.tasks.map(t => ({ ...t, phase: p.title, state: projTaskState(t), proj:'sreda', projTitle: MEGA_PROJECT.title, icon: MEGA_PROJECT.icon })));
+  const out = MEGA_PROJECT.phases.flatMap(p => p.tasks.map(t => ({ ...t, phase: p.title, state: projTaskState(t), proj:'sreda', projTitle: MEGA_PROJECT.title, icon: MEGA_PROJECT.icon, dw: projDW(t) })));
   PROJECT_QUEUE.filter(p => mpLaunched(p.id)).forEach(p => {
-    p.phases.forEach(ph => ph.tasks.forEach(t => out.push({ ...t, phase: ph.title, state: queueTaskState(p, t), proj: p.id, projTitle: p.title, icon: p.icon })));
+    p.phases.forEach(ph => ph.tasks.forEach(t => out.push({ ...t, phase: ph.title, state: queueTaskState(p, t), proj: p.id, projTitle: p.title, icon: p.icon, dw: projDW(t) })));
   });
   return out;
 }
