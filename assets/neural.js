@@ -10,6 +10,9 @@
 
 function neuralMap(stage, opts){
   const NS = 'http://www.w3.org/2000/svg';
+  /* бинарное кодирование сотрудников: ВСЕ люди — синие круги, ВСЕ цифровые — изумрудные ромбы.
+     Отделы различаются подписями/кластерами/линиями, но не цветом людей. */
+  const KIND_COLOR = { h: '#60a5fa', d: '#36c994' };
   const nodes = opts.nodes, links = opts.links || [];
   const byId = {}; nodes.forEach(n => byId[n.id] = n);
   const pos = {};            // id -> [x, y]
@@ -26,7 +29,7 @@ function neuralMap(stage, opts){
     const el = document.createElement('div');
     el.className = `nm-node k-${n.kind || 'h'} st-${n.status || 'ok'}` + (n.cls ? ' ' + n.cls : '');
     el.dataset.id = n.id;
-    el.style.setProperty('--c', n.color || 'var(--acc)');
+    el.style.setProperty('--c', KIND_COLOR[n.kind] || n.color || 'var(--acc)');
     if (n.size) el.style.setProperty('--sz', n.size + 'px');
     el.innerHTML = `<div class="nm-av">${n.av || ''}</div><b class="nm-name">${n.label || ''}</b>${n.sub ? `<small class="nm-sub">${n.sub}</small>` : ''}`;
     el.title = n.title || '';

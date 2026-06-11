@@ -646,12 +646,12 @@ function renderPulse(root, d){
         <div class="side-normal">
         <div class="of-live"><span class="of-dot"></span><b id="pls-inflight">—</b> задач в работе <i>прямо сейчас</i></div>
         <div class="of-live"><span class="lg-mark d"></span><b id="pls-inf-d">—</b> делают цифровые сотрудники</div>
-        <div class="of-live"><span class="lg-mark h" style="--c:#9aa096"></span><b id="pls-inf-h">—</b> делают люди</div>
+        <div class="of-live"><span class="lg-mark h" style="--c:#60a5fa"></span><b id="pls-inf-h">—</b> делают люди</div>
         <div class="of-live"><b id="pls-done">—</b> выполнено сегодня</div>
         <div class="of-live"><b id="pls-flows">—</b> сквозных потока активно</div>
         <div class="of-legend kind-legend">
-          <span class="lg-h" style="--c:#9aa096">нейрон-человек</span>
-          <span class="lg-d">цифровой · ромб</span>
+          <span class="lg-h" style="--c:#60a5fa">человек · синий круг</span>
+          <span class="lg-d">цифровой · изумрудный ромб</span>
           <span style="--c:#34d399">синапс = передача</span>
           <span style="--c:#f87171">⛔ застрял = гейт</span>
         </div>
@@ -935,15 +935,15 @@ function renderDeptPulse(root, roleId){
   fns.forEach((f,fi)=>nodes.push({ id:'#'+f, kind:'cluster', label:f, sub:`👤 ${hAlloc[fi]} · 🤖 ${dAlloc[fi]}`, color:dt.c, title:'Открыть команду' }));
   team.forEach(p=>{ const q=questsOf(roleId,p.name,p.task);
     const st=(p.i===0&&gated)?'block':(rpgHash(p.name+roleId)%5===0?'wait':'ok');
-    nodes.push({ id:'h'+p.i, kind:'h', label:p.name, sub:p.role, av:humanAv(roleId,p.name,dt.c,'nm'),
-      color:dt.c, size:48+q.length*5, status:st, cls:pjByName[p.name]?'proj':'',
+    nodes.push({ id:'h'+p.i, kind:'h', label:p.name, sub:p.role, av:humanAv(roleId,p.name,'#60a5fa','nm'),
+      color:'#60a5fa', size:48+q.length*5, status:st, cls:pjByName[p.name]?'proj':'',
       title:`${p.name} · ${p.role}${pjByName[p.name]?' · 🚀 в мегапроекте':''} — открыть профиль`, p }); });
   digs.forEach(w=>nodes.push({ id:'d'+w.i, kind:'d', label:w.name, sub:'цифровой', av:`<span class="nm-em">${w.emoji}</span>`,
     color:'#36c994', size:42, status:w.status==='paused'?'wait':'ok', title:`${w.name} · ${w.title} — открыть профиль`, w }));
   /* агенты Среды на контракте — «жидкие» нейроны на контактной поверхности */
   const tlh = tlHiredOf(roleId).map((h,i)=>({ h, a:talentAgent(h.aid), i }));
   tlh.forEach(x=>nodes.push({ id:'t'+x.i, kind:'d', cls:'tlq', label:x.a.name.split(' ')[0], sub:'агент Среды',
-    av:`<span class="nm-em" style="font-style:normal">${x.a.name[0]}</span>`, color:'#2dd4bf', size:44, status:'ok',
+    av:`<span class="nm-em" style="font-style:normal">${x.a.name[0]}</span>`, color:'#36c994', size:44, status:'ok',
     title:`${x.a.name} · контракт Talent — открыть`, t:x }));
 
   /* синапсы: руководитель ↔ функции, цепочки внутри функций, цифровой → его человек */
@@ -967,11 +967,11 @@ function renderDeptPulse(root, roleId){
         <div class="side-proj" id="dpQueue" style="display:none"></div>
         <div class="of-live"><span class="of-dot"></span><b id="dp-inflight">—</b> задач в работе <i>в отделе</i></div>
         <div class="of-live"><span class="lg-mark d"></span><b id="dp-inf-d">—</b> делают цифровые сотрудники</div>
-        <div class="of-live"><span class="lg-mark h" style="--c:${dt.c}"></span><b id="dp-inf-h">—</b> делают люди</div>
+        <div class="of-live"><span class="lg-mark h" style="--c:#60a5fa"></span><b id="dp-inf-h">—</b> делают люди</div>
         <div class="of-live"><b id="dp-done">—</b> выполнено сегодня</div>
         <div class="of-legend kind-legend">
-          <span class="lg-h" style="--c:${dt.c}">нейрон-человек</span>
-          <span class="lg-d">цифровой</span>
+          <span class="lg-h" style="--c:#60a5fa">человек · синий круг</span>
+          <span class="lg-d">цифровой · изумрудный ромб</span>
           <span style="--c:#f87171">⛔ гейт: импульс застрял</span>
         </div>
         <div class="of-feed" id="dpFeed"></div>

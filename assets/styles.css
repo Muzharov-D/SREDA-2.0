@@ -3816,11 +3816,11 @@ h2 .ic{width:14px;height:14px;color:var(--acc);vertical-align:-0.1em}
 /* маркер-точка: цифровой = изумрудное кольцо, человек = сплошная точка цвета отдела */
 .lg-mark{display:inline-block;width:9px;height:9px;border-radius:50%;flex-shrink:0;vertical-align:-0.5px}
 .lg-mark.d{background:rgba(54,201,148,.15);border:2px solid var(--acc);box-shadow:0 0 7px rgba(54,201,148,.45)}
-.lg-mark.h{background:var(--c,#9aa096);border:2px solid transparent}
+.lg-mark.h{background:var(--c,#60a5fa);border:2px solid transparent}
 .kind-legend .lg-d::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;
   background:rgba(54,201,148,.15);border:2px solid var(--acc);vertical-align:-1px}
 .kind-legend .lg-h::before{content:'';display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;
-  background:var(--c,#9aa096);vertical-align:-1px}
+  background:var(--c,#60a5fa);vertical-align:-1px}
 .kind-legend .lg-d, .kind-legend .lg-h{display:inline-flex;align-items:center}
 
 /* частицы Пульса компании: точки без подписи */
@@ -3912,7 +3912,7 @@ h2 .ic{width:14px;height:14px;color:var(--acc);vertical-align:-0.1em}
 .nm-node:hover{transform:translate(-50%,-50%) scale(1.12);z-index:6}
 .nm-node .nm-av{width:var(--sz,48px);height:var(--sz,48px);display:flex;align-items:center;justify-content:center;
   border-radius:50%;background:var(--panel2);border:2px solid var(--c,var(--acc));position:relative;
-  box-shadow:0 0 10px rgba(0,0,0,.5),0 0 7px rgba(54,201,148,.18);transition:box-shadow .3s}
+  box-shadow:0 0 10px rgba(0,0,0,.5),0 0 7px color-mix(in srgb,var(--c,var(--acc)) 18%,transparent);transition:box-shadow .3s}
 .nm-node .nm-av .gp-av{width:100%;height:100%;font-size:15px;border:none}
 .nm-node .nm-av .gp-av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 .nm-node.k-d .nm-av{border-radius:13px;transform:rotate(45deg);border-style:dashed;background:var(--bg2)}
@@ -3934,11 +3934,11 @@ h2 .ic{width:14px;height:14px;color:var(--acc);vertical-align:-0.1em}
 .nm-node.st-block .nm-av::after{background:var(--red);animation:nmBlink 1.1s infinite}
 @keyframes nmBlink{0%,100%{opacity:1}50%{opacity:.25}}
 /* возбуждение нейрона при приходе импульса */
-.nm-node.fire .nm-av{box-shadow:0 0 0 4px rgba(54,201,148,.30),0 0 22px rgba(54,201,148,.55);animation:nmFire .85s ease-out}
+.nm-node.fire .nm-av{box-shadow:0 0 0 4px color-mix(in srgb,var(--c,var(--acc)) 30%,transparent),0 0 22px color-mix(in srgb,var(--c,var(--acc)) 55%,transparent);animation:nmFire .85s ease-out}
 @keyframes nmFire{0%{transform:scale(1)}28%{transform:scale(1.22)}100%{transform:scale(1)}}
 .nm-node.k-d.fire .nm-av{animation:nmFireD .85s ease-out}
 @keyframes nmFireD{0%{transform:rotate(45deg) scale(1)}28%{transform:rotate(45deg) scale(1.22)}100%{transform:rotate(45deg) scale(1)}}
-.nm-node.near .nm-av{box-shadow:0 0 0 2px rgba(54,201,148,.40)}
+.nm-node.near .nm-av{box-shadow:0 0 0 2px color-mix(in srgb,var(--c,var(--acc)) 40%,transparent)}
 .nm-node.gated .nm-av{animation:nmShake .5s}
 @keyframes nmShake{0%,100%{margin-left:0}25%{margin-left:-3px}75%{margin-left:3px}}
 /* импульс — волна возбуждения с подписью задачи */

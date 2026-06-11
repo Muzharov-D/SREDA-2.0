@@ -43,8 +43,9 @@ function cortexMap(stage, opts){
     byCluster[c.id] = entry;
     const push = (ref, type, named, x, y, r) => {
       const idx = nodes.length;
+      /* бинарное кодирование: все люди — синие круги, все цифровые — изумрудные ромбы */
       nodes.push({ x0: x, y0: y, x, y, r, type, named,
-        color: type === 'h' ? c.color : '#36c994', ci: c.id, ref: ref || {},
+        color: type === 'h' ? '#60a5fa' : '#36c994', ci: c.id, ref: ref || {},
         phase: (idx * 0.61) % (Math.PI * 2), flash: 0 });
       entry.nodes.push(idx);
     };
