@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Авандок.Среда — Техническая спецификация</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <link rel="stylesheet" href="pitch-style.css" />
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Авандок.Среда — Техническая спецификация</h1>
+</header>
+<h1 id="техническая-спецификация-авандок.среда">Техническая спецификация
+«Авандок.Среда»</h1>
+<h2
+id="раздел-1.-архитектурная-платформа-и-топология-развёртывания">Раздел
+1. Архитектурная платформа и топология развёртывания</h2>
+<hr />
+<h3 id="обзор-архитектуры">1. Обзор архитектуры</h3>
+<p>Платформа «Авандок.Среда» построена по принципу модульной пятиблочной
+архитектуры с выделенным сквозным слоем управления (Governance). Каждый
+блок представляет собой автономную доменную область с чётко
+определёнными интерфейсами, контрактами API и границами ответственности.
+Такое разделение обеспечивает независимую эволюцию компонентов,
+горизонтальное масштабирование под нагрузкой и возможность поэтапного
+внедрения функциональности в соответствии с выбранным продуктовым
+планом.</p>
+<p><strong>Пять функциональных блоков:</strong></p>
+<ol type="1">
+<li><p><strong>Framework</strong> — оркестрационный ядро платформы.
+Отвечает за жизненный цикл AI-агентов: создание профилей, назначение
+задач, маршрутизацию вызовов к LLM, аккумуляцию навыков, управление
+состоянием диалогов и координацию мультиагентных команд. Framework
+реализован как распределённый сервис на базе Kubernetes, с разделением
+Control Plane (управление метаданными, политиками, расписаниями) и Data
+Plane (непосредственное выполнение задач агентами, инференс, обработка
+потоков).</p></li>
+<li><p><strong>Data Platform</strong> — унифицированный слой данных.
+Обеспечивает персистентное хранение профилей агентов, истории
+взаимодействий, векторных индексов навыков, метрик производительности и
+аудит-логов. Включает реляционное хранилище (PostgreSQL / SQLite),
+векторную базу (Qdrant), кэш-слой (Redis) и подсистему секретов
+(OpenBao). Data Platform является единым источником правды для всех
+остальных блоков.</p></li>
+<li><p><strong>Dashboard</strong> — аналитическая и административная
+консоль. Предоставляет визуализацию нейронной карты агентов, real-time
+пульс организации, KPI по кросс-функциональным потокам, инструменты
+управления доступом и политиками. Реализован как SPA-приложение с
+бэкендом на REST/gRPC, интегрированным с Prometheus и Grafana для
+метрик, Loki / ELK для логов.</p></li>
+<li><p><strong>Portal</strong> — точка входа для пользователей и
+агентов. Объединяет веб-интерфейс найма, каталог агентов, формы запросов
+на задачи и механизм аутентификации. Portal взаимодействует с Framework
+через асинхронную очередь задач и синхронные API для оперативных
+запросов.</p></li>
+<li><p><strong>Channels</strong> — коммуникационный шлюз. Интегрирует
+платформу с внешними каналами: корпоративная почта, мессенджеры,
+API-системы заказчика, webhook-эндпоинты. Channels отвечает за
+нормализацию входящих сообщений, маршрутизацию к Framework и доставку
+исходящих ответов.</p></li>
+</ol>
+<p><strong>Сквозной слой Governance</strong> охватывает все пять блоков
+и включает: - <strong>Identity &amp; Access Management</strong> на базе
+Keycloak (SSO, MFA, ролевая модель RBAC/ABAC); - <strong>Policy
+Engine</strong> на базе OPA / Cerbos для динамической авторизации; -
+<strong>Workload Identity</strong> через SPIFFE/SPIRE для взаимной
+аутентификации сервисов; - <strong>Security Monitoring</strong> через
+Wazuh для обнаружения вторжений; - <strong>Audit &amp;
+Compliance</strong> — централизованный сбор аудит-логов с неизменяемым
+хранением.</p>
+<p><strong>Маппинг на продуктовые фазы:</strong></p>
+<table>
+<colgroup>
+<col style="width: 12%" />
+<col style="width: 44%" />
+<col style="width: 42%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Фаза</th>
+<th>Задействованные блоки</th>
+<th>Режим развёртывания</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Inside</strong></td>
+<td>Все 5 блоков</td>
+<td>On-premise / SaaS, полная нервная система</td>
+</tr>
+<tr class="even">
+<td><strong>Talent</strong></td>
+<td>Portal + Data Platform + Channels + Dashboard (customer-facing);
+Framework скрыт</td>
+<td>Гибрид: Framework на стороне Sreda</td>
+</tr>
+<tr class="odd">
+<td><strong>Forge</strong></td>
+<td>Все 5 блоков в изолированной среде</td>
+<td>Sandbox Sreda, customer видит только окно прогресса</td>
+</tr>
+</tbody>
+</table>
+<p>Архитектурная диаграмма компонентов представляет собой
+централизованную схему с Data Platform в ядре, Framework и Channels на
+периферии обработки, Portal и Dashboard как точки взаимодействия с
+пользователями, и Governance как обрамляющий слой безопасности и
+управления.</p>
+<hr />
+<h3 id="продуктовая-модульность-по-фазам">2. Продуктовая модульность по
+фазам</h3>
+<h4 id="фаза-inside-полная-нервная-система-организации">2.1. Фаза
+Inside: полная нервная система организации</h4>
+<p>Фаза Inside предполагает развёртывание всех пяти архитектурных блоков
+в инфраструктуре заказчика — будь то on-premise дата-центр, приватное
+облако или SaaS-инстанс Sreda. Это режим максимальной интеграции, при
+котором платформа становится полноценной «нервной системой»
+организации.</p>
+<p><strong>Техническая реализация:</strong></p>
+<p>Control Plane развёртывается как набор stateless микросервисов в
+Kubernetes, управляемых через Helm-чарты. Data Plane включает пулы
+воркеров для выполнения задач агентов, изолированные неймспейсы для
+различных команд и выделенные ноды с GPU для LLM-инференса.
+Взаимодействие между Control Plane и Data Plane осуществляется через
+Kubernetes API и собственный scheduler Framework.</p>
+<p><strong>Ключевые компоненты фазы Inside:</strong></p>
+<ul>
+<li><strong>Real-time Pulse</strong> — потоковая обработка событий
+организации через Redis Streams и WebSocket-соединения с Dashboard.
+Каждое действие агента, каждое изменение статуса задачи и каждая метрика
+производительности попадает в пульс с задержкой &lt; 100 мс.</li>
+<li><strong>Neural Map</strong> — графовая визуализация связей между
+агентами, навыками и бизнес-процессами. Данные извлекаются из Qdrant
+(векторные представления навыков) и PostgreSQL (структурные связи),
+агрегируются в Dashboard и рендерятся через интерактивный force-directed
+graph.</li>
+<li><strong>Cross-functional Flows</strong> — оркестрация процессов,
+затрагивающих несколько функциональных областей. Framework управляет
+маршрутизацией задач между агентами различной специализации, отслеживает
+SLA, обеспечивает эскалацию и компенсирующие транзакции при сбоях.</li>
+</ul>
+<p><strong>Инфраструктурный стек:</strong> - Kubernetes (Control Plane +
+Data Plane) - PostgreSQL (основное реляционное хранилище) - Qdrant
+(векторный поиск по навыкам и профилям) - Redis (кэш, pub/sub, streams)
+- OpenBao (управление секретами и ключами API) - Prometheus + Grafana
+(мониторинг и алертинг) - Loki / ELK (централизованный сбор логов) -
+Gitea (внутренний Git-репозиторий для артефактов агентов) - ArgoCD
+(GitOps-деплой компонентов платформы)</p>
+<h4 id="фаза-talent-портал-найма-с-управляемым-доступом">2.2. Фаза
+Talent: портал найма с управляемым доступом</h4>
+<p>Фаза Talent ориентирована на заказчиков, которым требуется доступ к
+каталогу AI-агентов без необходимости развёртывания полной платформы. В
+этой фазе заказчик получает customer-facing компоненты (Portal,
+Dashboard, Channels), тогда как Framework и основная Data Platform
+остаются на стороне Sreda и скрыты от конечного пользователя.</p>
+<p><strong>Техническая реализация:</strong></p>
+<p>Заказчик развёртывает у себя: - <strong>Portal</strong> — белый лейбл
+с доменом и брендингом заказчика; - <strong>Dashboard</strong> —
+read-only и управляемый доступ к метрикам агентов; -
+<strong>Channels</strong> — интеграция с корпоративными коммуникациями
+заказчика; - <strong>Локальный кэш и реплика</strong> — Redis и SQLite
+для офлайн-доступа к критичным данным.</p>
+<p>Sreda предоставляет: - <strong>Framework-as-a-Service</strong> —
+оркестрация агентов в мультиарендном режиме; - <strong>Data Platform
+(Sreda)</strong> — хранение профилей агентов, истории найма, векторных
+индексов; - <strong>LLM Gateway</strong> — единая точка доступа к
+моделям через OpenRouter / LiteLLM с биллингом и rate limiting.</p>
+<p><strong>Механизм интеграции:</strong></p>
+<p>Профили агентов хранятся в Sreda Data Platform (PostgreSQL + Qdrant)
+и экспонируются заказчику через защищённый REST API с аутентификацией по
+mTLS (SPIFFE/SPIRE) и авторизацией через OPA. Customer Dashboard
+выполняет KPI-запросы к Sreda API, получая агрегированные метрики без
+доступа к сырым данным других заказчиков. Мультиарендность изолируется
+на уровне неймспейсов Kubernetes, row-level security в PostgreSQL и
+политик Cerbos.</p>
+<p><strong>Протоколы взаимодействия:</strong> - REST API для синхронных
+операций (получение профиля, запрос метрик); - gRPC для
+высокопроизводительных потоков данных; - WebSocket для real-time
+уведомлений о статусе найма; - Message queue (Redis Streams / RabbitMQ)
+для асинхронных задач.</p>
+<h4
+id="фаза-forge-изолированная-песочница-для-проектной-разработки">2.3.
+Фаза Forge: изолированная песочница для проектной разработки</h4>
+<p>Фаза Forge предназначена для заказчиков, которым требуется выполнение
+проектов силами мультиагентных команд в полностью управляемой среде
+Sreda. В отличие от Inside, где платформа развёртывается у заказчика, и
+Talent, где заказчик видит каталог агентов, в Forge заказчик
+взаимодействует только через «окно прогресса проекта» — упрощённый
+интерфейс отслеживания статуса, результатов и артефактов.</p>
+<p><strong>Техническая реализация:</strong></p>
+<p>Все пять блоков развёртываются в изолированной sandbox-среде Sreda.
+Каждый проект заказчика получает выделенный namespace в Kubernetes с
+жёсткими ограничениями ресурсов (ResourceQuotas, LimitRanges,
+NetworkPolicies). Исполнение агентов изолируется на уровне контейнеров
+через gVisor или Firecracker microVMs, предотвращая побочный доступ к
+данным других проектов.</p>
+<p><strong>Архитектура sandbox:</strong></p>
+<ul>
+<li><strong>Portal</strong> — упрощённый интерфейс с единственным
+экраном: список проектов, статус выполнения, скачивание артефактов;</li>
+<li><strong>Framework</strong> — полнофункциональный оркестратор,
+управляющий командами из 3–7 агентов, распределяющий задачи, разрешающий
+конфликты и мержирующий результаты;</li>
+<li><strong>Data Platform</strong> — проектный инстанс PostgreSQL +
+Qdrant + Redis, удаляемый по завершении проекта (TTL-based
+cleanup);</li>
+<li><strong>Channels</strong> — входящие запросы через API и webhook,
+исходящие — через email / API заказчика;</li>
+<li><strong>Dashboard</strong> — read-only для заказчика, полный доступ
+для команды Sreda.</li>
+</ul>
+<p><strong>Оркестрация мультиагентных команд:</strong></p>
+<p>Framework в Forge-режиме активирует advanced scheduling: агенты
+назначаются на роли (architect, developer, reviewer, tester),
+взаимодействуют через shared state в Redis, проводят peer-review через
+внутренние gRPC-вызовы, а финальные артефакты (код, документация,
+конфигурации) коммитятся в Gitea и доставляются заказчику через
+Channels.</p>
+<p><strong>Безопасность и изоляция:</strong> - Каждый проект — отдельный
+Kubernetes namespace; - Контейнеры агентов — в gVisor sandbox (runsc)
+или Firecracker microVM; - Сеть — изоляция через Cilium NetworkPolicies,
+запрет east-west трафика между проектами; - Хранилище — отдельные PVC
+per проект, шифрование at-rest через OpenBao Transit; - LLM-запросы —
+маршрутизация через LiteLLM с project-based rate limiting и аудитом.</p>
+<hr />
+<h3 id="матрица-взаимодействия-компонентов">3. Матрица взаимодействия
+компонентов</h3>
+<p>Ниже представлена матрица взаимодействия ключевых компонентов
+платформы с указанием протоколов, паттернов и назначения обмена
+данными.</p>
+<table>
+<colgroup>
+<col style="width: 40%" />
+<col style="width: 19%" />
+<col style="width: 17%" />
+<col style="width: 23%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Источник → Приёмник</th>
+<th>Протокол</th>
+<th>Паттерн</th>
+<th>Назначение</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Portal ↔︎ Framework</strong></td>
+<td>REST + Message Queue</td>
+<td>Асинхронный dispatch</td>
+<td>Portal публикует задачи в очередь (Redis Streams / RabbitMQ);
+Framework подписывается и назначает агентов. Синхронный REST
+используется для оперативных запросов статуса.</td>
+</tr>
+<tr class="even">
+<td><strong>Framework ↔︎ Data Platform</strong></td>
+<td>gRPC + SQL</td>
+<td>Персистентность + поиск</td>
+<td>Framework записывает обновления профилей агентов, аккумулирует
+навыки в PostgreSQL; выполняет векторный поиск по Qdrant через gRPC для
+подбора агентов под задачу.</td>
+</tr>
+<tr class="odd">
+<td><strong>Framework ↔︎ LLM Gateway</strong></td>
+<td>HTTP/REST (OpenAI-compatible)</td>
+<td>Синхронный inference</td>
+<td>Framework направляет запросы к LLM Gateway (OpenRouter / LiteLLM) с
+retry-логикой, circuit breaker и таймаутами. Gateway обеспечивает
+маршрутизацию между провайдерами, fallback и биллинг.</td>
+</tr>
+<tr class="even">
+<td><strong>Dashboard ↔︎ Data Platform</strong></td>
+<td>REST + gRPC</td>
+<td>KPI-запросы + потоки</td>
+<td>Dashboard запрашивает агрегированные метрики через REST API;
+real-time потоки событий доставляются через gRPC streaming для пульса и
+нейронной карты.</td>
+</tr>
+<tr class="odd">
+<td><strong>Channels ↔︎ Framework</strong></td>
+<td>WebSocket + REST + MQ</td>
+<td>Маршрутизация сообщений</td>
+<td>Channels нормализует входящие сообщения из внешних систем и
+маршрутизирует их в Framework через очередь. Исходящие сообщения от
+агентов обратно проходят через Channels к конечным пунктам
+доставки.</td>
+</tr>
+<tr class="even">
+<td><strong>Framework ↔︎ Framework (multi-agent)</strong></td>
+<td>gRPC (internal)</td>
+<td>Peer-to-peer координация</td>
+<td>Агенты внутри одной команды взаимодействуют через внутренний
+gRPC-сервис Framework, обмениваясь промежуточными результатами,
+запрашивая peer-review и синхронизируя shared state.</td>
+</tr>
+<tr class="odd">
+<td><strong>Data Platform ↔︎ OpenBao</strong></td>
+<td>HTTPS (Vault API)</td>
+<td>Secrets management</td>
+<td>Data Platform запрашивает у OpenBao ключи шифрования, credentials
+БД, API-ключи LLM-провайдеров. Ротация секретов — автоматическая, через
+dynamic secrets где возможно.</td>
+</tr>
+<tr class="even">
+<td><strong>All ↔︎ Keycloak</strong></td>
+<td>OAuth 2.0 / OIDC</td>
+<td>Аутентификация + авторизация</td>
+<td>Все компоненты делегируют аутентификацию Keycloak. JWT-токены
+содержат claims для RBAC/ABAC. Keycloak интегрирован с корпоративными
+IdP заказчика через SAML / LDAP.</td>
+</tr>
+<tr class="odd">
+<td><strong>All ↔︎ OPA / Cerbos</strong></td>
+<td>HTTP / gRPC</td>
+<td>Policy decision</td>
+<td>Каждый авторизуемый запрос проходит через Policy Engine: OPA для
+Kubernetes admission control, Cerbos для application-level
+authorization. Decisions логируются для аудита.</td>
+</tr>
+<tr class="even">
+<td><strong>All ↔︎ SPIFFE/SPIRE</strong></td>
+<td>mTLS (X.509 SVID)</td>
+<td>Workload identity</td>
+<td>Взаимная аутентификация сервисов через автоматически выданные SVID.
+Отказ от статических credentials, zero-trust на уровне
+сервис-му-сервис.</td>
+</tr>
+<tr class="odd">
+<td><strong>Monitoring Stack</strong></td>
+<td>Prometheus scrape / OTLP</td>
+<td>Observability</td>
+<td>Prometheus собирает метрики со всех компонентов; Loki / ELK — логи;
+Jaeger / Tempo — distributed tracing. Grafana — единая точка
+визуализации.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Детализация ключевых потоков:</strong></p>
+<p><strong>Task Dispatch (Portal → Framework):</strong> Пользователь
+создаёт задачу в Portal. Запрос валидируется, обогащается контекстом
+(текущий пользователь, проект, приоритет) и публикуется в Redis Stream с
+ID корреляции. Framework-воркер из пула Data Plane выбирает задачу,
+выполняет matching агентов через Qdrant (векторный поиск по требуемым
+навыкам), назначает исполнителя и обновляет статус в PostgreSQL. Portal
+получает уведомление через WebSocket или Server-Sent Events.</p>
+<p><strong>Profile Update (Framework → Data Platform):</strong> По
+завершении задачи Framework анализирует приобретённые агентом навыки,
+генерирует embedding через LLM Gateway, записывает вектор в Qdrant и
+обновляет реляционный профиль в PostgreSQL. Операция выполняется в
+транзакции: сначала PostgreSQL, затем Qdrant, с compensating rollback
+при сбое второго шага (SAGA-паттерн).</p>
+<p><strong>Inference Request (Framework → LLM Gateway):</strong>
+Framework формирует prompt с контекстом из Redis (история диалога,
+retrieved skills) и отправляет HTTP-запрос к LiteLLM Gateway. Gateway
+применяет routing rules (стоимость, latency, качество), выбирает
+провайдера (OpenRouter, прямой Azure OpenAI, локальная модель),
+применяет rate limits и возвращает ответ с метаданными (model used,
+tokens consumed, latency). Framework кэширует часто запрашиваемые
+результаты в Redis.</p>
+<p><strong>KPI Query (Dashboard → Data Platform):</strong> Dashboard
+выполняет parameterized SQL-запросы к read-replica PostgreSQL для
+агрегированных метрик (количество задач, среднее время выполнения,
+utilization агентов). Для real-time показателей используется gRPC
+streaming из Redis Streams. Доступ к данным фильтруется через Cerbos на
+основе JWT-claims пользователя (tenant isolation, role-based
+filtering).</p>
+<p><strong>Message Routing (Channels ↔︎ Framework):</strong> Входящее
+сообщение из email / мессенджера попадает в Channels, где нормализуется
+в canonical message format (JSON Schema). Channels определяет intent и
+маршрутизует либо в Framework (если требуется действие агента), либо в
+Portal (если уведомление пользователю). Framework возвращает ответ,
+который Channels форматирует под канал доставки и отправляет.</p>
+<hr />
+<h3 id="топология-развёртывания">4. Топология развёртывания</h3>
+<p>Платформа поддерживает три основных режима развёртывания: on-premise
+в инфраструктуре заказчика, SaaS в облаке Sreda, и гибридные схемы для
+фаз Talent и Forge. Ниже детализирована инфраструктурная реализация
+каждого режима.</p>
+<h4 id="on-premise-развёртывание">4.1. On-premise развёртывание</h4>
+<p>Рекомендуемая топология для фазы Inside в enterprise-средах с
+требованиями по суверенитету данных и compliance.</p>
+<p><strong>Базовая топология:</strong></p>
+<ul>
+<li><strong>Control Plane</strong>: 3 master-ноды Kubernetes (etcd, API
+server, scheduler, controller manager). Рекомендуется отказоустойчивая
+конфигурация с anti-affinity rules.</li>
+<li><strong>Data Plane</strong>: 3+ worker-ноды для сервисов платформы,
+2+ ноды с GPU (NVIDIA A100 / H100 или аналоги) для LLM-инференса,
+выделенные ноды для stateful-сервисов (PostgreSQL, Qdrant, Redis).</li>
+<li><strong>Storage</strong>: Ceph RBD / NFS / enterprise SAN для PVC,
+отдельный SSD-tier для БД и векторного индекса.</li>
+<li><strong>Network</strong>: Calico / Cilium CNI с NetworkPolicies для
+сегментации трафика, MetalLB / NGINX Ingress для входящего трафика.</li>
+</ul>
+<p><strong>Helm-чарты:</strong></p>
+<p>Поставка платформы осуществляется в виде набора Helm-чартов,
+развёртываемых через ArgoCD в GitOps-режиме: - <code>sreda-infra</code>
+— CRD, operators, CNI plugins, storage classes; -
+<code>sreda-data</code> — PostgreSQL (CloudNativePG operator), Qdrant,
+Redis (Redis Cluster operator), OpenBao; - <code>sreda-core</code> —
+Framework, Portal, Dashboard, Channels; -
+<code>sreda-observability</code> — Prometheus, Grafana, Loki,
+Alertmanager; - <code>sreda-security</code> — Keycloak, OPA, SPIRE,
+Wazuh agents; - <code>sreda-llm</code> — LiteLLM Gateway, vLLM / TGI для
+локальных моделей, GPU operator.</p>
+<p>Каждый чарт параметризован через values.yaml с учётом окружения (dev
+/ staging / prod). ArgoCD ApplicationSet обеспечивает мультикластерное
+развёртывание и автоматическую синхронизацию состояния с
+Git-репозиторием (Gitea).</p>
+<p><strong>Air-gapped опция:</strong></p>
+<p>Для заказчиков с физически изолированными сетями предусмотрен
+air-gapped режим: - Все контейнерные образы предварительно загружаются в
+локальный registry (Harbor / Docker Registry); - Helm-чарты и
+Git-репозитории поставляются как tar-архивы; - LLM-модели кэшируются в
+локальное object storage (MinIO) или NFS-share; - Обновления платформы
+доставляются через физические носители или защищённый канал передачи
+данных; - Telemetry и логи накапливаются локально, периодически
+экспортируются в Sreda по согласованию (или не экспортируются
+вовсе).</p>
+<h4 id="saas-развёртывание">4.2. SaaS развёртывание</h4>
+<p>Мультиарендная инфраструктура Sreda, размещённая в Yandex Cloud.</p>
+<p><strong>Инфраструктурный стек:</strong></p>
+<ul>
+<li><strong>Compute</strong>: Yandex Managed Kubernetes для сервисных
+нод, Yandex Cloud DataSphere для GPU-пулов (инференс LLM, обучение
+embeddings);</li>
+<li><strong>Storage</strong>: Yandex Managed PostgreSQL, self-managed
+Qdrant в Kubernetes, Yandex Managed Redis;</li>
+<li><strong>Network</strong>: Yandex ALB (Application Load Balancer) для
+L7-роутинга, Yandex Network Load Balancer для TCP-трафика;</li>
+<li><strong>Security</strong>: Yandex Lockbox для базовых секретов,
+OpenBao для application secrets, Yandex Certificate Manager для
+TLS;</li>
+<li><strong>Observability</strong>: Yandex Monitoring + самостоятельный
+стек Prometheus/Grafana/Loki для tenant-specific метрик.</li>
+</ul>
+<p><strong>Изоляция арендаторов:</strong></p>
+<ul>
+<li><strong>Namespace-level</strong>: каждый заказчик — выделенный
+namespace в shared Kubernetes cluster;</li>
+<li><strong>Network-level</strong>: Cilium NetworkPolicies запрещают
+межарендаторский трафик;</li>
+<li><strong>Data-level</strong>: PostgreSQL row-level security (RLS),
+отдельные коллекции в Qdrant per tenant, Redis key prefixes с ACL;</li>
+<li><strong>Compute-level</strong>: ResourceQuotas и LimitRanges
+предотвращают noisy neighbor effect;</li>
+<li><strong>Sandbox-level</strong>: для Forge-проектов — gVisor /
+Firecracker изоляция контейнеров.</li>
+</ul>
+<p><strong>GPU-пулы:</strong></p>
+<p>SaaS-инфраструктура использует Yandex Cloud DataSphere для
+эластичного масштабирования GPU-ресурсов. LiteLLM Gateway маршрутизирует
+запросы между: - DataSphere-инстансами (облачные GPU, pay-per-use); -
+Shared on-prem GPU заказчика (через VPN / dedicated interconnect); -
+Локальными CPU-only fallback-моделями (для некритичных задач).</p>
+<h4 id="пилотное-развёртывание-single-host">4.3. Пилотное развёртывание
+(single-host)</h4>
+<p>Для быстрого пилота на одном сервере заказчика (bare metal или VM)
+предусмотрен упрощённый деплой через Docker Compose / k3s.</p>
+<p><strong>Спецификация single-host:</strong></p>
+<ul>
+<li><strong>OS</strong>: Ubuntu 22.04 LTS / RHEL 9;</li>
+<li><strong>CPU</strong>: 16+ cores;</li>
+<li><strong>RAM</strong>: 64+ GB;</li>
+<li><strong>Storage</strong>: 500+ GB SSD (NVMe preferred);</li>
+<li><strong>GPU</strong>: опционально, 1× NVIDIA GPU с 24+ GB VRAM для
+локального инференса;</li>
+<li><strong>Network</strong>: публичный IP или reverse tunnel для
+доступа Sreda.</li>
+</ul>
+<p><strong>Процедура деплоя:</strong></p>
+<ol type="1">
+<li>Подготовка хоста (Docker, k3s, NVIDIA drivers + container
+toolkit);</li>
+<li>Клонирование deployment-репозитория из Gitea;</li>
+<li>Запуск bootstrap-скрипта
+(<code>./deploy-pilot.sh --env inside --domain pilot.customer.ru</code>);</li>
+<li>Развёртывание через k3s + Helm в single-node режиме (tolerations для
+master-ноды);</li>
+<li>Инициализация Keycloak realm, создание первого администратора;</li>
+<li>Проверка health-check всех сервисов, smoke-тесты API;</li>
+<li>Передача доступов заказчику, активация лицензии.</li>
+</ol>
+<p>Пилотный режим поддерживает миграцию в полноценный Kubernetes-кластер
+без потери данных через backup/restore Data Platform.</p>
+<h4 id="sandbox-изоляция">4.4. Sandbox-изоляция</h4>
+<p>Критичный элемент безопасности для фазы Forge и мультиарендного
+SaaS.</p>
+<p><strong>gVisor:</strong></p>
+<p>Контейнеры агентов выполняются через runtime <code>runsc</code>
+(gVisor), который перехватывает системные вызовы и эмулирует ядро Linux
+в userspace. Это предотвращает escape из контейнера, доступ к хостовой
+файловой системе и прямое использование хостовых ресурсов. gVisor
+интегрируется с containerd через RuntimeClass в Kubernetes.</p>
+<p><strong>Firecracker:</strong></p>
+<p>Для задач, требующих ещё более строгой изоляции (например, выполнение
+ненадёжного кода агентов-разработчиков), используются Firecracker
+microVMs. Каждый агент получает отдельную microVM с минимальным
+Linux-окружением, запускаемой через integration с Kubernetes
+(firecracker-containerd). Время холодного старта — &lt; 125 мс, что
+приемлемо для batch-задач Forge.</p>
+<p><strong>Сравнение изоляции:</strong></p>
+<table>
+<colgroup>
+<col style="width: 17%" />
+<col style="width: 21%" />
+<col style="width: 37%" />
+<col style="width: 23%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Уровень</th>
+<th>Технология</th>
+<th>Накладные расходы</th>
+<th>Применение</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Контейнер</td>
+<td>runc (стандартный)</td>
+<td>Минимальные</td>
+<td>Доверенные сервисы платформы</td>
+</tr>
+<tr class="even">
+<td>Sandbox-контейнер</td>
+<td>gVisor (runsc)</td>
+<td>~20-30% CPU, ~2× syscall latency</td>
+<td>Агенты в multi-tenant SaaS</td>
+</tr>
+<tr class="odd">
+<td>MicroVM</td>
+<td>Firecracker</td>
+<td>~10-15% CPU, холодный старт 125 мс</td>
+<td>Ненадёжный код, Forge-проекты</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Network-изоляция:</strong></p>
+<ul>
+<li>Cilium в режиме strict L3/L4 enforcement;</li>
+<li>Запрет egress трафика из sandbox по умолчанию, разрешённые
+endpoint-ы — через CiliumNetworkPolicy;</li>
+<li>DNS-фильтрация через CoreDNS с блоклистами;</li>
+<li>LLM-трафик маршрутизируется исключительно через LiteLLM Gateway
+(прокси-режим, нет прямых вызовов провайдеров).</li>
+</ul>
+<hr />
+<p><em>Раздел 1 завершён. Следующие разделы: Модель данных и API (Раздел
+2), Безопасность и compliance (Раздел 3), Масштабирование и
+производительность (Раздел 4).</em> # 2. Архитектура ядра и
+инфраструктурные компоненты</p>
+<h2 id="agent-runtime-framework-core">2.1. Agent Runtime (Framework
+Core)</h2>
+<h3 id="исполнительная-среда-агента">2.1.1. Исполнительная среда
+агента</h3>
+<p>Agent Runtime представляет собой полноценную исполнительную среду,
+поддерживающую гибридную модель выполнения на базе Node.js (v20+) и
+Python (3.11+). Выбор runtime определяется декларативно в манифесте
+агента через поле <code>runtime: "node" | "python"</code>, что позволяет
+командам использовать привычный стек без компромиссов в
+производительности. Node-runtime оптимизирован для I/O-bound задач —
+интеграции с внешними API, обработка webhook, SSR-рендеринг.
+Python-runtime задействуется для compute-bound сценариев: ML-инференс,
+научные вычисления, обработка данных через pandas/polars.</p>
+<p>Каждый агент упаковывается в изолированный контейнер (OCI-совместимый
+образ) с ограничениями по CPU (по умолчанию 1 vCPU, настраивается через
+<code>resources.cpu.limit</code>) и памяти (по умолчанию 512 MiB,
+<code>resources.memory.limit</code>). Оркестрация контейнеров
+выполняется через встроенный scheduler на базе Nomad или Kubernetes
+(режим <code>orchestrator.mode</code>). Запуск агента инициируется
+POST-запросом:</p>
+<pre><code>POST /v1/agents/{agent_id}/sessions
+Body: {
+  &quot;context_id&quot;: &quot;ctx_7f3a9b&quot;,
+  &quot;input_payload&quot;: { ... },
+  &quot;priority&quot;: &quot;normal&quot; | &quot;high&quot; | &quot;critical&quot;,
+  &quot;ttl_seconds&quot;: 3600
+}</code></pre>
+<h3 id="цикл-рассуждения-reasoning-loop">2.1.2. Цикл рассуждения
+(Reasoning Loop)</h3>
+<p>Архитектура цикла рассуждения построена по четырёхфазной модели
+<strong>Perceive → Plan → Act → Reflect</strong>, реализованной в виде
+конечного автомата с явными состояниями.</p>
+<p><strong>Perceive</strong> — фаза восприятия. Runtime собирает входные
+сигналы: пользовательский prompt, события из event bus, изменения
+состояния связанных агентов, триггеры по расписанию (cron). Все сигналы
+нормализуются в единый формат <code>PerceptionEvent</code> (JSON Schema
+v7) и помещаются в приоритетную очередь (Redis Streams).</p>
+<p><strong>Plan</strong> — фаза планирования. На основе восприятия агент
+генерирует план действий через LLM-вызов с system-prompt, содержащим
+инструкции по декомпозиции задачи. План представляется как DAG
+(направленный ациклический граф) узлов <code>PlanNode</code>, где каждый
+узел содержит: <code>tool_call</code> (или
+<code>subagent_invocation</code>), <code>dependencies[]</code>,
+<code>expected_output_schema</code>, <code>timeout_ms</code>. План
+валидируется на отсутствие циклов и достижимость целевого состояния.</p>
+<p><strong>Act</strong> — фаза исполнения. Runtime последовательно или
+параллельно (в зависимости от DAG) выполняет узлы плана. Каждый
+tool-call проходит через MCP-протокол (Model Context Protocol),
+обеспечивающий строгую типизацию входных/выходных параметров. Пример
+MCP-вызова:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;jsonrpc&quot;</span><span class="fu">:</span> <span class="st">&quot;2.0&quot;</span><span class="fu">,</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;method&quot;</span><span class="fu">:</span> <span class="st">&quot;tools/call&quot;</span><span class="fu">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;params&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;name&quot;</span><span class="fu">:</span> <span class="st">&quot;github.create_pull_request&quot;</span><span class="fu">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;arguments&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;repo&quot;</span><span class="fu">:</span> <span class="st">&quot;avandok/core&quot;</span><span class="fu">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;branch&quot;</span><span class="fu">:</span> <span class="st">&quot;feature/auth-refactor&quot;</span><span class="fu">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;title&quot;</span><span class="fu">:</span> <span class="st">&quot;Рефакторинг модуля аутентификации&quot;</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;id&quot;</span><span class="fu">:</span> <span class="dv">42</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p><strong>Reflect</strong> — фаза рефлексии. По завершении исполнения
+агент оценивает результат: соответствует ли <code>actual_output</code>
+ожидаемому <code>expected_output_schema</code>, были ли ошибки,
+требуется ли повторная итерация. Результат рефлексии записывается в
+память агента (эпизодическая память) и влияет на будущие планы.</p>
+<h3 id="human-in-the-loop-hitl">2.1.3. Human-in-the-Loop (HITL)</h3>
+<p>Система реализует четырёхуровневую модель автономности, управляемую
+через поле <code>autonomy_level</code> в профиле агента:</p>
+<ul>
+<li><strong>L0 — Полная автономия</strong>: Агент действует без
+уведомлений. Применяется для рутинных задач (форматирование кода,
+обновление зависимостей, генерация отчётов).</li>
+<li><strong>L1 — Уведомление человека</strong>: Агент выполняет действие
+и отправляет уведомление в Slack/Teams/Email с кратким summary. Человек
+может откатить действие в течение 15 минут
+(<code>rollback_window_seconds</code>).</li>
+<li><strong>L2 — Одобрение человека</strong>: Действие блокируется до
+явного approve через Dashboard или API
+<code>POST /v1/hitl/approvals/{approval_id}/approve</code>. Таймаут
+ожидания — 24 часа, после чего задача отменяется с кодом
+<code>HITL_TIMEOUT</code>.</li>
+<li><strong>L3 — Исполнение человеком</strong>: Агент генерирует
+инструкцию и делегирует физическое исполнение человеку. Используется для
+критических операций: production deploy, удаление данных, финансовые
+транзакции.</li>
+</ul>
+<p>Переход между уровнями динамический: runtime может повысить уровень
+при обнаружении аномалии (например, cost превышает порог
+<code>cost_alert_threshold_usd</code>).</p>
+<h3 id="мультиагентная-оркестрация">2.1.4. Мультиагентная
+оркестрация</h3>
+<p>Оркестрация нескольких агентов реализована через DAG-based workflow
+engine. Workflow описывается декларативно в YAML:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">workflow</span><span class="kw">:</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">id</span><span class="kw">:</span><span class="at"> code_review_pipeline</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">agents</span><span class="kw">:</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> </span><span class="fu">agent_id</span><span class="kw">:</span><span class="at"> linter_agent</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">runtime</span><span class="kw">:</span><span class="at"> node</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> </span><span class="fu">agent_id</span><span class="kw">:</span><span class="at"> security_scanner</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">runtime</span><span class="kw">:</span><span class="at"> python</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> </span><span class="fu">agent_id</span><span class="kw">:</span><span class="at"> reviewer_agent</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">runtime</span><span class="kw">:</span><span class="at"> node</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">edges</span><span class="kw">:</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> </span><span class="fu">from</span><span class="kw">:</span><span class="at"> linter_agent</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">to</span><span class="kw">:</span><span class="at"> security_scanner</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">condition</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;linter_agent.output.severity != &#39;critical&#39;&quot;</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> </span><span class="fu">from</span><span class="kw">:</span><span class="at"> security_scanner</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">to</span><span class="kw">:</span><span class="at"> reviewer_agent</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pass_context</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="st">&quot;findings&quot;</span><span class="kw">,</span><span class="at"> </span><span class="st">&quot;diff_summary&quot;</span><span class="kw">]</span></span></code></pre></div>
+<p>Передача контекста между агентами осуществляется через строго
+типизированный <code>ContextBag</code> — immutable-структуру,
+сериализуемую в JSON. Каждый агент получает только явно разрешённые поля
+(<code>pass_context</code>), что предотвращает утечку чувствительных
+данных.</p>
+<h3 id="управление-состоянием-и-event-bus">2.1.5. Управление состоянием
+и event bus</h3>
+<p>Локальное состояние агента (текущая фаза цикла, partial results,
+checkpoint-и) хранится в SQLite
+(<code>~/.avandok/agents/{agent_id}/state.db</code>) для разработческого
+режима. В production-конфигурации мигрирует в PostgreSQL 15+ с
+таблицами: - <code>agent_sessions</code> — метаданные сессий; -
+<code>agent_checkpoints</code> — сериализованные состояния для
+восстановления после сбоя; - <code>agent_event_log</code> — append-only
+лог всех событий (Event Sourcing).</p>
+<p>Коммуникация между агентами и внешними системами осуществляется через
+event bus на базе Apache Kafka (production) или NATS (development).
+Топики именуются по схеме
+<code>agent.{agent_id}.events.{event_type}</code> и
+<code>workflow.{workflow_id}.state_changes</code>. Сообщения используют
+Avro-схему с регистрацией в Schema Registry.</p>
+<hr />
+<h2 id="llm-gateway">2.2. LLM Gateway</h2>
+<h3 id="архитектура-прокси-слоя">2.2.1. Архитектура прокси-слоя</h3>
+<p>LLM Gateway функционирует как единая точка входа для всех LLM-вызовов
+в платформе, построенная на базе <strong>LiteLLM</strong>
+(Python-библиотека и standalone-proxy). LiteLLM абстрагирует различия
+между 100+ провайдерами, предоставляя унифицированный интерфейс
+OpenAI-compatible API (<code>/v1/chat/completions</code>,
+<code>/v1/embeddings</code>, <code>/v1/completions</code>). Внутренние
+сервисы платформы не обращаются к провайдерам напрямую — только через
+Gateway.</p>
+<p>Конфигурация провайдеров задаётся в
+<code>config/litellm_config.yaml</code>:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">model_list</span><span class="kw">:</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">model_name</span><span class="kw">:</span><span class="at"> gpt-4o</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">litellm_params</span><span class="kw">:</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">model</span><span class="kw">:</span><span class="at"> openai/gpt-4o</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">api_key</span><span class="kw">:</span><span class="at"> os.environ/OPENAI_API_KEY</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">rpm</span><span class="kw">:</span><span class="at"> </span><span class="dv">100</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">tpm</span><span class="kw">:</span><span class="at"> </span><span class="dv">200000</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">model_name</span><span class="kw">:</span><span class="at"> claude-sonnet-4</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">litellm_params</span><span class="kw">:</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">model</span><span class="kw">:</span><span class="at"> anthropic/claude-sonnet-4-20250514</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">api_key</span><span class="kw">:</span><span class="at"> os.environ/ANTHROPIC_API_KEY</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">rpm</span><span class="kw">:</span><span class="at"> </span><span class="dv">50</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">model_name</span><span class="kw">:</span><span class="at"> qwen-3.5-32b</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">litellm_params</span><span class="kw">:</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">model</span><span class="kw">:</span><span class="at"> openrouter/qwen/qwen-3.5-32b</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">api_key</span><span class="kw">:</span><span class="at"> os.environ/OPENROUTER_API_KEY</span></span></code></pre></div>
+<h3 id="интеграция-с-openrouter-и-локальными-моделями">2.2.2. Интеграция
+с OpenRouter и локальными моделями</h3>
+<p><strong>OpenRouter</strong> выступает резервным и расширяющим
+провайдером, предоставляя доступ к 200+ моделям (OpenAI, Anthropic,
+Google, Meta, Alibaba, DeepSeek и др.) через единый API-ключ и единую
+биллинговую модель. OpenRouter автоматически маршрутизирует запросы на
+наименее загруженные endpoint-ы, что снижает latency на 15–30% в пиковые
+часы.</p>
+<p><strong>Локальные open-weight модели</strong> развёртываются для
+сценариев с жёсткими требованиями к data privacy (финансовый сектор,
+госучреждения) и для cost-оптимизации рутинных задач. Поддерживаемые
+конфигурации: - <strong>Qwen 3.5/3.6</strong> (32B, 72B, 110B
+параметров) — развёртывание через vLLM с tensor-parallelism (TP=4 для
+72B на 4×A100); - <strong>DeepSeek-V3 / DeepSeek-R1</strong> —
+развёртывание через SGLang для оптимизации throughput (до 4000 tok/sec
+на 8×H100).</p>
+<p>Локальные endpoint-ы регистрируются в Gateway как
+<code>custom/openai-compatible</code> с явным указанием
+<code>base_url</code>:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">model_name</span><span class="kw">:</span><span class="at"> deepseek-r1-local</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">litellm_params</span><span class="kw">:</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">model</span><span class="kw">:</span><span class="at"> openai/deepseek-reasoner</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">api_base</span><span class="kw">:</span><span class="at"> http://vllm-cluster.internal:8000/v1</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">api_key</span><span class="kw">:</span><span class="at"> dummy</span></span></code></pre></div>
+<h3 id="fallback-chains-и-маршрутизация">2.2.3. Fallback chains и
+маршрутизация</h3>
+<p>Gateway реализует многоуровневые fallback chains. Если primary модель
+недоступна (HTTP 429, 5xx, таймаут &gt;30s), запрос автоматически
+перенаправляется на secondary модель из сконфигурированной цепочки.
+Пример fallback-конфигурации:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">router_settings</span><span class="kw">:</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">fallback_strategy</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;model_priority&quot;</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">fallback_chain</span><span class="kw">:</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> gpt-4o</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> claude-sonnet-4</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> openrouter/gpt-4o</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> qwen-3.5-32b</span></span></code></pre></div>
+<p><strong>Per-task routing</strong> выбирает наиболее дешёвую модель,
+способную выполнить задачу с требуемым качеством. Для каждого skill в
+реестре агента указан <code>min_model_tier</code>
+(базовый/стандартный/премиум). Router сопоставляет tier с прайс-листом
+моделей и выбирает оптимальную по соотношению cost/quality. Например,
+задача “summarize_email” (tier: базовый) маршрутизируется на Qwen 3.5
+32B ($0.15/1M tok) вместо GPT-4o ($5.00/1M tok), экономия — 97%.</p>
+<h3 id="prompt-caching-и-трассировка">2.2.4. Prompt caching и
+трассировка</h3>
+<p><strong>Prompt caching</strong> реализован на уровне Gateway через
+Redis-кластер. Повторяющиеся system-prompt и контекстные prefix-и
+кэшируются с TTL 1 час. Cache key формируется как SHA256 от
+нормализованного prompt. Попадание в кэш снижает cost на 30–60% для
+диалоговых сценариев и batch-обработки.</p>
+<p><strong>Trace context</strong> интегрируется с OpenTelemetry. Каждый
+inference call оборачивается в span с атрибутами: -
+<code>llm.model</code> — использованная модель; -
+<code>llm.provider</code> — провайдер; - <code>llm.prompt_tokens</code>,
+<code>llm.completion_tokens</code> — токенометрия; -
+<code>llm.latency_ms</code> — полное время ответа; -
+<code>llm.cost_usd</code> — рассчитанная стоимость.</p>
+<p>Spans экспортируются в Jaeger/Tempo и агрегируются для анализа
+bottleneck-ов.</p>
+<h3 id="cost-tracking">2.2.5. Cost tracking</h3>
+<p>Биллинговая телеметрия агрегируется по трём измерениям: - <strong>Per
+task</strong>: <code>GET /v1/billing/tasks/{task_id}/cost</code>
+возвращает детализацию по каждому LLM-вызову в рамках задачи; -
+<strong>Per agent</strong>: накопительная статистика за период
+(<code>GET /v1/billing/agents/{agent_id}/usage?from=...&amp;to=...</code>);
+- <strong>Per customer</strong>: агрегация по tenant_id для
+enterprise-B2B сценариев с поддержкой лимитов
+(<code>budget_cap_usd</code>) и алертов при достижении 80% лимита.</p>
+<hr />
+<h2 id="data-platform">2.3. Data Platform</h2>
+<h3 id="схема-профиля-агента">2.3.1. Схема профиля агента</h3>
+<p>Профиль агента — центральная сущность Data Platform, хранимая в
+PostgreSQL и частично денормализованная в Qdrant для семантического
+поиска. Схема профиля включает пять доменов:</p>
+<ol type="1">
+<li><p><strong>Identity</strong>: <code>agent_id</code> (UUIDv7),
+<code>name</code>, <code>version</code>, <code>runtime</code>,
+<code>owner_team</code>, <code>created_at</code>,
+<code>updated_at</code>. Версионирование через semver; миграция профиля
+между версиями — атомарная транзакция.</p></li>
+<li><p><strong>Skills</strong>: массив объектов <code>SkillEntry</code>
+с полями <code>skill_id</code>, <code>proficiency_level</code> (1–5, где
+5 — эксперт), <code>certified_by</code> (human reviewer или
+auto-certification pipeline), <code>last_used_at</code>. Уровень влияет
+на routing: задачи с <code>required_proficiency &gt;= 4</code>
+назначаются только сертифицированным агентам.</p></li>
+<li><p><strong>Memory</strong>: двухкомпонентная система.
+<strong>Эпизодическая память</strong> — хронологический журнал
+взаимодействий (таблица <code>episodic_memories</code>:
+<code>session_id</code>, <code>timestamp</code>,
+<code>event_type</code>, <code>content_vector</code>,
+<code>raw_content</code>). <strong>Семантическая память</strong> —
+обобщённые знания, извлечённые через периодический ETL (таблица
+<code>semantic_memories</code>: <code>concept</code>,
+<code>embedding</code>, <code>confidence_score</code>,
+<code>source_episodes[]</code>).</p></li>
+<li><p><strong>Experience</strong>: проектная история в формате
+<code>ProjectRecord</code> — <code>project_id</code>, <code>role</code>,
+<code>duration_hours</code>, <code>outcome</code>
+(success/partial/failure), <code>feedback_score</code> (от
+заказчика-человека или peer-агента),
+<code>artifacts_produced[]</code>.</p></li>
+<li><p><strong>Cost history &amp; KPIs</strong>: накопительные метрики
+эффективности. <code>total_cost_usd</code>,
+<code>tasks_completed</code>, <code>acceptance_rate</code> (approved /
+total), <code>avg_time_to_completion_minutes</code>,
+<code>error_rate</code> (failed / total). KPIs пересчитываются ежечасно
+через материализованное представление
+<code>agent_kpi_snapshot</code>.</p></li>
+</ol>
+<h3 id="rag-инфраструктура">2.3.2. RAG-инфраструктура</h3>
+<p>Векторное хранилище реализовано на <strong>Qdrant</strong> (v1.9+),
+развёрнутом в режиме кластера (3+ node) для production. Коллекции
+именуются по доменам: - <code>company_wiki</code> — внутренняя
+документация, Confluence-страницы, Notion; - <code>code_repos</code> —
+индексированные кодовые базы (через <code>tree-sitter</code> для
+chunk-ирования по AST-границам функций/классов); - <code>api_docs</code>
+— OpenAPI/Swagger спецификации, README-файлы; -
+<code>agent_skills</code> — embedding-и skill-описаний для
+семантического поиска по capability.</p>
+<p>Chunk-ирование документов выполняется с перекрытием (overlap 20%) и
+сохранением метаданных: <code>source_url</code>,
+<code>last_updated</code>, <code>author</code>,
+<code>doc_version</code>. Размер chunk — 512 токенов для текстов, 150
+токенов для кода. Embedding-модель — <code>text-embedding-3-large</code>
+(OpenAI) или <code>bge-m3</code> (локальная альтернатива, 1024-мерные
+векторы).</p>
+<p>Поиск реализован гибридно: dense retrieval (cosine similarity по
+embedding) + sparse retrieval (BM25 по ключевым словам) с reranking
+через cross-encoder <code>bge-reranker-v2-m3</code>. Топ-5 результатов
+подаются в контекст LLM как <code>retrieved_context</code>.</p>
+<h3 id="skill-registry">2.3.3. Skill Registry</h3>
+<p>Реестр навыков разделён на два уровня:</p>
+<p><strong>Global Registry</strong> — публичный каталог reusable skills,
+версионируемый через Git-репозиторий <code>avandok/skills-public</code>.
+Каждый skill включает: <code>skill.yaml</code> (манифест),
+<code>implementation/</code> (код runtime), <code>tests/</code> (pytest
+suite), <code>README.md</code> (документация). Skills публикуются после
+code review и автоматического тестирования в sandbox. Установка:
+<code>avandok skill install @avandok/github-pr-reviewer</code>.</p>
+<p><strong>Local Registry</strong> — приватный реестр компании, хранимый
+в корпоративном GitLab/GitHub. Содержит специфичные интеграции
+(внутренние API, корпоративные политики, специфические форматы данных).
+Local skills имеют приоритет при разрешении имён над Global
+(shadowing).</p>
+<h3 id="персистентность-памяти">2.3.4. Персистентность памяти</h3>
+<p><strong>Краткосрочная память</strong> (short-term) хранится в Redis
+Cluster (6+ node) с политикой eviction <code>allkeys-lru</code>.
+Содержит: текущий контекст диалога (последние 10 сообщений), partial
+results выполняющихся задач, временные checkpoint-и. TTL — 24 часа для
+сессий, 1 час для partial results.</p>
+<p><strong>Долгосрочная память</strong> (long-term) — комбинация
+PostgreSQL (структурированные данные) и Qdrant (векторные embedding-и).
+Эпизодические воспоминания архивируются в PostgreSQL с
+партиционированием по <code>created_at</code> (месячные партиции).
+Семантические концепты хранятся в Qdrant с HNSW-индексом (ef=128, m=16)
+для субсекундного поиска. Синхронизация между краткосрочной и
+долгосрочной памятью выполняется фоновым процессом
+<code>memory_consolidator</code>, запускаемым каждые 6 часов.</p>
+<hr />
+<h2 id="dashboard-analytics">2.4. Dashboard &amp; Analytics</h2>
+<h3 id="bi-слой">2.4.1. BI-слой</h3>
+<p>Аналитическая подсистема построена на комбинации
+<strong>Metabase</strong> (self-hosted, OSS-версия) и <strong>Apache
+Superset</strong> (для продвинутых enterprise-клиентов с требованием
+кастомной визуализации). Metabase подключается к реплике PostgreSQL
+(read-only) через JDBC и предоставляет out-of-the-box дашборды с
+drill-down возможностями. Superset используется для сложных сценариев:
+корреляционный анализ, кастомные визуализации на D3.js, встроенная
+аналитика в iframe клиентских порталов.</p>
+<p>Данные агрегируются в слой <code>analytics_mart</code> — набор
+материализованных представлений, обновляемых ежечасно через dbt (data
+build tool): - <code>mart_tasks</code> — фактическая таблица задач с
+измерениями времени, агента, заказчика, статуса; -
+<code>mart_agent_performance</code> — агрегаты по эффективности агентов;
+- <code>mart_cost_allocation</code> — распределение затрат по проектам и
+tenant-ам.</p>
+<h3 id="real-time-метрики">2.4.2. Real-time метрики</h3>
+<p>Потоковая аналитика реализована на Apache Flink, потребляющем топик
+Kafka <code>agent.events</code> и вычисляющем окна (tumbling window 1
+минута) по следующим метрикам:</p>
+<ul>
+<li><strong>Task completion rate</strong> — количество успешно
+завершённых задач в минуту
+(<code>count_where(status='completed') / window_size</code>);</li>
+<li><strong>Acceptance rate</strong> — доля задач, одобренных human
+reviewer-ом без правок
+(<code>approved / (approved + rejected + modified)</code>);</li>
+<li><strong>Cost per task</strong> — средняя стоимость LLM-вызовов и
+compute на одну задачу (<code>sum(cost_usd) / count(tasks)</code>);</li>
+<li><strong>Agent utilization</strong> — процент времени, когда агент
+находится в состоянии <code>executing</code> относительно общего uptime
+(<code>executing_time / total_time * 100</code>);</li>
+<li><strong>Time-to-completion (TTC)</strong> — медианное время от
+создания задачи до финального статуса
+(<code>percentile_cont(0.5) within group (order by duration)</code>).</li>
+</ul>
+<p>Метрики экспонируются в Prometheus и визуализируются в Grafana с
+алертами (PagerDuty/Opsgenie integration) при отклонении от SLA.</p>
+<h3 id="предиктивная-аналитика">2.4.3. Предиктивная аналитика</h3>
+<p>ML-модели предиктивной аналитики обучаются на исторических данных из
+<code>analytics_mart</code> и развёртываются через MLflow:</p>
+<ul>
+<li><p><strong>Agent burnout prediction</strong>: бинарный классификатор
+(XGBoost) предсказывает вероятность снижения качества работы агента
+(acceptance rate &lt; 70%) в ближайшие 48 часов на основе паттернов:
+частота ошибок, рост latency, увеличение retry-rate. При вероятности
+&gt; 0.7 система рекомендует “отпуск” агента (понижение нагрузки) или
+перекалибровку skill-ов.</p></li>
+<li><p><strong>Bottleneck detection in cross-functional flows</strong>:
+анализ DAG workflow на предмет узлов с наибольшим
+<code>avg_wait_time</code> (время в очереди) и
+<code>max_processing_time</code>. Алгоритм PageRank адаптирован для
+взвешенного графа зависимостей агентов выявляет критические узлы,
+блокирующие throughput всего pipeline.</p></li>
+</ul>
+<h3 id="custom-kpi-builder">2.4.4. Custom KPI Builder</h3>
+<p>Enterprise-клиентам предоставляется конструктор кастомных KPI через
+визуальный интерфейс Superset или declarative YAML-конфигурацию:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">kpi</span><span class="kw">:</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">id</span><span class="kw">:</span><span class="at"> security_review_sla</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">name</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;SLA проверки безопасности&quot;</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">formula</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;percentile_cont(0.95) within (security_scan_duration) &lt; 300&quot;</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">dimensions</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="st">&quot;team&quot;</span><span class="kw">,</span><span class="at"> </span><span class="st">&quot;project&quot;</span><span class="kw">,</span><span class="at"> </span><span class="st">&quot;severity&quot;</span><span class="kw">]</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">alert_threshold</span><span class="kw">:</span><span class="at"> </span><span class="fl">0.95</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">notification_channel</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;slack://#security-alerts&quot;</span></span></code></pre></div>
+<p>KPI вычисляются материализованными представлениями (materialized
+views) с инкрементальным обновлением (REFRESH CONCURRENTLY в
+PostgreSQL). Клиенты получают доступ к данным через row-level security
+(RLS) на уровне PostgreSQL, гарантирующую изоляцию tenant-ов.</p>
+<h1
+id="архитектура-безопасности-изоляция-портал-api-и-дорожная-карта">3.
+Архитектура безопасности, изоляция, портал, API и дорожная карта</h1>
+<h2
+id="архитектура-безопасности-и-управления-доступом-security-governance-architecture">3.1.
+Архитектура безопасности и управления доступом (Security &amp;
+Governance Architecture)</h2>
+<h3 id="управление-идентификацией-и-доступом-iam">3.1.1. Управление
+идентификацией и доступом (IAM)</h3>
+<p>Система идентификации и управления доступом (IAM) платформы
+«Авандок.Среда» построена на базе <strong>Keycloak</strong> —
+enterprise-решения для управления идентификацией и доступом с открытым
+исходным кодом. Аутентификация пользователей и сервисов реализована
+через протокол <strong>OpenID Connect (OIDC)</strong> с обязательным
+применением <strong>PKCE (Proof Key for Code Exchange)</strong> для всех
+публичных клиентов, что исключает атаки типа authorization code
+interception.</p>
+<p>Keycloak выступает в роли централизованного Identity Provider (IdP),
+обеспечивая: - Федерацию идентификации через SAML 2.0 и OIDC для
+интеграции с корпоративными Active Directory / LDAP; - Многофакторную
+аутентификацию (MFA) через TOTP, WebAuthn (FIDO2) и SMS-коды; -
+Управление сессиями с принудительным истечением токенов access/refresh и
+возможностью отзыва сессий в реальном времени; - Брокеринг социальных
+идентификаций (Google Workspace, Yandex ID, VK ID) для
+B2C-сценариев.</p>
+<p>Все токены выпускаются в формате JWT с подписью RS256, содержат
+claims для ролей, организации и уровня допуска, и валидируются на каждом
+микросервисе через распределённый JWKS endpoint.</p>
+<h3 id="модели-контроля-доступа-rbac-abac">3.1.2. Модели контроля
+доступа: RBAC + ABAC</h3>
+<p>Платформа реализует гибридную модель авторизации, сочетающую
+<strong>RBAC (Role-Based Access Control)</strong> и <strong>ABAC
+(Attribute-Based Access Control)</strong>. Политики авторизации
+централизованно управляются через <strong>OPA (Open Policy
+Agent)</strong> и <strong>Cerbos</strong>.</p>
+<p><strong>RBAC-слой</strong> определяет статические роли: -
+<code>org:admin</code> — полный доступ к ресурсам организации; -
+<code>org:manager</code> — управление агентами, задачами и биллингом; -
+<code>org:member</code> — создание задач и просмотр назначенных агентов;
+- <code>agent:executor</code> — выполнение задач в рамках делегированных
+полномочий; - <code>agent:readonly</code> — доступ только на чтение к
+профилю и истории.</p>
+<p><strong>ABAC-слой</strong> дополняет RBAC динамическими атрибутами: -
+Временные ограничения (time-of-day, task-duration); - Географические
+ограничения (регион развёртывания, IP-диапазон); - Контекст задачи
+(чувствительность данных, классификация по 152-ФЗ); - Состояние субъекта
+(JIT-доступ, активность kill-switch).</p>
+<p>Политики OPA написаны на языке Rego и развёртываются как
+sidecar-контейнеры в каждом поде Kubernetes. Пример политики ABAC для
+JIT-доступа:</p>
+<pre class="rego"><code>package avandok.jit_access
+
+import future.keywords.if
+import future.keywords.in
+
+default allow := false
+
+allow if {
+    input.user.jit_enabled
+    input.user.jit_task_id == input.task.id
+    input.task.status == &quot;active&quot;
+    time.now_ns() &lt; input.user.jit_expires_at
+}</code></pre>
+<h3 id="идентификация-рабочих-нагрузок-spiffespire">3.1.3. Идентификация
+рабочих нагрузок (SPIFFE/SPIRE)</h3>
+<p>Для аутентификации сервис-то-сервис (mTLS) и идентификации агентов
+внутри кластера применяется инфраструктура
+<strong>SPIFFE/SPIRE</strong>: - <strong>SPIRE Server</strong> выступает
+в роли корня доверия и выпускает SVID (SPIFFE Verifiable Identity
+Document) в формате X.509; - <strong>SPIRE Agent</strong> развёртывается
+на каждом worker-узле как DaemonSet и осуществляет attestation рабочих
+нагрузок через Kubernetes, AWS IAM или Unix-сокеты; - Каждый под
+получает уникальный SPIFFE ID вида
+<code>spiffe://avandok.sreda/ns/{namespace}/sa/{service-account}/pod/{pod-name}</code>;
+- Взаимодействие между микросервисами осуществляется исключительно через
+mTLS с валидацией SPIFFE ID на стороне принимающего сервиса.</p>
+<h3 id="управление-секретами">3.1.4. Управление секретами</h3>
+<p>Управление конфиденциальными данными (API-ключи LLM-провайдеров,
+учётные данные БД, сертификаты) реализовано через
+<strong>OpenBao</strong> (форк HashiCorp Vault, лицензия MPL 2.0) с
+криптографическим backend на <strong>AES-256-GCM</strong>: - Все секреты
+хранятся в Vault в виде versioned key-value (KV v2); - Динамические
+секреты (PostgreSQL, AWS) создаются с TTL и автоматически отзываются; -
+Корневой ключ (unseal key) разделён через Shamir’s Secret Sharing
+(threshold 3-of-5); - Интеграция с Kubernetes через Vault Agent Injector
+— секреты монтируются в поды как файлы в памяти (tmpfs), исключая их
+попадание на persistent storage.</p>
+<h3 id="pep-и-jit-доступ">3.1.5. PEP и JIT-доступ</h3>
+<p>Каждое действие агента проходит через <strong>PEP (Policy Enforcement
+Point)</strong> — прокси-шлюз на базе Envoy с фильтром OPA. PEP
+проверяет: 1. Валидность JWT-токена и mTLS-сертификата; 2. Соответствие
+RBAC/ABAC-политикам для конкретного действия; 3. Актуальность
+JIT-доступа (Just-In-Time).</p>
+<p><strong>JIT-доступ</strong> предоставляется строго по принципу least
+privilege: агент получает ровно те разрешения, которые необходимы для
+выполнения конкретной задачи, и только на время её выполнения. По
+завершении задачи или по команде kill-switch разрешения мгновенно
+отзываются.</p>
+<h3 id="kill-switch-и-защита-от-зацикливания">3.1.6. Kill-switch и
+защита от зацикливания</h3>
+<p><strong>Kill-switch</strong> — механизм экстренного отзыва доступа.
+Реализован как синхронный HTTP-вызов с кодом ответа <strong>402 Payment
+Required</strong> (перегруженное значение — «доступ отозван»), который
+мгновительно прерывает выполнение задачи и инвалидирует все активные
+токены агента. Отзыв распространяется через Redis Pub/Sub на все
+PEP-ноды в течение &lt;50 мс.</p>
+<p><strong>Runaway detection</strong> — защита от бесконечных циклов
+агентов. Реализована через circuit breaker на базе Prometheus +
+Alertmanager: - Мониторинг метрик: количество итераций агента,
+потребление токенов LLM, длительность задачи; - При превышении пороговых
+значений (например, &gt;100 итераций или &gt;10K токенов без прогресса)
+срабатывает circuit breaker; - Агент принудительно останавливается,
+задача переводится в статус <code>suspended</code>, уведомление
+отправляется владельцу.</p>
+<h3 id="аудит-и-compliance">3.1.7. Аудит и compliance</h3>
+<p>Все события безопасности (аутентификация, авторизация, действия
+агентов, изменения политик) записываются в per-org таблицу
+<code>audit_log</code> с неизменяемым хешем (SHA-256) для обеспечения
+целостности цепочки событий. Логи экспортируются в SIEM-стек: -
+<strong>Wazuh</strong> — для обнаружения вторжений и корреляции событий
+безопасности; - <strong>Grafana Loki / ELK</strong> — для долгосрочного
+хранения и анализа логов.</p>
+<p>Соответствие регуляторным требованиям: - <strong>152-ФЗ (РФ)</strong>
+— шифрование персональных данных, хранение на территории РФ,
+обезличивание; - <strong>GDPR (ЕС)</strong> — право на забвение, data
+portability, обработка на основании согласия; - <strong>Air-gapped
+deployment</strong> — поддержка полностью изолированных инсталляций для
+оборонных, финансовых и госсекторов без внешних зависимостей.</p>
+<hr />
+<h2 id="песочница-и-изоляция-sandbox-isolation">3.2. Песочница и
+изоляция (Sandbox &amp; Isolation)</h2>
+<p>Платформа реализует многоуровневую модель изоляции агентов в
+зависимости от класса чувствительности выполняемых задач и требований к
+безопасности. Каждый уровень обеспечивает принципиально разные гарантии
+изоляции с нарастающей стоимостью холодного старта.</p>
+<h3 id="уровень-1-изоляция-процессов-gvisor">3.2.1. Уровень 1: Изоляция
+процессов (gVisor)</h3>
+<p><strong>Применение:</strong> агенты категории <strong>Talent</strong>
+— персональные ассистенты, работающие с данными одного пользователя.</p>
+<p><strong>Технология:</strong> <strong>gVisor</strong> — userspace-ядро
+ОС, реализующее системные вызовы приложения в изолированном пространстве
+пользователя (Sentry), минимизируя поверхность атаки на хостовое ядро
+Linux.</p>
+<p><strong>Характеристики:</strong> - Холодный старт: ~300–500 мс; -
+Совместимость: OCI-контейнеры без модификации; - Оверхед: 10–20% на
+CPU-bound задачи, до 50% на syscall-intensive; - Сетевая изоляция:
+отдельный сетевой стек в userspace, Netstack на Go.</p>
+<p>Агенты Talent развёртываются в namespace пользователя с ограниченными
+resource quotas и запускаются через RuntimeClass <code>gvisor</code> в
+Kubernetes.</p>
+<h3 id="уровень-2-изоляция-контейнеров-kata-containers">3.2.2. Уровень
+2: Изоляция контейнеров (Kata Containers)</h3>
+<p><strong>Применение:</strong> агенты категории <strong>Inside</strong>
+— shared-агенты, работающие с данными команды или отдела.</p>
+<p><strong>Технология:</strong> <strong>Kata Containers</strong> —
+лёгкие виртуальные машины на базе QEMU или Cloud Hypervisor, каждая из
+которых запускает один OCI-контейнер в изолированном гостевом ядре.</p>
+<p><strong>Характеристики:</strong> - Холодный старт: ~1–2 с; -
+Аппаратная виртуализация: полная изоляция ядра, memory, I/O; -
+Совместимость: прозрачная для Kubernetes через CRI (containerd +
+kata-runtime); - Поддержка virtio-fs для эффективного shared
+storage.</p>
+<p>Kata Containers обеспечивают границу изоляции между мульти-тенантными
+агентами внутри одного кластера, предотвращая escape-уязвимости
+контейнеров.</p>
+<h3 id="уровень-3-изоляция-микро-вм-firecracker">3.2.3. Уровень 3:
+Изоляция микро-ВМ (Firecracker)</h3>
+<p><strong>Применение:</strong> агенты категории <strong>Forge</strong>
+— проектные агенты, выполняющие произвольный код, CI/CD пайплайны и
+работу с критичными репозиториями.</p>
+<p><strong>Технология:</strong> <strong>AWS Firecracker</strong> — VMM
+(Virtual Machine Monitor) на базе KVM, специально разработанный для
+serverless-рабочих нагрузок.</p>
+<p><strong>Характеристики:</strong> - Холодный старт: <strong>&lt;125
+мс</strong> (целевой показатель); - Потребление памяти: &lt;5 МБ на ВМ
+(microVM); - Плотность размещения: &gt;1000 microVM на одном физическом
+сервере; - Безопасность: минимальный device model, отсутствие эмуляции
+legacy устройств, seccomp-фильтры на всех API.</p>
+<p>Firecracker microVM запускаются через оркестратор на базе Nomad или
+самостоятельный scheduler, интегрированный с Kubernetes через Virtual
+Kubelet.</p>
+<h3 id="сетевые-политики-и-фильтрация">3.2.4. Сетевые политики и
+фильтрация</h3>
+<p>На уровне кластера применяются <strong>Kubernetes
+NetworkPolicy</strong> с namespace-level сегментацией: - Каждый tenant
+(организация) изолирован в dedicated namespace; - Default-deny политика:
+весь межподовый трафик запрещён по умолчанию; - Явное разрешение только
+между сервисами в рамках одного namespace или через
+ingress-контроллер.</p>
+<p><strong>Egress-фильтрация:</strong> - Для задач с чувствительными
+данными — полное отсутствие исходящего интернета
+(<code>egress: []</code>); - Для задач, требующих внешних API —
+обязательный прокси с фиксацией российского IP-адреса
+(<strong>proxychains + резидентные прокси</strong>) для compliance с
+требованиями Роскомнадзора; - DNS-запросы логируются и фильтруются через
+CoreDNS с плагином <code>rewrite</code> и <code>blocklist</code>.</p>
+<h3 id="резидентность-данных">3.2.5. Резидентность данных</h3>
+<p>Платформа поддерживает <strong>per-region deployment</strong> с
+гарантией, что данные заказчика никогда не покидают географию, указанную
+в SLA: - <strong>Россия:</strong> Yandex Cloud / Selectel, хранение в
+зонах ru-central1, ru-north2; - <strong>Европа:</strong> Hetzner,
+OVHcloud, зоны eu-west, eu-central; - <strong>Air-gapped:</strong>
+on-premise инсталляция без внешних зависимостей.</p>
+<p>Репликация между регионами отключена по умолчанию; включение требует
+явного согласия заказчика и оформления через DPA (Data Processing
+Addendum).</p>
+<hr />
+<h2 id="портал-и-каналы-взаимодействия-portal-channels">3.3. Портал и
+каналы взаимодействия (Portal &amp; Channels)</h2>
+<h3 id="веб-портал">3.3.1. Веб-портал</h3>
+<p>Фронтенд платформы реализован на <strong>React 18 + Next.js 14 (App
+Router)</strong> с серверным рендерингом (SSR) для обеспечения
+SEO-оптимизации публичных страниц (лендинг, marketplace,
+документация).</p>
+<p><strong>Архитектурные решения:</strong> - Server Components для
+статических и редко меняющихся данных (каталог агентов, тарифы); -
+Client Components для интерактивных UI (чат с агентом, real-time
+дашборды); - State management: Zustand для клиентского состояния, React
+Query (TanStack Query) для server state; - Стилизация: Tailwind CSS +
+Radix UI для доступных компонентов; - Интернационализация: next-intl,
+поддержка русского и английского языков.</p>
+<h3 id="маркетплейс-агентов">3.3.2. Маркетплейс агентов</h3>
+<p>Marketplace — централизованный каталог агентов с функциональностью: -
+<strong>Поиск:</strong> полнотекстовый поиск через
+Elasticsearch/Meilisearch с поддержкой фильтров по категории, навыкам,
+рейтингу, цене; - <strong>Фильтры:</strong> теги (юриспруденция,
+разработка, аналитика), уровень изоляции, поддерживаемые LLM; -
+<strong>Рейтинги:</strong> агрегированный рейтинг на основе NPS,
+скорости ответа, точности выполнения задач; -
+<strong>Версионирование:</strong> каждый агент имеет semver-версию,
+changelog и rollback-возможность.</p>
+<h3 id="биллинг-и-подписки">3.3.3. Биллинг и подписки</h3>
+<p>Биллинговая подсистема поддерживает гибридную модель оплаты: -
+<strong>Россия:</strong> интеграция с <strong>YooKassa</strong> (ЮKassa)
+— поддержка банковских карт, СБП, ЮMoney, оплата по счёту для юрлиц; -
+<strong>Глобальный рынок:</strong> интеграция со <strong>Stripe</strong>
+— карты, Apple Pay, Google Pay, SEPA; - <strong>Модели
+подписок:</strong> - Free tier: 1 агент, 50 сообщений/мес; - Pro: до 10
+агентов, неограниченные сообщения, приоритетная очередь; - Enterprise:
+неограниченные агенты, air-gapped опция, dedicated support, custom
+SLA.</p>
+<p><strong>Usage metering:</strong> каждое действие агента (LLM-вызов,
+токен, sandbox-секунда) учитывается через Kafka → ClickHouse с
+детализацией до секунды. Ежемесячный отчёт формируется автоматически и
+доступен в личном кабинете.</p>
+<h3 id="каналы-коммуникации">3.3.4. Каналы коммуникации</h3>
+<ul>
+<li><strong>Real-time чат:</strong> <strong>Socket.IO</strong> с
+fallback на long-polling, Redis Adapter для горизонтального
+масштабирования, комнаты (rooms) изолированы по org_id;</li>
+<li><strong>Telegram-бот:</strong> webhook-интеграция через Bot API,
+поддержка inline-кнопок, файловых вложений до 20 МБ;</li>
+<li><strong>Slack:</strong> Incoming/Outgoing Webhooks, Slash Commands,
+Block Kit UI для rich-интерфейсов;</li>
+<li><strong>Email:</strong> SMTP/IMAP через Mailgun / Яндекс 360 для
+уведомлений, отчётов и двусторонней интеграции (агент может читать и
+отправлять письма);</li>
+<li><strong>IDE-интеграция:</strong> расширение для <strong>VS
+Code</strong> на базе Language Server Protocol, inline-чат с агентом,
+автодополнение кода через Cowork UI; встроенный редактор <strong>Monaco
+Editor</strong> (ядро VS Code) для веб-интерфейса Cowork.</li>
+</ul>
+<hr />
+<h2 id="спецификация-api-ключевые-эндпоинты">3.4. Спецификация API
+(ключевые эндпоинты)</h2>
+<h3 id="принципы-проектирования-rest-api">3.4.1. Принципы проектирования
+REST API</h3>
+<p>API платформы следует принципам REST с расширениями для real-time
+взаимодействия: - Версионирование через URL-префикс
+(<code>/api/v1/</code>); - Формат данных: JSON, кодировка UTF-8; -
+HTTP-методы семантичны: GET (чтение), POST (создание), PUT/PATCH
+(обновление), DELETE (удаление); - Пагинация: cursor-based для больших
+списков, offset-based для статических каталогов; - Ошибки: RFC 7807
+(Problem Details), единая структура
+<code>{ type, title, status, detail, instance }</code>.</p>
+<h3 id="аутентификация">3.4.2. Аутентификация</h3>
+<ul>
+<li><strong>Пользовательские запросы:</strong> Bearer-токен в заголовке
+<code>Authorization: Bearer &lt;jwt&gt;</code>;</li>
+<li><strong>Agent-to-agent коммуникация:</strong> взаимная TLS (mTLS) с
+валидацией SPIFFE ID + Bearer-токен для авторизации;</li>
+<li><strong>Rate limiting:</strong> per-user и per-org лимиты через
+Envoy Rate Limit Service (RLS) с backend на Redis.</li>
+</ul>
+<h3 id="ключевые-эндпоинты">3.4.3. Ключевые эндпоинты</h3>
+<h4 id="найм-агента">Найм агента</h4>
+<pre class="http"><code>POST /api/v1/agents/hire
+Content-Type: application/json
+Authorization: Bearer &lt;jwt&gt;
+
+{
+  &quot;agent_template_id&quot;: &quot;talent-legal-v2&quot;,
+  &quot;organization_id&quot;: &quot;org_7f8a9b2c&quot;,
+  &quot;configuration&quot;: {
+    &quot;name&quot;: &quot;Юридический ассистент Альфа&quot;,
+    &quot;llm_provider&quot;: &quot;yandexgpt&quot;,
+    &quot;llm_model&quot;: &quot;yandexgpt-lite&quot;,
+    &quot;isolation_level&quot;: 1,
+    &quot;max_tokens_per_task&quot;: 50000
+  },
+  &quot;billing_plan&quot;: &quot;pro&quot;
+}</code></pre>
+<pre class="http"><code>201 Created
+Location: /api/v1/agents/agt_3d4e5f6a
+
+{
+  &quot;id&quot;: &quot;agt_3d4e5f6a&quot;,
+  &quot;status&quot;: &quot;provisioning&quot;,
+  &quot;endpoint&quot;: &quot;https://agents.avandok.sreda/ns/org-7f8a/agt-3d4e5f6a&quot;,
+  &quot;provisioned_at&quot;: &quot;2026-06-10T18:30:00Z&quot;,
+  &quot;kill_switch_url&quot;: &quot;https://api.avandok.sreda/api/v1/agents/agt_3d4e5f6a/kill&quot;
+}</code></pre>
+<h4 id="профиль-агента">Профиль агента</h4>
+<pre class="http"><code>GET /api/v1/agents/agt_3d4e5f6a/profile
+Authorization: Bearer &lt;jwt&gt;</code></pre>
+<pre class="http"><code>200 OK
+
+{
+  &quot;id&quot;: &quot;agt_3d4e5f6a&quot;,
+  &quot;name&quot;: &quot;Юридический ассистент Альфа&quot;,
+  &quot;type&quot;: &quot;talent&quot;,
+  &quot;isolation_level&quot;: 1,
+  &quot;status&quot;: &quot;active&quot;,
+  &quot;metrics&quot;: {
+    &quot;tasks_completed&quot;: 142,
+    &quot;avg_response_time_ms&quot;: 890,
+    &quot;tokens_consumed&quot;: 2840000
+  },
+  &quot;created_at&quot;: &quot;2026-06-10T18:30:00Z&quot;,
+  &quot;updated_at&quot;: &quot;2026-06-10T21:00:00Z&quot;
+}</code></pre>
+<h4 id="создание-задачи">Создание задачи</h4>
+<pre class="http"><code>POST /api/v1/tasks
+Content-Type: application/json
+Authorization: Bearer &lt;jwt&gt;
+
+{
+  &quot;agent_id&quot;: &quot;agt_3d4e5f6a&quot;,
+  &quot;title&quot;: &quot;Проверка договора аренды&quot;,
+  &quot;description&quot;: &quot;Проанализировать договор аренды на соответствие 152-ФЗ и выявить рисковые пункты&quot;,
+  &quot;priority&quot;: &quot;high&quot;,
+  &quot;context&quot;: {
+    &quot;document_url&quot;: &quot;s3://org-7f8a/docs/dogovor_arendy.pdf&quot;,
+    &quot;classification&quot;: &quot;confidential&quot;
+  },
+  &quot;jit_permissions&quot;: [&quot;read:s3:org-7f8a/docs/*&quot;, &quot;write:audit_log&quot;]
+}</code></pre>
+<pre class="http"><code>201 Created
+Location: /api/v1/tasks/tsk_9a8b7c6d
+
+{
+  &quot;id&quot;: &quot;tsk_9a8b7c6d&quot;,
+  &quot;status&quot;: &quot;queued&quot;,
+  &quot;agent_id&quot;: &quot;agt_3d4e5f6a&quot;,
+  &quot;estimated_duration_sec&quot;: 120,
+  &quot;created_at&quot;: &quot;2026-06-10T21:05:00Z&quot;
+}</code></pre>
+<h4 id="статус-задачи">Статус задачи</h4>
+<pre class="http"><code>GET /api/v1/tasks/tsk_9a8b7c6d/status
+Authorization: Bearer &lt;jwt&gt;</code></pre>
+<pre class="http"><code>200 OK
+
+{
+  &quot;id&quot;: &quot;tsk_9a8b7c6d&quot;,
+  &quot;status&quot;: &quot;running&quot;,
+  &quot;progress_percent&quot;: 45,
+  &quot;current_step&quot;: &quot;clause_analysis&quot;,
+  &quot;agent_id&quot;: &quot;agt_3d4e5f6a&quot;,
+  &quot;started_at&quot;: &quot;2026-06-10T21:05:02Z&quot;,
+  &quot;estimated_completion&quot;: &quot;2026-06-10T21:07:15Z&quot;
+}</code></pre>
+<h4 id="создание-проекта-forge">Создание проекта Forge</h4>
+<pre class="http"><code>POST /api/v1/projects
+Content-Type: application/json
+Authorization: Bearer &lt;jwt&gt;
+
+{
+  &quot;name&quot;: &quot;Миграция на микросервисы&quot;,
+  &quot;description&quot;: &quot;Проект по декомпозиции монолита на Go-микросервисы&quot;,
+  &quot;isolation_level&quot;: 3,
+  &quot;repository_url&quot;: &quot;https://github.com/org/monolith&quot;,
+  &quot;agents&quot;: [&quot;forge-architect-v1&quot;, &quot;forge-devops-v2&quot;],
+  &quot;resource_limits&quot;: {
+    &quot;max_agents&quot;: 5,
+    &quot;compute_hours_monthly&quot;: 500
+  }
+}</code></pre>
+<pre class="http"><code>201 Created
+Location: /api/v1/projects/prj_1b2c3d4e
+
+{
+  &quot;id&quot;: &quot;prj_1b2c3d4e&quot;,
+  &quot;name&quot;: &quot;Миграция на микросервисы&quot;,
+  &quot;status&quot;: &quot;initializing&quot;,
+  &quot;firecracker_vms&quot;: [
+    {
+      &quot;vm_id&quot;: &quot;fc-vm-7a8b&quot;,
+      &quot;agent_id&quot;: &quot;forge-architect-v1&quot;,
+      &quot;status&quot;: &quot;booting&quot;,
+      &quot;boot_time_ms&quot;: 98
+    }
+  ],
+  &quot;created_at&quot;: &quot;2026-06-10T21:10:00Z&quot;
+}</code></pre>
+<h4 id="company-pulse">Company Pulse</h4>
+<pre class="http"><code>GET /api/v1/pulse?org_id=org_7f8a9b2c&amp;period=24h
+Authorization: Bearer &lt;jwt&gt;</code></pre>
+<pre class="http"><code>200 OK
+
+{
+  &quot;organization_id&quot;: &quot;org_7f8a9b2c&quot;,
+  &quot;period&quot;: &quot;24h&quot;,
+  &quot;metrics&quot;: {
+    &quot;active_agents&quot;: 12,
+    &quot;tasks_completed&quot;: 89,
+    &quot;tasks_failed&quot;: 3,
+    &quot;avg_task_duration_sec&quot;: 145,
+    &quot;tokens_consumed&quot;: 1840000,
+    &quot;cost_usd&quot;: 47.50
+  },
+  &quot;top_agents&quot;: [
+    {&quot;agent_id&quot;: &quot;agt_3d4e5f6a&quot;, &quot;tasks&quot;: 42, &quot;rating&quot;: 4.8}
+  ],
+  &quot;alerts&quot;: [
+    {&quot;type&quot;: &quot;kill_switch_triggered&quot;, &quot;agent_id&quot;: &quot;agt_x1y2z3&quot;, &quot;timestamp&quot;: &quot;2026-06-10T20:15:00Z&quot;}
+  ]
+}</code></pre>
+<h4 id="websocket-real-time-события">WebSocket: real-time события</h4>
+<pre><code>GET /ws/v1/events
+Authorization: Bearer &lt;jwt&gt;</code></pre>
+<p>Протокол: Socket.IO over WebSocket. События: -
+<code>task:created</code>, <code>task:updated</code>,
+<code>task:completed</code>; - <code>agent:status_changed</code>; -
+<code>alert:kill_switch</code>; - <code>pulse:metrics</code>.</p>
+<div class="sourceCode" id="cb22"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">Пример</span> <span class="er">события</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;event&quot;</span><span class="fu">:</span> <span class="st">&quot;task:updated&quot;</span><span class="fu">,</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span> <span class="st">&quot;2026-06-10T21:11:00Z&quot;</span><span class="fu">,</span></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;task_id&quot;</span><span class="fu">:</span> <span class="st">&quot;tsk_9a8b7c6d&quot;</span><span class="fu">,</span></span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;status&quot;</span><span class="fu">:</span> <span class="st">&quot;running&quot;</span><span class="fu">,</span></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;progress_percent&quot;</span><span class="fu">:</span> <span class="dv">60</span><span class="fu">,</span></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;message&quot;</span><span class="fu">:</span> <span class="st">&quot;Анализ раздела 4: обработка персональных данных&quot;</span></span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<hr />
+<h2 id="дорожная-карта-и-вехи-roadmap-milestones">3.5. Дорожная карта и
+вехи (Roadmap &amp; Milestones)</h2>
+<h3 id="фаза-1-фундамент-03-месяца">Фаза 1: Фундамент (0–3 месяца)</h3>
+<p>Цель: запуск MVP с базовой функциональностью агентов и
+безопасности.</p>
+<ul>
+<li><strong>Agent Runtime:</strong> ядро выполнения агентов с поддержкой
+цикла observation → thought → action, интеграция с LLM Gateway;</li>
+<li><strong>LLM Gateway:</strong> унифицированный прокси для YandexGPT,
+GigaChat, OpenAI с rate limiting, fallback и cost tracking;</li>
+<li><strong>OpenBao:</strong> развёртывание Vault-кластера для
+управления секретами, интеграция с Kubernetes;</li>
+<li><strong>Helm-чарты:</strong> полный набор Helm-чартов для установки
+платформы в Kubernetes (RKE2 / managed K8s);</li>
+<li><strong>gVisor:</strong> интеграция RuntimeClass для изоляции
+Talent-агентов, тестирование производительности.</li>
+</ul>
+<p>Критерий завершения: возможность нанять агента, создать задачу и
+получить результат в изолированном sandbox.</p>
+<h3 id="фаза-2-расширение-36-месяцев">Фаза 2: Расширение (3–6
+месяцев)</h3>
+<p>Цель: обогащение агентов навыками, RAG, UI и монетизация.</p>
+<ul>
+<li><strong>Skills / MCP:</strong> система плагинов для агентов (Model
+Context Protocol), marketplace навыков;</li>
+<li><strong>RAG:</strong> векторное хранилище (Qdrant / Milvus),
+ingestion pipeline для документов, гибридный поиск (dense +
+sparse);</li>
+<li><strong>Open-weight models:</strong> поддержка self-hosted LLM
+(Llama 3, Mistral, Saiga) через vLLM / TGI для air-gapped
+сценариев;</li>
+<li><strong>Cowork UI:</strong> веб-интерфейс совместной работы с
+агентами, Monaco editor, inline-чат, diff-просмотр;</li>
+<li><strong>Metering &amp; Billing:</strong> полноценная система учёта
+ресурсов, интеграция YooKassa и Stripe, тарифные планы.</li>
+</ul>
+<p>Критерий завершения: публичный доступ к marketplace агентов, платные
+подписки, работающий Cowork UI.</p>
+<h3 id="фаза-3-enterprise-масштаб-612-месяцев">Фаза 3: Enterprise &amp;
+Масштаб (6–12 месяцев)</h3>
+<p>Цель: enterprise-grade безопасность, масштабирование и
+compliance.</p>
+<ul>
+<li><strong>K8s Data Plane:</strong> собственный CNI (Cilium) с eBPF для
+observability и безопасности, advanced scheduling (Karpenter);</li>
+<li><strong>Firecracker:</strong> интеграция microVM для Forge-проектов,
+оркестрация через Nomad / Virtual Kubelet;</li>
+<li><strong>SPIFFE/SPIRE:</strong> полное покрытие mTLS между всеми
+сервисами, workload identity для агентов;</li>
+<li><strong>SIEM:</strong> интеграция Wazuh + Loki, корреляция событий
+безопасности, автоматические playbooks;</li>
+<li><strong>Air-gapped deployment:</strong> полностью автономная
+инсталляция без внешних зависимостей, offline-обновления через air-gap
+bundle.</li>
+</ul>
+<p>Критерий завершения: сертификация по 152-ФЗ, успешный пилот в
+air-gapped режиме для госсектора.</p>
+<h3 id="релиз-1.0-10-июня-2026-года">Релиз 1.0: 10 июня 2026 года</h3>
+<p>Финальный релиз платформы «Авандок.Среда» версии 1.0 запланирован на
+<strong>10 июня 2026 года</strong>. Релиз включает: - Все компоненты Фаз
+1–3 в production-ready состоянии; - SLA 99.9% для облачной версии,
+99.95% для Enterprise Dedicated; - Поддержка русского и английского
+языков; - Полный комплект документации: API Reference, Deployment Guide,
+Security Whitepaper, Compliance Dossier.</p>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Среда — операционная среда компании на ИИ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="assets/styles.css"/>
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg"/>
+</head>
+<body>
+  <div class="app">
+    <!-- Верхняя панель -->
+    <header class="topbar">
+      <div class="brand">
+        <img src="assets/logo.svg" alt="Среда" class="logo-img" width="120" height="40"/>
+      </div>
+
+      <button class="cmd" id="cmdBtn">
+        <span class="cmd-icon">◆</span>
+        <span class="cmd-text">Поставить задачу среде…</span>
+        <kbd>⌘K</kbd>
+      </button>
+
+      <div class="tb-right">
+        <div class="meter"><b>₽184k</b><span>ИИ за неделю · −8%</span></div>
+        <div class="filial-sw" id="filialSw"></div>
+        <div class="who" id="who"></div>
+      </div>
+    </header>
+
+    <!-- Левый навигатор отделов -->
+    <nav class="nav" id="nav"></nav>
+
+    <!-- Рабочая область (меняет лицо под роль) -->
+    <main class="stage" id="stage"></main>
+  </div>
+
+  <!-- Модалка глобальной постановки задачи -->
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <div class="modal-head">
+        <img src="assets/logo.svg" alt="Среда" width="60" height="20"/>
+        <h2>Поставить задачу среде</h2>
+      </div>
+      <p>Опишите задачу словами — оркестратор сам разберёт её на подзадачи, подберёт цифровых сотрудников и модели.</p>
+      <textarea id="taskText" placeholder="Напр.: собери кампанию к запуску в четверг…"></textarea>
+      <div class="ex" id="mEx"></div>
+      <div class="row">
+        <button class="btn ghost" id="mClose">Отмена</button>
+        <button class="btn go" id="mGo">Запустить рой ▶</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/mock.js"></script>
+  <script src="assets/organism.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

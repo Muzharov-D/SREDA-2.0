@@ -5,6 +5,7 @@ const $  = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const el = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
+function escHtml(s){ return String(s).replace(/[&<>]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch])); }
 /* печать текста по буквам — «живой» ИИ; начинается с короткой паузы на размышление */
 function typeInto(node, text, scroller, done){
   if(!node){ if(done) done(); return; }
@@ -25,6 +26,72 @@ function streamChat(root, st, u, a){
 }
 
 const state = { ws: 'dev', screen: 'dev', running: false };
+
+/* --- Breadcrumb & navigation stack --- */
+const NAV = {
+  stack: [],
+  maxDepth: 12,
+  push(id){ if(this.stack[this.stack.length-1]!==id) this.stack.push(id); if(this.stack.length>this.maxDepth) this.stack.shift(); },
+  pop(){ return this.stack.length>1 ? this.stack.pop() : this.stack[0]; },
+  peek(){ return this.stack[this.stack.length-1]; },
+  canBack(){ return this.stack.length>1; },
+  reset(id){ this.stack=[id]; }
+};
+
+let _navDir = 'forward'; // 'forward' | 'back'
+
+function goBack(){
+  if(state.running){ toast('Идёт прогон — дождитесь завершения'); return; }
+  if(!NAV.canBack()){ navTo('pulse'); return; }
+  NAV.pop();
+  const prev = NAV.peek();
+  _navDir = 'back';
+  navTo(prev, {noPush:true});
+}
+
+function renderBreadcrumb(id){
+  const stage = $('#stage');
+  let bar = stage.previousElementSibling;
+  if(!bar || !bar.classList.contains('bc-bar')){
+    bar = document.createElement('div');
+    bar.className = 'bc-bar';
+    stage.parentNode.insertBefore(bar, stage);
+  }
+  const ws = WORKSPACES.find(w=>w.id===state.ws) || WORKSPACES[0];
+  const item = ws.nav.find(n=>n.id===id);
+  const label = item ? item.label : (SCREEN_NAMES[id] || id);
+  const crumbs = [
+    {id: ws.nav[0]?.id || 'pulse', label: ws.label, icon: ws.icon},
+    {id: id, label: label}
+  ];
+  bar.innerHTML = crumbs.map((c,i)=>{
+    if(i===crumbs.length-1) return `<span class="bc-current">${c.icon||''} ${escHtml(c.label)}</span>`;
+    return `<button onclick="navTo('${c.id}')">${c.icon||''} ${escHtml(c.label)}</button><span class="bc-sep">›</span>`;
+  }).join('');
+}
+
+function renderBackButton(){
+  let btn = document.querySelector('.back-btn');
+  if(!btn){
+    btn = document.createElement('button');
+    btn.className = 'back-btn';
+    btn.innerHTML = `← Назад <kbd>Esc</kbd>`;
+    btn.onclick = goBack;
+    const brand = document.querySelector('.brand');
+    if(brand) brand.parentNode.insertBefore(btn, brand.nextSibling);
+  }
+  btn.style.visibility = NAV.canBack() ? 'visible' : 'hidden';
+}
+
+/* --- Screen name map for breadcrumbs --- */
+const SCREEN_NAMES = {
+  pulse:'Пульс компании', exec:'Дашборд компании', company:'Оргструктура',
+  flowx:'Передачи компании', project:'Проекты на ревью', modules:'С чего начать',
+  talent:'Цифровой найм', forge:'Цифровое производство', bills:'Счета Среды',
+  workers:'Штат цифровых сотрудников', aibudget:'Бюджеты ИИ', router:'Маршрутизатор моделей',
+  audit:'Аудит и доступ', market:'Полная библиотека', studio:'Студия',
+  power:'Суперсила', path:'Путь', core:'Контур'
+};
 
 let _toastT;
 function toast(msg){
@@ -75,9 +142,31 @@ function renderNav(){
     it.onclick=()=>{ if(state.running){ toast('Идёт прогон — дождитесь завершения'); return; } state.screen=n.id; renderNav(); renderStage(n.id); }; nav.appendChild(it); });
 }
 
-function navTo(id){ if(state.running){ toast('Идёт прогон — дождитесь завершения'); return; } const ws=WORKSPACES.find(w=>w.nav.some(n=>n.id===id)); if(ws) state.ws=ws.id; state.screen=id; renderNav(); renderTopWho(); renderStage(id); history.pushState({screen:id}, '', '#' + id); }
+function navTo(id, opts={}){
+  if(state.running){ toast('Идёт прогон — дождитесь завершения'); return; }
+  const ws=WORKSPACES.find(w=>w.nav.some(n=>n.id===id)); if(ws) state.ws=ws.id;
+  state.screen=id; renderNav(); renderTopWho();
+  // animation
+  const stage = $('#stage');
+  const dirClass = _navDir==='back' ? 'back-enter' : 'enter';
+  stage.classList.add(dirClass);
+  requestAnimationFrame(()=>{
+    renderStage(id);
+    renderBreadcrumb(id);
+    renderBackButton();
+    requestAnimationFrame(()=>{
+      stage.classList.add(dirClass+'-active');
+      setTimeout(()=>stage.classList.remove('enter','enter-active','back-enter','back-enter-active'), 240);
+    });
+  });
+  _navDir = 'forward';
+  if(!opts.noPush){
+    NAV.push(id);
+    history.pushState({screen:id}, '', '#' + id);
+  }
+}
 const selectDept = navTo;
-function setWorkspace(id){ const ws=WORKSPACES.find(w=>w.id===id); if(!ws) return; state.ws=id; state.screen=ws.nav[0].id; renderNav(); renderTopWho(); renderStage(state.screen); history.pushState({screen:state.screen}, '', '#' + state.screen); }
+function setWorkspace(id){ const ws=WORKSPACES.find(w=>w.id===id); if(!ws) return; state.ws=id; state.screen=ws.nav[0].id; renderNav(); renderTopWho(); navTo(state.screen); }
 
 /* History API — кнопки назад/вперёд работают */
 window.addEventListener('popstate', (e) => {
@@ -85,9 +174,30 @@ window.addEventListener('popstate', (e) => {
   const ws = WORKSPACES.find(w => w.nav.some(n => n.id === screen));
   if (ws) state.ws = ws.id;
   state.screen = screen;
+  _navDir = 'back';
   renderNav();
   renderTopWho();
-  renderStage(screen);
+  navTo(screen, {noPush:true});
+});
+
+/* Keyboard shortcuts */
+window.addEventListener('keydown', (e) => {
+  // Esc = back
+  if(e.key==='Escape'){ e.preventDefault(); goBack(); return; }
+  // Alt+Left = back
+  if(e.altKey && e.key==='ArrowLeft'){ e.preventDefault(); goBack(); return; }
+  // Alt+Right = forward (not implemented yet, could use history.forward)
+  if(e.altKey && e.key==='ArrowRight'){ e.preventDefault(); history.forward(); return; }
+  // Cmd/Ctrl+1..8 = quick switch to first 8 nav items of current workspace
+  if((e.metaKey || e.ctrlKey) && e.key>='1' && e.key<='8'){
+    e.preventDefault();
+    const ws = WORKSPACES.find(w=>w.id===state.ws) || WORKSPACES[0];
+    const items = ws.nav.filter(n=>!n.sep);
+    const idx = parseInt(e.key,10)-1;
+    if(items[idx]) navTo(items[idx].id);
+    return;
+  }
+  // Cmd/Ctrl+K = task modal (already exists)
 });
 
 function renderTopWho(){
@@ -4408,6 +4518,9 @@ function init(){
   renderNav();
   renderTopWho();
   renderStage(state.screen);
+  NAV.reset(state.screen);
+  renderBreadcrumb(state.screen);
+  renderBackButton();
   initModal();
   injectTour();
   const meter=$('#meterBtn'); if(meter){ meter.style.cursor='pointer'; meter.onclick=()=>navTo(window.__PORTAL?'bills':'aibudget'); }

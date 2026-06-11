@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40" fill="none">
+  <rect x="2" y="2" width="36" height="36" rx="8" fill="url(#grad)"/>
+  <text x="20" y="26" text-anchor="middle" fill="white" font-family="Inter, sans-serif" font-weight="800" font-size="20">С</text>
+  <text x="46" y="18" fill="#1a1a2e" font-family="Inter, sans-serif" font-weight="700" font-size="16" letter-spacing="-0.5">Среда</text>
+  <text x="46" y="32" fill="#6b7280" font-family="Inter, sans-serif" font-weight="500" font-size="9" letter-spacing="0.3">ЦИФРОВЫЕ СОТРУДНИКИ</text>
+  <defs>
+    <linearGradient id="grad" x1="2" y1="2" x2="38" y2="38" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#e11d48"/>
+      <stop offset="1" stop-color="#be123c"/>
+    </linearGradient>
+  </defs>
+</svg>
