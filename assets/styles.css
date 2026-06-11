@@ -3957,6 +3957,14 @@ h2 .ic{width:14px;height:14px;color:var(--acc);vertical-align:-0.1em}
 .nm-node.k-cluster .nm-sub{color:var(--faint)}
 .nm-name{font-size:11px;font-weight:700;color:var(--txt);text-shadow:0 1px 6px rgba(0,0,0,.9);line-height:1.15}
 .nm-sub{font-size:9px;color:var(--muted);max-width:104px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Департмент-пульс: подписи сотрудников (имя+роль) — только по наведению/близости,
+   по умолчанию чистый рой из нейронов. Заголовки функций (.k-cluster) остаются. */
+.dp-stage .nm-node:not(.k-cluster) .nm-name,
+.dp-stage .nm-node:not(.k-cluster) .nm-sub{opacity:0;transition:opacity .14s ease;pointer-events:none}
+.dp-stage .nm-node:not(.k-cluster):hover .nm-name,
+.dp-stage .nm-node:not(.k-cluster):hover .nm-sub,
+.dp-stage .nm-node.near:not(.k-cluster) .nm-name,
+.dp-stage .nm-node.near:not(.k-cluster) .nm-sub{opacity:1}
 /* статус = цвет свечения: в потоке / ждёт / гейт-блок */
 .nm-node .nm-av::after{content:'';position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border-radius:50%;
   border:2px solid var(--bg);background:var(--green)}
