@@ -53,6 +53,8 @@ const WORKSPACES = ROLE_IDS.map(id => { const d = DEPARTMENTS.find(x=>x.id===id)
     nav:[ {id:'pulse',label:'Пульс компании',icon:'🫀'}, {id:'exec',label:'Дашборд компании',icon:'📊'}, {id:'company',label:'Оргструктура',icon:'🏢'}, {id:'flowx',label:'Передачи компании',icon:'🔄'}, {id:'project',label:'Проекты на ревью',icon:'📁'},
       {sep:'Платформа Среды'},
       {id:'modules',label:'С чего начать',icon:'🪜'}, {id:'talent',label:'Цифровой найм',icon:'🌊'}, {id:'forge',label:'Цифровое производство',icon:'🏭'}, {id:'bills',label:'Счета Среды',icon:'🧾'} ] },
+  { id:'platform', kind:'ext', icon:'🌐', label:'Платформа Среды', persona:'Клиент без Inside',
+    nav:[ {id:'modules',label:'С чего начать',icon:'🪜'}, {id:'talent',label:'Цифровой найм',icon:'🌊'}, {id:'forge',label:'Цифровое производство',icon:'🏭'}, {id:'bills',label:'Счета Среды',icon:'🧾'} ] },
   { id:'owner', kind:'owner', icon:'⚙️', label:'Владелец платформы', persona:'Платформа · Авандок',
     nav:[ {id:'workers',label:'Штат цифровых сотрудников',icon:'🤖'},{id:'aibudget',label:'Бюджеты ИИ',icon:'💰'},{id:'router',label:'Маршрутизатор моделей',icon:'🔀'},{id:'audit',label:'Аудит и доступ',icon:'🛡️'},{id:'market',label:'Полная библиотека',icon:'📚'},{id:'studio',label:'Студия',icon:'🛠️'},
       {sep:'Видение'},
@@ -113,7 +115,7 @@ function toggleFsMenu(e){ e&&e.stopPropagation(); let m=$('#fsMenu'); if(m){ m.r
 function closeFsMenu(e){ const m=$('#fsMenu'); if(m && !m.contains(e.target)){ m.remove(); document.removeEventListener('click', closeFsMenu); } }
 function toggleWsMenu(e){ e&&e.stopPropagation(); let m=$('#wsMenu'); if(m){ m.remove(); return; }
   m=el(`<div id="wsMenu" class="ws-menu"></div>`);
-  [['Управление','mgmt'],['Платформа','owner'],['Кабинеты ролей','role']].forEach(([t,k])=>{
+  [['Управление','mgmt'],['Внешний контур · без Inside','ext'],['Платформа','owner'],['Кабинеты ролей','role']].forEach(([t,k])=>{
     m.appendChild(el(`<div class="ws-menu-g">${t}</div>`));
     WORKSPACES.filter(w=>w.kind===k).forEach(w=>{ const it=el(`<button class="ws-menu-i ${w.id===state.ws?'on':''}"><span class="wm-ic">${w.icon}</span><div><b>${w.label}</b><small>${w.persona}</small></div></button>`);
       it.onclick=()=>{ m.remove(); setWorkspace(w.id); }; m.appendChild(it); }); });
@@ -4005,6 +4007,11 @@ function portalHead(icon, label, sub, phase){
     <span class="badge out"><span class="dot"></span>Платформа Среды · внешний контур</span></div>`;
 }
 const tlColor = (a) => DEPT_TASK[TL_ROLES[a.role].dept].c;
+/* внешний контур: клиент пользуется Наймом/Производством БЕЗ Inside */
+function isExtWS(){ return state.ws === 'platform'; }
+function insideUpsell(){
+  return `<div class="od-gov" style="margin-top:9px;border-color:rgba(54,201,148,.35)">Сейчас агент работает <b>в ваших каналах</b> (почта · Slack · Telegram) — без внедрения. С <b>Inside</b> он встанет в нервную систему компании: пульс, команды, гейты, governance. <a href="#pulse" style="color:var(--acc)">Посмотреть Inside →</a></div>`;
+}
 function hexAv(a, big){ return `<span class="hex-av ${big?'big':''}" style="--c:${tlColor(a)}">${a.name[0]}</span>`; }
 function tlStars(r){ return '★'.repeat(Math.round(r)) + '<i>' + r.toFixed(1) + '</i>'; }
 function tlPassportHTML(a){
@@ -4101,7 +4108,8 @@ function renderTalentAgent(root, id){
   function hireHTML(){
     return `<div class="panel tl-hire"><h2>Найм</h2>
       <button class="btn go" id="taIv" style="width:100%">🎙 Провести собеседование (живое тестовое)</button>
-      <div class="tl-hire-row"><select class="workforce-filter" id="taDept">${ROLE_IDS.map(r=>`<option value="${r}" ${r===R.dept?'selected':''}>${roleLabel(r)}</option>`).join('')}</select></div>
+      ${isExtWS()?'<div class="od-gov" style="margin-top:8px">Без Inside: агент придёт в <b>ваши каналы</b> — Slack, почта, Telegram. Никакого внедрения.</div>'
+        :`<div class="tl-hire-row"><select class="workforce-filter" id="taDept">${ROLE_IDS.map(r=>`<option value="${r}" ${r===R.dept?'selected':''}>${roleLabel(r)}</option>`).join('')}</select></div>`}
       <div class="tl-hire-row"><button class="btn ghost" id="taStaff">Нанять в штат · ₽${a.priceMonth.toLocaleString('ru')}/мес</button>
       <button class="btn ghost" id="taTask">Под результат · от ₽${a.priceTask.toLocaleString('ru')}</button></div>
       <div id="taHireFlow"></div>
@@ -4114,11 +4122,13 @@ function renderTalentAgent(root, id){
       ${gpField('Ставка', c.mode==='staff' ? '₽'+a.priceMonth.toLocaleString('ru')+'/мес' : '₽'+a.priceTask.toLocaleString('ru')+' за принятый результат', 'sreda')}
       <div class="ji-ask" style="margin-top:9px"><input type="text" placeholder="Задача для «${a.name.split(' ')[0]}»…" id="taAsk"/><button class="btn go" id="taGo">→</button></div>
       <div id="taTaskFlow"></div>
-      <div class="tl-hire-row" style="margin-top:9px">
+      ${isExtWS()
+        ?`<div class="tl-hire-row" style="margin-top:9px"><button class="btn ghost" id="taEnd">Завершить контракт</button></div>${insideUpsell()}`
+        :`<div class="tl-hire-row" style="margin-top:9px">
         <button class="btn ghost" id="taTeam">Открыть команду отдела →</button>
         <button class="btn ghost" id="taEnd">Завершить контракт</button></div>
       <button class="btn go" id="taCryst" style="width:100%;margin-top:8px">🧊 Кристаллизовать в Inside — в постоянный штат</button>
-      <div class="od-gov" style="margin-top:8px">Кристаллизация: контракт закрывается, агент получает полную должностную инструкцию, governance и бюджеты компании. Паспорт переносится целиком.</div></div>`;
+      <div class="od-gov" style="margin-top:8px">Кристаллизация: контракт закрывается, агент получает полную должностную инструкцию, governance и бюджеты компании. Паспорт переносится целиком.</div>`}</div>`;
   }
   /* — собеседование: уточняющий вопрос → решение стримом → вердикт — */
   function ivHTML(){
@@ -4157,9 +4167,11 @@ function renderTalentAgent(root, id){
   }
   /* — найм за 4 минуты: чек-лист оформления — */
   function hireFlow(mode){
-    const dept = $('#taDept',root).value;
+    const dept = isExtWS() ? R.dept : $('#taDept',root).value;
     const box = $('#taHireFlow',root);
-    const steps = ['Цифровой контракт сгенерирован и подписан','Корпоративная почта и доступы (JIT) выданы','Подключён к каналу отдела «'+roleLabel(dept)+'»','Контактная поверхность установлена · периметр 2/6'];
+    const steps = ['Цифровой контракт сгенерирован и подписан','Корпоративная почта и доступы (JIT) выданы',
+      isExtWS()?'Подключён к вашему Slack и почте':'Подключён к каналу отдела «'+roleLabel(dept)+'»',
+      'Контактная поверхность установлена · периметр строго под задачи'];
     box.innerHTML = `<div class="tl-flow"><b>Оформление · сжимаем 4 минуты</b>${steps.map((s,i)=>`<div class="tl-step" data-s="${i}"><i>○</i>${s}</div>`).join('')}</div>`;
     steps.forEach((s,i)=>setTimeout(()=>{ const st=box.querySelector(`[data-s="${i}"]`); if(st){ st.classList.add('on'); st.querySelector('i').textContent='✓'; }
       if(i===steps.length-1){ tlHire(a.id, dept, mode); toast(`«${a.name}» в строю — смотрите команду «${roleLabel(dept)}»`); setTimeout(draw, 500); } }, 520*(i+1)));
@@ -4264,7 +4276,8 @@ function renderForgeProject(root, id){
       ${p.crew.map(aid=>{ const a=talentAgent(aid); const c=tlContractOf(aid);
         return `<div class="tl-row">${hexAv(a)}<div><b>${a.name}</b><small>${TL_ROLES[a.role].label} · ${a.rating}★ · этот проект уже в его паспорте</small></div>
         ${c?'<span class="gp-bdg ok">уже на контракте</span>':`<button class="btn ghost" data-hire="${aid}">Нанять в Talent →</button>`}</div>`; }).join('')}
-      <button class="btn ghost" id="fgAgain" style="margin-top:9px">Заказать доработку — та же бригада, контекст сохранён</button></div>`;
+      <button class="btn ghost" id="fgAgain" style="margin-top:9px">Заказать доработку — та же бригада, контекст сохранён</button>
+      ${isExtWS()?insideUpsell():''}</div>`;
   }
   function draw(){
     root.innerHTML = portalHead('🏭', p.title, (p.meta?'Мета-заказ: цех Среды собрал модуль для самой Среды — результат работает в продукте, в котором вы сейчас находитесь. ':'') + 'Фикс-цена ₽'+p.price.toLocaleString('ru')+' · изолированный цех · вы решаете на воротах','фаза «газ»') + `
@@ -4292,7 +4305,8 @@ function renderForgeProject(root, id){
     $('#fgBack',root).onclick=()=>navTo('forge');
     root.querySelectorAll('[data-crew]').forEach(b=>b.onclick=()=>navTo('tagent:'+b.dataset.crew));
     root.querySelectorAll('[data-art]').forEach(b=>b.onclick=()=>{ const art=p.artifacts[+b.dataset.art];
-      if(art[2]==='dpulse:dev'){ toast('Открываем результат цеха в живом продукте'); navTo('dpulse:dev'); }
+      if(art[2]==='dpulse:dev'){ if(isExtWS()){ toast('Артефакт передан в ваш контур: репозиторий, сервис, документация (демо)'); }
+        else { toast('Открываем результат цеха в живом продукте'); navTo('dpulse:dev'); } }
       else if(art[2]==='gate') toast('Документ на воротах — утвердите или верните');
       else toast(`«${art[1]}» — открыт (демо)`); });
     root.querySelectorAll('[data-hire]').forEach(b=>b.onclick=()=>{ const a=talentAgent(b.dataset.hire);
