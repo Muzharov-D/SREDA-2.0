@@ -16,6 +16,24 @@ function toast(msg){
   clearTimeout(_toastT); _toastT = setTimeout(()=>t.classList.remove('show'), 2600);
 }
 
+/* ── логирование действий в API (audit) ── */
+async function portalLog(who, what, verdict='allow'){
+  try {
+    await apiPost('/audit', { time: new Date().toLocaleString('ru'), who, what, verdict, emoji:'🌐', dept:'portal' });
+  } catch(e) { console.log('Audit log failed:', e.message); }
+}
+
+/* ── создание счёта через API ── */
+async function portalBill(kind, title, amount){
+  try {
+    const bill = await apiPost('/bills', { kind, title, amount, status:'выставлен' });
+    // invalidate cache so next read picks up new bill
+    window.__SREDA_INV = null;
+    if(typeof updateMeter==='function') updateMeter();
+    return bill;
+  } catch(e) { console.log('Bill creation failed:', e.message); return null; }
+}
+
 const portalState = { screen: 'catalog', filters: { role:'', grade:'', min:0, max:200000 }, selectedAgent:null, selectedProject:null };
 
 /* ── инициализация ── */
@@ -220,13 +238,17 @@ function renderAgentDetail(root){
   $('#paTg',root).onclick = () => toast('Связь через Telegram: запрос отправлен агенту');
   $('#paEmail',root).onclick = () => toast('Связь через Email: запрос отправлен агенту');
   $('#paChat',root).onclick = () => toast('Чат в Среде: агент ответит в течение 15 минут');
-  $('#paHireTask',root).onclick = () => {
-    if(tlHire){ tlHire(a.id, R?R.dept:'dev', 'result'); toast(`Агент ${a.name} нанят за результат`); }
-    else toast(`Найм: ${a.name} — за результат`);
+  $('#paHireTask',root).onclick = async () => {
+    if(tlHire){ tlHire(a.id, R?R.dept:'dev', 'result'); }
+    await portalLog('Клиент · портал', `Найм агента ${a.name} · за результат · ₽${price.toLocaleString('ru')}`);
+    await portalBill('task', `Talent · ${a.name} — за результат`, price);
+    toast(`Агент ${a.name} нанят за результат · счёт выставлен`);
   };
-  $('#paHireMonth',root).onclick = () => {
-    if(tlHire){ tlHire(a.id, R?R.dept:'dev', 'staff'); toast(`Агент ${a.name} нанят в штат`); }
-    else toast(`Найм: ${a.name} — в штат`);
+  $('#paHireMonth',root).onclick = async () => {
+    if(tlHire){ tlHire(a.id, R?R.dept:'dev', 'staff'); }
+    await portalLog('Клиент · портал', `Найм агента ${a.name} · в штат · ₽${month.toLocaleString('ru')}/мес`);
+    await portalBill('staff', `Talent · ${a.name} — подписка, месяц 1`, month);
+    toast(`Агент ${a.name} нанят в штат · счёт выставлен`);
   };
 }
 
@@ -254,9 +276,13 @@ function renderOrders(root){
     renderPortalNav();
     renderPortalStage();
   });
-  root.querySelectorAll('.portal-tpl').forEach(c=>c.onclick=()=>{
+  root.querySelectorAll('.portal-tpl').forEach(c=>c.onclick=async()=>{
     const t = FG_TEMPLATES.find(x=>x.id===c.dataset.tid);
-    if(t && fgOrder){ const p = fgOrder(t.id); toast(`Проект «${t.title}» запущен — бригада собрана`); renderOrders(root); }
+    if(t && fgOrder){ const p = fgOrder(t.id); 
+      await portalLog('Клиент · портал', `Заказ производства · ${t.title} · старт ₽${Math.round(t.price*0.3).toLocaleString('ru')}`);
+      await portalBill('forge', `Forge · «${t.title}» — старт производства (30%)`, Math.round(t.price*0.3));
+      toast(`Проект «${t.title}» запущен · счёт выставлен`); renderOrders(root); 
+    }
     else toast('Заказ создан (демо)');
   });
 }

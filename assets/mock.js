@@ -8,12 +8,18 @@ const API_BASE = (typeof window !== 'undefined' && window.location.hostname === 
   ? 'http://localhost:3000'
   : '';
 
+const API_KEY = 'sreda-prototype-key-2026'; // prototype-only, no real auth
+
 async function api(path, opts={}){
   const url = API_BASE + '/api' + path;
-  const res = await fetch(url, opts);
+  const res = await fetch(url, { ...opts, headers: { 'X-API-Key': API_KEY, ...(opts.headers||{}) } });
   if(!res.ok) throw new Error(res.status + ' ' + res.statusText);
   return res.json();
 }
+async function apiGet(path){ return api(path, { method:'GET' }); }
+async function apiPost(path, body){ return api(path, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }); }
+async function apiPut(path, body){ return api(path, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }); }
+async function apiDelete(path){ return api(path, { method:'DELETE' }); }
 
 /* --- Пул моделей (маршрутизатор выбирает под задачу) --------------------- */
 const MODELS = {

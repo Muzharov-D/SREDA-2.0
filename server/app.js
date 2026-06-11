@@ -3,10 +3,20 @@ const cors = require('cors');
 const path = require('path');
 const { initDb } = require('./db');
 
+const API_KEY = process.env.API_KEY || 'sreda-prototype-key-2026';
+
+function auth(req, res, next){
+  if(req.path === '/health') return next();
+  const key = req.headers['x-api-key'];
+  if(key !== API_KEY) return res.status(401).json({ error: 'Unauthorized' });
+  next();
+}
+
 initDb().then(() => {
   const app = express();
   app.use(cors());
   app.use(express.json());
+  app.use('/api', auth);
 
   // API routes
   app.use('/api/agents', require('./routes/agents'));
@@ -14,7 +24,7 @@ initDb().then(() => {
   app.use('/api/bills', require('./routes/bills'));
   app.use('/api/audit', require('./routes/audit'));
 
-  // Health check
+  // Health check (no auth)
   app.get('/api/health', (req, res) => res.json({ ok: true }));
 
   // Static files (frontend)

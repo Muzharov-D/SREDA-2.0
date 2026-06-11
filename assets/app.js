@@ -397,7 +397,14 @@ function queueStore(id){ const Q = window.__QUEUE || (window.__QUEUE = {});
 /* единый аудит-лог рантайма: передачи, апрувы, ревью — виден на экране «Аудит» */
 function auditLog(){ return window.__AUDITLOG || (window.__AUDITLOG = []); }
 function nowHHMMSS(){ const d = new Date(); return [d.getHours(),d.getMinutes(),d.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':'); }
-function pushAudit(e){ auditLog().unshift({ time:nowHHMMSS(), model:'—', cost:0, verdict:'allow', emoji:'◆', dept:'Среда', ...e, act:(e.act||e.what||'') }); }
+function pushAudit(e){ 
+  const entry = { time:nowHHMMSS(), model:'—', cost:0, verdict:'allow', emoji:'◆', dept:'Среда', ...e, act:(e.act||e.what||'') };
+  auditLog().unshift(entry);
+  // also persist to API (fire-and-forget)
+  if(typeof apiPost==='function'){
+    apiPost('/audit', { time: entry.time, who: entry.who, what: entry.act, verdict: entry.verdict, emoji: entry.emoji, dept: entry.dept }).catch(()=>{});
+  }
+}
 
 /* данные с правами (слой №2): что ассистент видит по роли × уровню */
 const SEN_ORDER = ['intern','spec','head','owner'];
