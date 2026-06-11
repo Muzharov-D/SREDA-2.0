@@ -1,12 +1,18 @@
 {
-  "name": "sreda-platform",
-  "version": "2.0.0",
-  "description": "Среда — операционная платформа с цифровыми сотрудниками",
+  "name": "sreda-prototype-api",
+  "version": "1.0.0",
+  "description": "Backend API for Sreda prototype — Express + SQLite",
+  "main": "server/app.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "node server/app.js",
+    "seed": "node server/seed.js"
   },
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "sqlite3": "^5.1.6"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

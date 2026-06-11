@@ -1,0 +1,139 @@
+@page {
+  size: A4;
+  margin: 2.5cm 2cm 2.5cm 2cm;
+}
+
+body {
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.6;
+  color: #1a1a1a;
+  max-width: 100%;
+}
+
+h1 {
+  font-size: 22pt;
+  font-weight: 700;
+  color: #0e1116;
+  margin-top: 1.5em;
+  margin-bottom: 0.6em;
+  page-break-after: avoid;
+  border-bottom: 2px solid #5b5bd6;
+  padding-bottom: 0.3em;
+}
+
+h2 {
+  font-size: 16pt;
+  font-weight: 600;
+  color: #2b3140;
+  margin-top: 1.3em;
+  margin-bottom: 0.5em;
+  page-break-after: avoid;
+}
+
+h3 {
+  font-size: 13pt;
+  font-weight: 600;
+  color: #2b3140;
+  margin-top: 1.1em;
+  margin-bottom: 0.4em;
+  page-break-after: avoid;
+}
+
+p {
+  margin-bottom: 0.8em;
+  text-align: justify;
+  orphans: 3;
+  widows: 3;
+}
+
+strong {
+  color: #0e1116;
+  font-weight: 700;
+}
+
+ul, ol {
+  margin-bottom: 0.8em;
+  padding-left: 1.5em;
+}
+
+li {
+  margin-bottom: 0.3em;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+
+th {
+  background: #f7f8fb;
+  border-bottom: 2px solid #5b5bd6;
+  padding: 8px 10px;
+  text-align: left;
+  font-weight: 600;
+}
+
+td {
+  border-bottom: 1px solid #ececf1;
+  padding: 8px 10px;
+}
+
+tr:nth-child(even) {
+  background: #fafbfc;
+}
+
+code {
+  font-family: "Consolas", "Monaco", monospace;
+  font-size: 10pt;
+  background: #f4f4f4;
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+
+pre {
+  background: #f4f4f4;
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 9.5pt;
+  line-height: 1.4;
+  page-break-inside: avoid;
+}
+
+blockquote {
+  border-left: 4px solid #5b5bd6;
+  margin: 1em 0;
+  padding: 0.5em 1em;
+  background: #f7f8fb;
+  font-style: italic;
+  color: #5b6473;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid #ececf1;
+  margin: 1.5em 0;
+}
+
+a {
+  color: #5b5bd6;
+  text-decoration: none;
+}
+
+.footnote {
+  font-size: 9pt;
+  color: #5b6473;
+}
+
+/* Page breaks for major sections */
+h1 {
+  page-break-before: always;
+}
+
+h1:first-of-type {
+  page-break-before: auto;
+}

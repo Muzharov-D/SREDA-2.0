@@ -1,18 +1,10 @@
-# зависимости и системное
 node_modules/
-*.log
-.DS_Store
-Thumbs.db
-
-# локальные инструменты
-.claude/
-.vercel/
-
-# рабочие артефакты — не для репозитория
-_backup/
-edp-ref-*.png
-*screenshot*.json
-sreda-main.png
-sreda-test.png
-sravnenie.docx
-assets/hero-bg.png
+server/data.db
+.env
+pandoc-3.1.11/
+pandoc.exe
+pandoc.zip
+wkhtmltox.zip
+*.pdf
+*.docx
+screenshot-*.png
