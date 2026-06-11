@@ -78,8 +78,8 @@ function cortexMap(stage, opts){
     const CHIP = 64;                              // место под чип-подпись (две строки + отступ)
     let scale = 1, RY = H / 2 - maxR0 - CHIP;
     if (RY < 140){ scale = Math.max(0.55, (H / 2 - CHIP - 140) / maxR0); RY = H / 2 - maxR0 * scale - CHIP; }
-    RY = Math.max(118, RY);
-    const RX = Math.max(200, Math.min(W / 2 - maxR0 * scale - 80, 660));
+    RY = Math.max(150, RY);
+    const RX = Math.max(200, Math.min(W / 2 - maxR0 * scale - 80, 780));
     clusters.forEach((c, i) => {
       const a = -Math.PI / 2 + i / clusters.length * Math.PI * 2;
       const rf = (i % 2) ? 0.86 : 1;

@@ -3589,7 +3589,7 @@ button.fx-node{cursor:pointer}button.fx-node:hover{transform:translateY(-2px);bo
    ПУЛЬС КОМПАНИИ 2.0 — лого в центре, отделы вокруг, премиальный поток задач
    ========================================================================== */
 .pls-wrap{display:grid;grid-template-columns:1fr 330px;gap:14px;align-items:start}
-.pls-stage{position:relative;min-height:calc(100vh - 248px);border:1px solid var(--line);border-radius:var(--r);
+.pls-stage{position:relative;min-height:calc(100vh - 176px);border:1px solid var(--line);border-radius:var(--r);
   background:
     radial-gradient(900px 480px at 50% 50%, color-mix(in srgb,var(--acc) 5%,transparent), transparent 64%),
     radial-gradient(1400px 900px at 50% 120%, rgba(0,0,0,.45), transparent 60%),
@@ -4015,8 +4015,8 @@ body.rpg-mode .hc-ach{color:#e6d9b8}
 /* ============================================================================
    CORTEX — нервная система компании на Пульсе (canvas, 314 нейронов)
    ========================================================================== */
-.cx-stage{position:relative;overflow:hidden;height:calc(100vh - 252px);min-height:500px}
-.pls-wrap .pls-side{max-height:calc(100vh - 252px);overflow-y:auto;overscroll-behavior:contain}
+.cx-stage{position:relative;overflow:hidden;height:calc(100vh - 180px);min-height:640px}
+.pls-wrap .pls-side{max-height:calc(100vh - 180px);overflow-y:auto;overscroll-behavior:contain}
 .cx-canvas{position:absolute;inset:0;z-index:2;display:block}
 .cx-stage .pls-core{z-index:6;pointer-events:auto;
   transform:translate(-50%,-50%) scale(var(--zoom,1));transform-origin:center}
