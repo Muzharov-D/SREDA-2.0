@@ -66,6 +66,22 @@ const FG_FEED = {
 /* преднаполненные проекты цеха: сдан · ждёт ворот · в работе */
 function forgeStore(){
   if (window.__FORGE) return window.__FORGE;
+  if (window.__API_PROJECTS && window.__API_PROJECTS.length) {
+    const projects = window.__API_PROJECTS.map(p => ({
+      ...p,
+      prog: p.prog || [0,0,0,0],
+      crew: p.crew || [],
+      what: p.what || [],
+      crit: p.crit || [],
+      artifacts: p.artifacts || [],
+      feed: p.feed || [],
+      feedDone: p.feed_done || [],
+      gateWait: p.gate_wait || null,
+      paidLbl: p.paid_lbl || '',
+      meta: p.meta ? true : false
+    }));
+    return (window.__FORGE = { seq: projects.length + 1, projects });
+  }
   const mk = (o) => ({ feed:[], gateWait:null, paidLbl:'', ...o });
   return (window.__FORGE = { seq:1, projects:[
     mk({ id:'fp-neuro', tpl:'meta', icon:'🧬', title:'Модуль «Нейрокарта отдела» для продукта «Среда»',

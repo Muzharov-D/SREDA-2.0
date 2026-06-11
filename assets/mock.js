@@ -3,6 +3,18 @@
    Всё вымышленное. Никаких реальных вызовов моделей — только сценарии.
    ========================================================================== */
 
+/* --- API endpoint (same origin for prototype, override via env if needed) --- */
+const API_BASE = (typeof window !== 'undefined' && window.location.hostname === 'localhost')
+  ? 'http://localhost:3000'
+  : '';
+
+async function api(path, opts={}){
+  const url = API_BASE + '/api' + path;
+  const res = await fetch(url, opts);
+  if(!res.ok) throw new Error(res.status + ' ' + res.statusText);
+  return res.json();
+}
+
 /* --- Пул моделей (маршрутизатор выбирает под задачу) --------------------- */
 const MODELS = {
   opus:    { name: 'Claude Opus',   vendor: 'Anthropic', tier: 'deep',     why: 'глубокое рассуждение',  cost: 14,  cls: 'm-deep' },

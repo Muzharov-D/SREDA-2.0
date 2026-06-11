@@ -6,6 +6,23 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const el = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
 function escHtml(s){ return String(s).replace(/[&<>]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch])); }
+
+/* --- Загрузка данных из API (fallback на in-memory) --- */
+async function loadApiData(){
+  try {
+    const agents = await api('/agents');
+    if(agents && agents.length) window.__API_AGENTS = agents;
+  } catch(e) { console.log('API agents unavailable, using in-memory'); }
+  try {
+    const projects = await api('/projects');
+    if(projects && projects.length) window.__API_PROJECTS = projects;
+  } catch(e) { console.log('API projects unavailable, using in-memory'); }
+  try {
+    const bills = await api('/bills');
+    if(bills && bills.length) window.__API_BILLS = bills;
+  } catch(e) { console.log('API bills unavailable, using in-memory'); }
+}
+
 /* печать текста по буквам — «живой» ИИ; начинается с короткой паузы на размышление */
 function typeInto(node, text, scroller, done){
   if(!node){ if(done) done(); return; }
@@ -4500,6 +4517,7 @@ function renderSredaBills(root){
 }
 
 function init(){
+  loadApiData(); // fire-and-forget: loads from API if available, falls back to in-memory
   if (isRPG()) document.body.classList.add('rpg-mode');
   sredaRestore();
   window.addEventListener('beforeunload', sredaPersist);
