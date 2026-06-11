@@ -97,16 +97,25 @@ function pcRoleLbl(a){
   return R ? R.label : a.role;
 }
 
-/* посимвольная печать с кареткой (.streaming уже есть в styles.css) */
-function pcTypeInto(node, text, scroller){
+/* посимвольная печать с кареткой (.streaming уже есть в styles.css);
+   уважает prefers-reduced-motion — движущийся текст триггерит вестибулярные
+   проблемы, поэтому при reduce выводим полный текст сразу, без интервала */
+function pcTypeInto(node, text, scroller, onDone){
   if (!node) return;
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce){
+    node.textContent = text;
+    if (scroller) scroller.scrollTop = scroller.scrollHeight;
+    if (typeof onDone === 'function') onDone();
+    return;
+  }
   node.classList.add('streaming');
   let i = 0;
   const t = setInterval(() => {
     i++;
     node.textContent = text.slice(0, i);
     if (scroller) scroller.scrollTop = scroller.scrollHeight;
-    if (i >= text.length){ clearInterval(t); node.classList.remove('streaming'); }
+    if (i >= text.length){ clearInterval(t); node.classList.remove('streaming'); if (typeof onDone === 'function') onDone(); }
   }, PC_TYPE_MS);
 }
 
@@ -269,12 +278,19 @@ function pcRenderThread(){
     };
     send.onclick = doSend;
     input.onkeydown = (e) => { if (e.key === 'Enter'){ e.preventDefault(); doSend(); } };
-    pcRenderMsgs();
-    /* API: первая загрузка определяет режим; повторные заходы — сразу поллинг */
-    if (_pcApiOk === null){
+    /* API: первая загрузка определяет режим; повторные заходы — сразу поллинг.
+       Пока GET /messages не вернулся (режим ещё неизвестен) и тред пуст —
+       показываем скелетон вместо пустоты/прыжка; иначе сразу рендерим. */
+    const th0 = pcThread(aid);
+    if (_pcApiOk === null && !th0.msgs.length){
+      pcRenderSkeleton();
       pcApiLoad(aid).then(() => { pcRenderMsgs(); pcStartPoll(aid); });
-    } else if (_pcApiOk === true){
-      pcStartPoll(aid);
+    } else if (_pcApiOk === null){
+      pcRenderMsgs();
+      pcApiLoad(aid).then(() => { pcRenderMsgs(); pcStartPoll(aid); });
+    } else {
+      pcRenderMsgs();
+      if (_pcApiOk === true) pcStartPoll(aid);
     }
   } else {
     pcRenderMail(mails, a);
@@ -336,6 +352,15 @@ function pcRenderMsgs(streamId){
   }
 }
 
+/* скелетон-плейсхолдер на время первого реального API-фетча треда */
+function pcRenderSkeleton(){
+  const box = $('#pcMsgs'); if (!box) return;
+  box.innerHTML = `
+    <div class="pc-skel-row"><span class="pc-skel-bub w55"></span></div>
+    <div class="pc-skel-row own"><span class="pc-skel-bub w40"></span></div>
+    <div class="pc-skel-row"><span class="pc-skel-bub w70"></span></div>`;
+}
+
 /* индикатор «печатает…» */
 function pcShowTyping(aid){
   if (pcView.contact !== aid) return;
@@ -394,7 +419,11 @@ async function pcSend(aid, text){
       setTimeout(() => pcShowTyping(aid), 400);
       setTimeout(() => pcHideTyping(), eta + 6000); /* страховка, если поллинг молчит */
       return;
-    } catch(e){ _pcApiOk = false; /* падаем в локальный режим */ }
+    } catch(e){
+      /* доставка в API-режиме не прошла — сообщаем юзеру, а не молчим */
+      if (typeof toast === 'function') toast('Не удалось отправить — попробуйте ещё раз');
+      _pcApiOk = false; /* падаем в локальный режим */
+    }
   }
   pcSimReply(aid, text);
 }

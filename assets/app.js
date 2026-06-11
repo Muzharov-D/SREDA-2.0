@@ -8,20 +8,33 @@ const el = (html) => { const t = document.createElement('template'); t.innerHTML
 function escHtml(s){ return String(s).replace(/[&<>]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch])); }
 
 /* --- Загрузка данных из API (fallback на in-memory) --- */
+/* экраны, которые читают данные из API и должны перерисоваться, когда живые данные доедут */
+const API_SCREENS = ['talent', 'project', 'bills'];
 async function loadApiData(){
+  let fresh = false;
   try {
     const agents = await api('/agents');
-    if(agents && agents.length) window.__API_AGENTS = agents;
+    if(agents && agents.length){ window.__API_AGENTS = agents; window.__TLCAT = null; fresh = true; }
   } catch(e) { console.log('API agents unavailable, using in-memory'); }
   try {
     const projects = await api('/projects');
-    if(projects && projects.length) window.__API_PROJECTS = projects;
+    if(projects && projects.length){ window.__API_PROJECTS = projects; fresh = true; }
   } catch(e) { console.log('API projects unavailable, using in-memory'); }
   try {
     const bills = await api('/bills');
-    if(bills && bills.length) window.__API_BILLS = bills;
+    if(bills && bills.length){ window.__API_BILLS = bills; fresh = true; }
   } catch(e) { console.log('API bills unavailable, using in-memory'); }
+  /* живые данные доехали — перерисуем текущий экран, если он зависит от API,
+     чтобы скелетон-плейсхолдеры сменились реальными карточками без «прыжка» в пусто */
+  window.__API_LOADING = false;
+  if(fresh && typeof state !== 'undefined' && API_SCREENS.includes(state.screen)){
+    try { renderStage(state.screen); decorateStage(state.screen); } catch(e) { /* рендер недоступен — игнор */ }
+  }
 }
+/* флаг: первичная загрузка API ещё идёт — экраны могут показать скелетоны */
+window.__API_LOADING = true;
+/* скелетон-плейсхолдеры: N серых карточек с shimmer (класс .skeleton из styles.css) */
+function skeletonCards(n, cls){ return Array.from({length:n||4},()=>`<div class="${cls||'tl-card'} skeleton" aria-hidden="true" style="min-height:96px"></div>`).join(''); }
 
 /* печать текста по буквам — «живой» ИИ; начинается с короткой паузы на размышление */
 function typeInto(node, text, scroller, done){
@@ -634,7 +647,8 @@ const PULSE_LOGO = `
 function renderPulse(root, d){
   root.innerHTML = workHead(d, `Нервная система компании · ${TOTAL_STAFF} нейронов: ${COMPANY_SIZE} людей + ${DIGITAL_SIZE} цифровых (${DIGITAL_SHARE}% штата)`) + `
     <div class="pls-wrap">
-      <div class="pls-stage cx-stage" id="cxStage">
+      <div class="pls-stage cx-stage" id="cxStage" role="group" aria-label="Карта-пульс компании: отделы как кластеры нейронов">
+        <div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Пульс компании по отделам: ${ROLE_IDS.map(r=>{ const dep=DEPARTMENTS.find(x=>x.id===r); const hc=(typeof HEADCOUNT!=='undefined'&&HEADCOUNT[r])||0; const dhc=(typeof DIGITAL_HEADCOUNT!=='undefined'&&DIGITAL_HEADCOUNT[r])||0; return `${dep?dep.label:r} — ${hc} людей и ${dhc} цифровых сотрудников`; }).join('; ')}. Клик по отделу — переход в его пульс, наведение на нейрон — имя и задача сотрудника.</div>
         <div class="pls-bgglow"></div>
         <div class="pls-core" id="plsCore" title="Запустить рой">
           <span class="pls-ring r1"></span><span class="pls-ring r2"></span>
@@ -988,7 +1002,7 @@ function renderDeptPulse(root, roleId){
       ${PJ.map(t=>{ const s=PROJ_STATE[t.state];
         return `<button class="pj-chip" data-pjp="${t.who}" style="--c:${s[2]}"><i>${s[0]}</i><b>${t.who}${t.dw?' + 🤖 '+t.dw:''}</b><small>${t.t}</small></button>`; }).join('')}</div>`:''}
     <div class="dp-wrap">
-      <div class="dp-stage nm-stage" id="dpStage"></div>
+      <div class="dp-stage nm-stage" id="dpStage" role="group" aria-label="Карта-пульс отдела «${cfg.role}»: функции и сотрудники как нейроны"><div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Пульс отдела «${cfg.role}»: ${hc} людей и ${dhc} цифровых сотрудников по функциям — ${fns.map((f,fi)=>`${f}: ${hAlloc[fi]} людей и ${dAlloc[fi]} цифровых`).join('; ')}. Клик по нейрону — профиль сотрудника.</div></div>
       <aside class="dp-side">
         <button class="btn go pls-surge" id="dpSurge">⚡ Запустить рой</button>
         <div class="side-proj" id="dpQueue" style="display:none"></div>
@@ -1322,7 +1336,8 @@ const GOALS = [
 function renderOrganism(stage, d){
   stage.innerHTML = `
     <div class="org">
-      <canvas id="orgCanvas"></canvas>
+      <canvas id="orgCanvas" role="img" aria-label="Интерактивная карта оргструктуры компании: отделы и их численность. Клик по отделу — переход в его пульс."></canvas>
+      <div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Оргструктура компании по отделам: ${ROLE_IDS.map(r=>{ const dep=DEPARTMENTS.find(x=>x.id===r); const hc=(typeof HEADCOUNT!=='undefined'&&HEADCOUNT[r])||0; const dhc=(typeof DIGITAL_HEADCOUNT!=='undefined'&&DIGITAL_HEADCOUNT[r])||0; return `${dep?dep.label:r} — ${hc} людей и ${dhc} цифровых`; }).join('; ')}. Клик по отделу открывает его пульс.</div>
 
       <div class="org-top">
         <div class="org-title">
@@ -2179,11 +2194,11 @@ function renderCockpit(root, d){
     <div class="core-thesis">${cfg.thesis}</div>
     <div class="dev-metrics" id="ckMetrics" style="grid-template-columns:repeat(${Math.min(M.length,6)},1fr)"></div>
     <div class="dev-cols-wrap"><div class="dev-cols" id="ckCols" style="grid-template-columns:repeat(${cols.length},minmax(178px,1fr))"></div></div>
-    <div class="two-col" style="align-items:start;margin-top:14px">
+    <div class="two-col" style="align-items:start;margin-top:22px">
       <div class="panel"><h2>👥 Команда и их рои <span class="tag">${TEAM.length} человек · у каждого свой рой</span></h2><div class="dev-team" id="ckTeam"></div></div>
-      <div class="panel"><h2>🤝 Общие цифровые сотрудники команды</h2><div class="dev-shared" id="ckShared"></div>
+      <details class="panel" open><summary style="cursor:pointer;list-style:none"><h2 style="display:inline">🤝 Общие цифровые сотрудники команды</h2></summary><div class="dev-shared" id="ckShared" style="margin-top:10px"></div>
         <div class="od-gov" style="margin-top:11px">ИИ — не «волшебная кнопка»: рой даёт <b>черновик</b>, эксперт его правит. Чем выше экспертиза — тем больше пойманных ошибок и правок. <b>Гейт открывает рабочую среду, а не телепортирует в «готово».</b></div>
-        <button class="btn go" id="ckRun" style="width:100%;margin-top:12px">▶ Открыть задачу в рабочей среде (черновик → правки)</button></div>
+        <button class="btn go" id="ckRun" style="width:100%;margin-top:12px">▶ Открыть задачу в рабочей среде (черновик → правки)</button></details>
     </div>`;
   $('#ckMetrics', root).innerHTML = M.map(m=>`<div class="dm"><span>${m.k}</span><div class="dm-v"><s>${m.before}</s><b>${m.after}</b></div></div>`).join('');
   $('#ckTeam', root).innerHTML = TEAM.map(p=>`<div class="dev-p"><span class="dp-av">${p.emoji||'🧑'}</span><div><b>${p.name}</b><small>${p.role} · ${p.task}</small></div><span class="dp-swarm">рой ×6</span></div>`).join('');
@@ -4340,11 +4355,10 @@ function renderTalent(root){
       <span class="od-gov" style="margin:0">Карточка → собеседование с живым тестовым → найм. Как с человеком, только быстрее.</span>
     </div>
     <div class="tl-grid">
+      ${(!feat.length && window.__API_LOADING) ? skeletonCards(6,'tl-card') : ''}
       ${feat.map(a=>`<div class="tl-card" data-go="${a.id}">
-        <div class="tl-h">${hexAv(a)}<div><b>${a.name}</b><small>${TL_ROLES[a.role].icon} ${TL_ROLES[a.role].label} · ${a.grade}</small></div><span class="tl-id">${tlPassId(a)}</span></div>
-        <div class="tl-meta"><span class="tl-rate">${tlStars(a.rating)}</span><span>приёмка ${a.acc}%</span><span>${a.done} задач</span></div>
-        <div class="tl-doms">${a.domains.map(d=>`<span>${d}</span>`).join('')}</div>
-        <div class="tl-spells">${a.spells.slice(0,3).map(s=>`<div><span>${s[0]}</span>${rpgStars(s[1])}</div>`).join('')}</div>
+        <div class="tl-h">${hexAv(a)}<div><b>${a.name}</b><small>${TL_ROLES[a.role].icon} ${TL_ROLES[a.role].label} · ${a.grade}</small></div><span class="tl-rate">${tlStars(a.rating)}</span></div>
+        <div class="tl-doms">${a.domains.slice(0,1).map(d=>`<span>${d}</span>`).join('')}${a.domains.length>1?`<span>+${a.domains.length-1} ${a.domains.length-1===1?'домен':'доменов'}</span>`:''}</div>
         <div class="tl-price"><b>₽${a.priceTask.toLocaleString('ru')}</b><small>за результат</small><b>₽${a.priceMonth.toLocaleString('ru')}</b><small>в штат / мес</small></div>
       </div>`).join('')}
     </div>
@@ -4679,6 +4693,7 @@ function renderSredaBills(root){
     </div>
     <div class="panel"><h2>Инвойсы <span class="tag">каждый рубль привязан к результату</span></h2>
       <div class="table-wrap"><table><thead><tr><th>Назначение</th><th>Тип</th><th>Сумма</th><th>Статус</th></tr></thead><tbody>
+        ${(!inv.length && window.__API_LOADING) ? Array.from({length:4},()=>`<tr aria-hidden="true"><td colspan="4"><div class="skeleton" style="height:20px"></div></td></tr>`).join('') : ''}
         ${inv.map(i=>`<tr><td>${i.title}</td><td>${i.kind==='forge'?'🏭 Forge':i.kind==='staff'?'🌊 подписка':'🌊 результат'}</td><td><b>₽${i.amount.toLocaleString('ru')}</b></td><td><span class="gp-bdg ${i.status==='оплачен'?'ok':'acc'}">${i.status}</span></td></tr>`).join('')}
       </tbody></table></div>
       <div class="od-gov" style="margin-top:10px">Гибридная модель: счета платформы живут здесь, расход на модели — в «Бюджетах ИИ». CFO видит обе линии раздельно и сумму в ₽-метре. Состояние демо (найм, проекты, счета) сохраняется между перезагрузками. <button class="btn ghost" style="margin-left:8px;font-size:11px;padding:4px 9px" onclick="sredaReset()">Сбросить демо</button></div></div>`;

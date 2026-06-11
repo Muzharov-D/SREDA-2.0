@@ -135,6 +135,24 @@
   font-size:11px;font-family:inherit;border-radius:20px;padding:5px 11px;cursor:pointer;transition:.15s}
 .pc-ex-chip:hover{border-color:var(--acc);color:var(--txt);background:var(--acc-soft)}
 
+/* ── скелетон-плейсхолдер первой загрузки треда (shimmer на токенах) ── */
+.pc-skel-row{display:flex;padding:6px 14px}
+.pc-skel-row.own{justify-content:flex-end}
+.pc-skel-bub{display:block;height:34px;border-radius:14px;
+  background:linear-gradient(90deg,var(--bg2,#1f221d) 25%,var(--panel,#2a2e27) 50%,var(--bg2,#1f221d) 75%);
+  background-size:200% 100%;animation:pcShimmer 1.4s linear infinite}
+.pc-skel-bub.w40{width:40%}
+.pc-skel-bub.w55{width:55%;height:48px}
+.pc-skel-bub.w70{width:70%;height:42px}
+@keyframes pcShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ── уважаем prefers-reduced-motion для собственных анимаций портала ── */
+@media (prefers-reduced-motion:reduce){
+  .pc-typing i{animation:none;opacity:.6}
+  .pc-skel-bub{animation:none}
+  .stage.enter-active #work{transition:none}
+}
+
 /* ── мобильная вёрстка: одна колонка с возвратом к списку ── */
 @media (max-width:860px){
   .pc-wrap{grid-template-columns:1fr;height:auto}
