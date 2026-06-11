@@ -4242,6 +4242,8 @@ body.rpg-mode .hc-ach{color:#e6d9b8}
 .mp-qh small{font-size:10.5px;color:var(--muted);display:block}
 .mp-q .btn{flex:none;font-size:11px;padding:6px 10px}
 .dp-side .pls-surge{width:100%;justify-content:center;margin-bottom:2px}
+/* portal.html — отдельный продукт «Платформа Среды»: без Авандок-кабинетов */
+body.portal-mode .who,body.portal-mode .filial-sw{display:none}
 
 /* ============================================================================
    Конец дополнительных стилей

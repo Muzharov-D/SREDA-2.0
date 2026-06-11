@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ru" style="background:#121310">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="color-scheme" content="dark"/>
+  <title>Платформа Среды — найм агентов и производство под ключ</title>
+  <meta name="description" content="Возьмите цифрового агента за 4 минуты или закажите продукт под ключ — без внедрения и без большого продукта. Inside подключите, когда дорастёте."/>
+  <meta property="og:type" content="website"/>
+  <meta property="og:title" content="Платформа Среды — внешний контур"/>
+  <meta property="og:description" content="Цифровой найм и цифровое производство без внедрения. Оплата за результат."/>
+  <meta property="og:image" content="https://sreda-2-0.vercel.app/assets/og.png"/>
+  <meta property="og:url" content="https://sreda-2-0.vercel.app/portal.html"/>
+  <link rel="stylesheet" href="assets/fonts/inter.css"/>
+  <link rel="stylesheet" href="assets/styles.css"/>
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg"/>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand" id="brandHome" title="Платформа Среды">
+        <img src="assets/logo.svg" alt="Платформа Среды" class="logo-img" width="38" height="38"/>
+        <div class="brand-t">
+          <b>ПЛАТФОРМА <span>СРЕДЫ</span></b>
+          <small>Найм и производство · без внедрения</small>
+        </div>
+      </div>
+      <button class="cmd" id="cmdBtn">
+        <span class="cmd-icon">◆</span>
+        <span class="cmd-text">Поставить задачу среде…</span>
+        <kbd>⌘K</kbd>
+      </button>
+      <div class="tb-right">
+        <div class="meter" id="meterBtn" title="Счета Среды"><b>₽184k</b><span>счета платформы</span></div>
+        <div class="filial-sw" id="filialSw"></div>
+        <div class="who" id="who"></div>
+      </div>
+    </header>
+    <nav class="nav" id="nav"></nav>
+    <main class="stage" id="stage"></main>
+  </div>
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <div class="modal-head">
+        <img src="assets/logo.svg" alt="Платформа Среды" width="28" height="28"/>
+        <h2>Поставить задачу Среде</h2>
+      </div>
+      <p>Опишите задачу словами — подберём агента и вернём результат. Платите только за принятое.</p>
+      <textarea id="taskText" placeholder="Напр.: разбор воронки регистраций за май…"></textarea>
+      <div class="ex" id="mEx"></div>
+      <div class="row">
+        <button class="btn ghost" id="mClose">Отмена</button>
+        <button class="btn go" id="mGo">Подобрать агента ▶</button>
+      </div>
+    </div>
+  </div>
+  <script>window.__PORTAL = true;</script>
+  <script src="assets/mock.js"></script>
+  <script src="assets/avatars/manifest.js"></script>
+  <script src="assets/icons.js"></script>
+  <script src="assets/organism.js"></script>
+  <script src="assets/rpg.js"></script>
+  <script src="assets/neural.js"></script>
+  <script src="assets/cortex.js"></script>
+  <script src="assets/talent.js"></script>
+  <script src="assets/forge.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

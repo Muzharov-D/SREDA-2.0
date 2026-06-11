@@ -797,9 +797,11 @@ const PROJECT_QUEUE = [
 /* живые статусы: blocked привязан к реальному sev1-гейту рабочего стола;
    следующая фаза открывается, когда закрыта предыдущая; done копится в сторе */
 function projStore(){ return window.__PROJST || (window.__PROJST = { done:{}, launched:false, started:{} }); }
-function projComplete(dept, who){ projStore().done[dept + ':' + who] = true; }
+function projComplete(dept, who){ projStore().done[dept + ':' + who] = true;
+  if (typeof sredaPersist === 'function') sredaPersist(); }
 function mpLaunched(id){ return !!projStore().started[id]; }
-function mpLaunch(id){ projStore().started[id] = true; }
+function mpLaunch(id){ projStore().started[id] = true;
+  if (typeof sredaPersist === 'function') sredaPersist(); }
 function ALL_PROJECTS(){ return [ { ...MEGA_PROJECT, id:'sreda', launched:true } ]
   .concat(PROJECT_QUEUE.map(p => ({ ...p, launched: mpLaunched(p.id) }))); }
 /* статус задачи проекта из очереди: done из стора; фаза 2 ждёт фазу 1 */

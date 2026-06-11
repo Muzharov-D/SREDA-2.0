@@ -4386,21 +4386,31 @@ function renderSredaBills(root){
       <div class="table-wrap"><table><thead><tr><th>Назначение</th><th>Тип</th><th>Сумма</th><th>Статус</th></tr></thead><tbody>
         ${inv.map(i=>`<tr><td>${i.title}</td><td>${i.kind==='forge'?'🏭 Forge':i.kind==='staff'?'🌊 подписка':'🌊 результат'}</td><td><b>₽${i.amount.toLocaleString('ru')}</b></td><td><span class="gp-bdg ${i.status==='оплачен'?'ok':'acc'}">${i.status}</span></td></tr>`).join('')}
       </tbody></table></div>
-      <div class="od-gov" style="margin-top:10px">Гибридная модель: счета платформы живут здесь, расход на модели — в «Бюджетах ИИ». CFO видит обе линии раздельно и сумму в ₽-метре.</div></div>`;
+      <div class="od-gov" style="margin-top:10px">Гибридная модель: счета платформы живут здесь, расход на модели — в «Бюджетах ИИ». CFO видит обе линии раздельно и сумму в ₽-метре. Состояние демо (найм, проекты, счета) сохраняется между перезагрузками. <button class="btn ghost" style="margin-left:8px;font-size:11px;padding:4px 9px" onclick="sredaReset()">Сбросить демо</button></div></div>`;
 }
 
 function init(){
   if (isRPG()) document.body.classList.add('rpg-mode');
+  sredaRestore();
+  window.addEventListener('beforeunload', sredaPersist);
+  document.addEventListener('visibilitychange', ()=>{ if(document.hidden) sredaPersist(); });
   const h = location.hash.slice(1);
+  if (window.__PORTAL){
+    /* отдельный продукт «Платформа Среды»: свой URL, без Авандок-кабинетов */
+    document.body.classList.add('portal-mode');
+    state.ws = 'platform';
+    state.screen = (h && (['modules','talent','forge','bills'].includes(h) || /^(tagent|fproj):/.test(h))) ? h : 'modules';
+  } else {
   const ws = h && WORKSPACES.find(w => w.nav.some(n => n.id === h));
   state.ws = ws ? ws.id : 'exec';
   state.screen = (ws || h.includes(':')) ? h : 'pulse';
+  }
   renderNav();
   renderTopWho();
   renderStage(state.screen);
   initModal();
   injectTour();
-  const meter=$('#meterBtn'); if(meter){ meter.style.cursor='pointer'; meter.onclick=()=>navTo('aibudget'); }
+  const meter=$('#meterBtn'); if(meter){ meter.style.cursor='pointer'; meter.onclick=()=>navTo(window.__PORTAL?'bills':'aibudget'); }
   updateMeter();
   /* лого = дом: всегда возвращает на Пульс компании */
   const brand=$('#brandHome'); if(brand){ brand.style.cursor='pointer'; brand.onclick=()=>{ setWorkspace('exec'); }; }
