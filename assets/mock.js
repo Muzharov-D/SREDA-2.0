@@ -4,16 +4,15 @@
    ========================================================================== */
 
 /* --- API endpoint -----------------------------------------------------------
-   локально → свой бэкенд на :3000; на *.onrender.com → same origin;
-   на Vercel и прочей статике → бэкенд на Render (CORS на сервере открыт).
+   локально → свой бэкенд на :3000; на проде — всегда same origin:
+   Vercel проксирует /api/* на Render (rewrite в vercel.json),
+   на самом Render бэкенд и так свой. Одна публичная ссылка.
    Ручной override: window.__API_BASE = 'https://…' до подключения mock.js. */
 const API_BASE = (() => {
   if (typeof window === 'undefined') return '';
   if (window.__API_BASE !== undefined) return window.__API_BASE;
   const h = window.location.hostname;
-  if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:3000';
-  if (h.endsWith('.onrender.com')) return '';
-  return 'https://sreda-2-0.onrender.com';
+  return (h === 'localhost' || h === '127.0.0.1') ? 'http://localhost:3000' : '';
 })();
 
 const API_KEY = 'sreda-prototype-key-2026'; // prototype-only, no real auth
