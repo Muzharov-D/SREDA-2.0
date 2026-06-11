@@ -23,37 +23,63 @@ async function portalLog(who, what, verdict='allow'){
   } catch(e) { console.log('Audit log failed:', e.message); }
 }
 
-/* ── создание счёта через API ── */
+/* ── зеркалирование счёта в API (UI-счёт создаёт pushInvoice внутри tlHire/fgOrder) ── */
 async function portalBill(kind, title, amount){
   try {
-    const bill = await apiPost('/bills', { kind, title, amount, status:'выставлен' });
-    // invalidate cache so next read picks up new bill
-    window.__SREDA_INV = null;
-    if(typeof updateMeter==='function') updateMeter();
-    return bill;
-  } catch(e) { console.log('Bill creation failed:', e.message); return null; }
+    return await apiPost('/bills', { kind, title, amount, status:'выставлен' });
+  } catch(e) { console.log('Bill mirror failed:', e.message); return null; }
 }
 
-const portalState = { screen: 'catalog', filters: { role:'', grade:'', min:0, max:200000 }, selectedAgent:null, selectedProject:null };
+/* ── загрузка данных из API с тихим фолбэком на моки ── */
+async function loadApiData(){
+  const grab = async (path, key) => {
+    try {
+      const rows = await apiGet(path);
+      if (Array.isArray(rows) && rows.length) window[key] = rows;
+    } catch(e) { /* статика или API недоступен — работают моки */ }
+  };
+  await Promise.all([
+    grab('/agents',   '__API_AGENTS'),
+    grab('/projects', '__API_PROJECTS'),
+    grab('/bills',    '__API_BILLS'),
+  ]);
+}
+
+const portalState = { screen: 'team', filters: { role:'', grade:'', min:0, max:200000 }, selectedAgent:null, selectedProject:null };
 
 /* ── инициализация ── */
-function initPortal(){
+async function initPortal(){
+  document.body.classList.add('portal-mode');
+  await loadApiData();
+  /* персист демо-состояния: найм, счета, проекты переживают F5 */
+  if (typeof sredaRestore === 'function') sredaRestore();
+  if (typeof updateMeter === 'function') updateMeter();
+  const persistAll = () => {
+    if (typeof sredaPersist === 'function') sredaPersist();
+    if (typeof pcPersist === 'function') pcPersist();
+  };
+  window.addEventListener('beforeunload', persistAll);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') persistAll(); });
+
   renderPortalNav();
   renderPortalStage();
   wirePortalModal();
-  /* brand → catalog */
-  const brand = $('#brandHome'); if(brand){ brand.style.cursor='pointer'; brand.onclick=()=>{ portalState.screen='catalog'; portalState.selectedAgent=null; renderPortalStage(); }; }
+  /* brand → сотрудники (дефолтный экран) */
+  const brand = $('#brandHome'); if(brand){ brand.style.cursor='pointer'; brand.onclick=()=>{ portalState.screen='team'; portalState.selectedAgent=null; renderPortalNav(); renderPortalStage(); }; }
   /* meter → bills */
-  const meter = $('#meterBtn'); if(meter){ meter.style.cursor='pointer'; meter.onclick=()=>{ portalState.screen='bills'; renderPortalStage(); }; }
+  const meter = $('#meterBtn'); if(meter){ meter.style.cursor='pointer'; meter.onclick=()=>{ portalState.screen='bills'; renderPortalNav(); renderPortalStage(); }; }
   /* keyboard shortcuts */
   document.addEventListener('keydown', e=>{
     if(e.key==='Escape'){
       if(portalState.screen==='agent'){ portalState.screen='catalog'; portalState.selectedAgent=null; renderPortalNav(); renderPortalStage(); }
       else if(portalState.screen==='project'){ portalState.screen='orders'; portalState.selectedProject=null; renderPortalNav(); renderPortalStage(); }
+      else if(portalState.screen==='team' && typeof pcView!=='undefined' && pcView.mobileThread){
+        pcView.mobileThread=false; const w=$('#pcWrap'); if(w) w.classList.remove('thread-open');
+      }
     }
-    if((e.metaKey||e.ctrlKey) && e.key>='1' && e.key<='4'){
+    if((e.metaKey||e.ctrlKey) && e.key>='1' && e.key<='5'){
       e.preventDefault();
-      const ids = ['catalog','orders','bills','support'];
+      const ids = ['team','catalog','orders','bills','support'];
       const idx = parseInt(e.key,10)-1;
       if(ids[idx]){ portalState.screen=ids[idx]; portalState.selectedAgent=null; portalState.selectedProject=null; renderPortalNav(); renderPortalStage(); }
     }
@@ -65,8 +91,10 @@ function renderPortalNav(){
   const nav = $('#nav'); if(!nav) return;
   nav.innerHTML = '';
   nav.appendChild(el(`<div class="nav-ws"><span class="nav-ws-ic">🌊</span><div><b>Платформа Среды</b><small>внешний контур</small></div></div>`));
+  const unread = (typeof pcUnreadTotal === 'function') ? pcUnreadTotal() : 0;
   PORTAL_NAV.forEach(n=>{
-    const it = el(`<button class="nav-item ${n.id===portalState.screen?'active':''}"><span class="ni-ic">${n.icon}</span><span class="ni-l">${n.label}</span></button>`);
+    const badge = (n.id==='team' && unread>0) ? `<span class="pc-nav-badge">${unread}</span>` : '';
+    const it = el(`<button class="nav-item ${n.id===portalState.screen?'active':''}"><span class="ni-ic">${n.icon}</span><span class="ni-l">${n.label}</span>${badge}</button>`);
     it.onclick = () => { portalState.screen = n.id; portalState.selectedAgent = null; portalState.selectedProject = null; renderPortalNav(); renderPortalStage(); };
     nav.appendChild(it);
   });
@@ -78,14 +106,16 @@ function renderPortalStage(){
   stage.className = 'stage full enter';
   stage.innerHTML = '<div class="work" id="work"></div>';
   const root = $('#work');
+  if (typeof pcTeardown === 'function') pcTeardown(); /* чистим поллинг чата при смене экрана */
   switch(portalState.screen){
+    case 'team':     renderTeam(root); break;
     case 'catalog':  renderCatalog(root); break;
     case 'agent':    renderAgentDetail(root); break;
     case 'orders':   renderOrders(root); break;
     case 'project':  renderProjectDetail(root); break;
     case 'bills':    renderBills(root); break;
     case 'support':  renderSupport(root); break;
-    default:         renderCatalog(root);
+    default:         renderTeam(root);
   }
   requestAnimationFrame(()=>{
     stage.classList.add('enter-active');
@@ -213,21 +243,33 @@ function renderAgentDetail(root){
     <button class="btn ghost" id="paBack2" style="margin-top:12px">← В каталог</button>`;
 
   $('#paBack2',root).onclick = () => { portalState.screen='catalog'; portalState.selectedAgent=null; renderPortalStage(); };
-  $('#paTg',root).onclick = () => toast('Связь через Telegram: запрос отправлен агенту');
-  $('#paEmail',root).onclick = () => toast('Связь через Email: запрос отправлен агенту');
-  $('#paChat',root).onclick = () => toast('Чат в Среде: агент ответит в течение 15 минут');
-  $('#paHireTask',root).onclick = async () => {
-    if(tlHire){ tlHire(a.id, R?R.dept:'dev', 'result'); }
-    await portalLog('Клиент · портал', `Найм агента ${a.name} · за результат · ₽${price.toLocaleString('ru')}`);
-    await portalBill('task', `Talent · ${a.name} — за результат`, price);
-    toast(`Агент ${a.name} нанят за результат · счёт выставлен`);
+  /* контактная поверхность: нанятый агент → его тред; иначе подсказка */
+  const goChannel = (tab) => {
+    const hired = (typeof tlContractOf === 'function') && tlContractOf(a.id);
+    if(hired && typeof pcGoToChat === 'function'){ pcGoToChat(a.id, tab); }
+    else toast('Канал откроется сразу после найма агента');
   };
-  $('#paHireMonth',root).onclick = async () => {
-    if(tlHire){ tlHire(a.id, R?R.dept:'dev', 'staff'); }
-    await portalLog('Клиент · портал', `Найм агента ${a.name} · в штат · ₽${month.toLocaleString('ru')}/мес`);
-    await portalBill('staff', `Talent · ${a.name} — подписка, месяц 1`, month);
-    toast(`Агент ${a.name} нанят в штат · счёт выставлен`);
+  $('#paTg',root).onclick = () => goChannel('chat');
+  $('#paEmail',root).onclick = () => goChannel('mail');
+  $('#paChat',root).onclick = () => goChannel('chat');
+  /* найм: ОДИН счёт в UI (pushInvoice внутри tlHire) + зеркало в API; затем — в чат */
+  const hire = (mode) => {
+    if(typeof tlContractOf === 'function' && tlContractOf(a.id)){
+      toast(`${a.name} уже в команде — открываю чат`);
+      if(typeof pcGoToChat === 'function') pcGoToChat(a.id, 'chat');
+      return;
+    }
+    if(tlHire) tlHire(a.id, R?R.dept:'dev', mode); /* локальный счёт + контракт */
+    const isStaff = mode === 'staff';
+    portalLog('Клиент · портал', `Найм агента ${a.name} · ${isStaff?'в штат':'за результат'} · ₽${(isStaff?month:price).toLocaleString('ru')}${isStaff?'/мес':''}`);
+    portalBill(isStaff?'staff':'task',
+      isStaff ? `Talent · ${a.name} — подписка, месяц 1` : `Talent · ${a.name} — резерв под результат`,
+      isStaff ? month : price);
+    toast(`${a.name} в команде · счёт выставлен`);
+    if(typeof pcAfterHire === 'function') pcAfterHire(a.id);
   };
+  $('#paHireTask',root).onclick = () => hire('result');
+  $('#paHireMonth',root).onclick = () => hire('staff');
 }
 
 function spellDots(n){
@@ -254,12 +296,12 @@ function renderOrders(root){
     renderPortalNav();
     renderPortalStage();
   });
-  root.querySelectorAll('.portal-tpl').forEach(c=>c.onclick=async()=>{
+  root.querySelectorAll('.portal-tpl').forEach(c=>c.onclick=()=>{
     const t = FG_TEMPLATES.find(x=>x.id===c.dataset.tid);
-    if(t && fgOrder){ const p = fgOrder(t.id); 
-      await portalLog('Клиент · портал', `Заказ производства · ${t.title} · старт ₽${Math.round(t.price*0.3).toLocaleString('ru')}`);
-      await portalBill('forge', `Forge · «${t.title}» — старт производства (30%)`, Math.round(t.price*0.3));
-      toast(`Проект «${t.title}» запущен · счёт выставлен`); renderOrders(root); 
+    if(t && fgOrder){ fgOrder(t.id); /* локальный счёт создаёт fgOrder → pushInvoice */
+      portalLog('Клиент · портал', `Заказ производства · ${t.title} · старт ₽${Math.round(t.price*0.3).toLocaleString('ru')}`);
+      portalBill('forge', `Forge · «${t.title}» — старт производства (30%)`, Math.round(t.price*0.3)); /* зеркало в API */
+      toast(`Проект «${t.title}» запущен · счёт выставлен`); renderOrders(root);
     }
     else toast('Заказ создан (демо)');
   });
@@ -398,12 +440,26 @@ function wirePortalModal(){
   const close = () => overlay && overlay.classList.remove('show');
   const mClose = $('#mClose'); if(mClose) mClose.onclick = close;
   if(overlay) overlay.onclick = (e) => { if(e.target===overlay) close(); };
+  /* примеры запросов — кликабельные чипы */
+  const mEx = $('#mEx');
+  if(mEx){
+    const samples = [
+      'Разбор воронки регистраций за май',
+      'RFM-сегментация клиентской базы',
+      'Регресс-набор для модуля оплаты',
+      'Финмодель запуска нового тарифа',
+    ];
+    mEx.innerHTML = samples.map(s=>`<button type="button" class="pc-ex-chip">${s}</button>`).join('');
+    mEx.querySelectorAll('.pc-ex-chip').forEach(b=>b.onclick=()=>{ const t=$('#taskText'); t.value=b.textContent; t.focus(); });
+  }
   const mGo = $('#mGo'); if(mGo) mGo.onclick = () => {
     const v = $('#taskText').value.trim();
     if(!v){ toast('Опишите задачу'); return; }
-    toast('Задача принята — подбираем агента…'); close();
+    toast('Задача принята — подбираем агента в каталоге…'); close();
     $('#taskText').value = '';
+    portalState.screen = 'catalog'; renderPortalNav(); renderPortalStage();
   };
+  const cmdBtn = $('#cmdBtn'); if(cmdBtn) cmdBtn.onclick = () => { overlay.classList.add('show'); $('#taskText').focus(); };
   document.addEventListener('keydown', e=>{
     if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); overlay.classList.add('show'); $('#taskText').focus(); }
     if(e.key==='Escape') close();

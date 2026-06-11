@@ -1,12 +1,9 @@
 services:
   - type: web
     name: sreda-prototype
-    env: node
-    buildCommand: npm install
-    startCommand: npm start
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 10000
+    runtime: node
     plan: free
+    buildCommand: npm install
+    startCommand: node server/app.js
+    # PORT задаёт сам Render; API_KEY не нужен — сервер использует
+    # дефолтный ключ прототипа, фронт держит его захардкоженным.

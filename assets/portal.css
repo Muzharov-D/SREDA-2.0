@@ -1,0 +1,148 @@
+/* ========================================================================== */
+/*  PORTAL.CSS — стили внешнего контура: экран «Сотрудники» (чат + почта),    */
+/*  fade-переходы экранов, чипы примеров в модалке.                           */
+/*  Токены НЕ переопределяются — используются из styles.css.                  */
+/*  Префикс новых классов: .pc-* (не пересекается с .pc-top/.pc-emoji и т.п.) */
+/* ========================================================================== */
+
+/* ── fade перехода экранов (классы enter/enter-active ставит portal-app) ── */
+.stage.enter #work{opacity:0;transform:translateY(8px)}
+.stage.enter-active #work{opacity:1;transform:none;transition:opacity .22s ease,transform .22s ease}
+
+/* ── плашка «Подключить в свой Telegram / Email» ── */
+.pc-connect{display:flex;align-items:center;gap:12px;margin-top:12px;padding:11px 14px;
+  border:1px dashed rgba(45,212,191,.4);border-radius:var(--r);
+  background:linear-gradient(180deg,rgba(45,212,191,.05),transparent 80%)}
+.pc-connect-ic{font-size:18px}
+.pc-connect-t{flex:1;min-width:0}
+.pc-connect-t b{display:block;font-size:12.5px}
+.pc-connect-t small{display:block;font-size:11px;color:var(--muted)}
+
+/* ── двухколоночная вёрстка: контакты + тред ── */
+.pc-wrap{display:grid;grid-template-columns:280px minmax(0,1fr);gap:12px;margin-top:12px;
+  height:calc(100vh - 270px);min-height:440px}
+
+/* ── контакт-лист (как в мессенджере) ── */
+.pc-contacts{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  padding:8px;overflow:auto;display:flex;flex-direction:column;gap:4px}
+.pc-contact{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border-radius:var(--r-sm);
+  cursor:pointer;border:1px solid transparent;transition:background .15s,border-color .15s}
+.pc-contact:hover{background:var(--acc-soft)}
+.pc-contact.active{background:var(--acc-soft);border-color:rgba(54,201,148,.35)}
+.pc-c-info{flex:1;min-width:0}
+.pc-c-top{display:flex;align-items:baseline;gap:8px}
+.pc-c-top b{flex:1;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-c-time{font-size:10px;color:var(--muted);flex:none}
+.pc-c-sub{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--muted);margin-top:2px}
+.pc-c-last{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-c-badge{flex:none;margin-left:auto;min-width:17px;text-align:center;background:var(--acc);color:var(--bg);
+  font-size:10px;font-weight:800;border-radius:10px;padding:1px 5px}
+
+/* статус-точка: в сети / на задаче */
+.pc-dot{width:7px;height:7px;border-radius:50%;background:var(--acc);flex:none;display:inline-block}
+.pc-dot.busy{background:var(--amber,#f0c34d)}
+
+/* ── тред ── */
+.pc-thread{display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--r);overflow:hidden;min-height:0}
+.pc-th-head{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.pc-th-info{flex:1;min-width:0}
+.pc-th-info b{display:block;font-size:13px}
+.pc-th-info small{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+.pc-back{display:none;border:1px solid var(--line);background:transparent;color:var(--txt);
+  border-radius:var(--r-xs);padding:5px 10px;cursor:pointer;font-size:14px}
+
+/* вкладки Чат / Почта */
+.pc-tabs{display:flex;gap:6px;flex:none}
+.pc-tab{padding:6px 12px;border-radius:20px;border:1px solid var(--line);background:transparent;
+  color:var(--muted);font-size:11.5px;font-family:inherit;cursor:pointer;transition:.15s}
+.pc-tab:hover{border-color:var(--acc);color:var(--txt)}
+.pc-tab.active{background:var(--acc);border-color:var(--acc);color:var(--bg);font-weight:700}
+.pc-tab i{font-style:normal;opacity:.8}
+
+/* пузыри (база .ch-* из styles.css, тут — Telegram-стиль) */
+.pc-thread .ch-msg .ch-msg-t{display:inline-block;max-width:82%;padding:8px 12px;
+  background:rgba(255,255,255,.035);border:1px solid var(--line);border-radius:4px 14px 14px 14px}
+.pc-thread .ch-msg.pc-own{flex-direction:row-reverse}
+.pc-thread .ch-msg.pc-own .ch-msg-body{display:flex;flex-direction:column;align-items:flex-end}
+.pc-thread .ch-msg.pc-own .ch-msg-t{background:var(--acc-soft);border-color:rgba(54,201,148,.28);
+  border-radius:14px 4px 14px 14px;text-align:left}
+.pc-msg-time{font-size:10px;color:var(--muted)}
+.pc-av-slot{background:transparent;border:none}
+.pc-me-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:800;color:var(--acc);background:var(--acc-soft);border:1px solid rgba(54,201,148,.3)}
+
+/* системные сообщения и статусы */
+.pc-sys{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:20px;
+  padding:4px 12px;background:rgba(255,255,255,.02);text-align:center}
+
+/* «печатает…» */
+.pc-typing{font-size:12px;color:var(--muted);padding:7px 0}
+.pc-typing i{font-style:normal;animation:pcBlink 1.2s infinite}
+.pc-typing i:nth-child(2){animation-delay:.2s}
+.pc-typing i:nth-child(3){animation-delay:.4s}
+@keyframes pcBlink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+
+/* ── артефакт-вложение с кнопками приёмки ── */
+.pc-art{margin-top:6px;max-width:82%;border:1px solid rgba(45,212,191,.32);border-radius:var(--r-sm);
+  padding:10px 12px;background:linear-gradient(180deg,rgba(45,212,191,.07),transparent 85%)}
+.pc-art-h{display:flex;gap:9px;align-items:center}
+.pc-art-ic{font-size:17px}
+.pc-art-h b{display:block;font-size:12.5px}
+.pc-art-h small{display:block;font-size:10.5px;color:var(--muted)}
+.pc-art-price{font-size:11px;color:var(--muted);margin-top:7px}
+.pc-art-price b{color:var(--txt)}
+.pc-art-actions{display:flex;gap:8px;margin-top:9px}
+.pc-art-actions .btn{font-size:11.5px;padding:6px 12px}
+.pc-art-state{display:inline-block;margin-top:8px;font-size:10.5px;font-weight:700;
+  border-radius:8px;padding:3px 9px}
+.pc-art-state.ok{color:var(--acc);border:1px solid rgba(54,201,148,.4);background:var(--acc-soft)}
+.pc-art-state.ret{color:var(--amber,#f0c34d);border:1px solid rgba(240,195,77,.35);background:rgba(240,195,77,.08)}
+
+/* ── почта (email-тред) ── */
+.pc-mail{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.pc-mail-item{border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 14px;
+  background:rgba(255,255,255,.02)}
+.pc-mail-su{font-size:12.5px;font-weight:700}
+.pc-mail-meta{font-size:10.5px;color:var(--muted);margin-top:3px}
+.pc-mail-body{white-space:pre-line;font-size:12px;line-height:1.6;color:var(--txt);margin-top:9px;
+  border-top:1px solid var(--line);padding-top:9px}
+
+/* ── пустое состояние ── */
+.pc-empty{text-align:center;padding:46px 20px;margin-top:12px}
+.pc-empty-ic{font-size:34px;margin-bottom:10px}
+.pc-empty h2{justify-content:center}
+.pc-empty p{color:var(--muted);font-size:12.5px;max-width:420px;margin:8px auto 16px}
+
+/* ── бейдж непрочитанных в меню ── */
+.pc-nav-badge{margin-left:auto;flex:none;min-width:17px;text-align:center;background:var(--acc);
+  color:var(--bg);font-size:10px;font-weight:800;border-radius:10px;padding:1px 5px}
+
+/* ── модалка подключения каналов: шаги ── */
+.pc-steps{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+.pc-steps-col{border:1px solid var(--line);border-radius:var(--r-sm);padding:11px 13px;
+  background:rgba(255,255,255,.02)}
+.pc-steps-col>b{display:block;font-size:12.5px;margin-bottom:7px}
+.pc-steps-col ol{margin:0;padding-left:17px;display:flex;flex-direction:column;gap:5px}
+.pc-steps-col li{font-size:11.5px;color:var(--muted);line-height:1.45}
+.pc-steps-col code{font-size:11px;color:var(--acc);background:var(--acc-soft);
+  border:1px solid rgba(54,201,148,.3);border-radius:6px;padding:1px 6px}
+
+/* ── чипы примеров в модалке «Поставить задачу» ── */
+#mEx{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 2px}
+.pc-ex-chip{border:1px solid var(--line);background:transparent;color:var(--muted);
+  font-size:11px;font-family:inherit;border-radius:20px;padding:5px 11px;cursor:pointer;transition:.15s}
+.pc-ex-chip:hover{border-color:var(--acc);color:var(--txt);background:var(--acc-soft)}
+
+/* ── мобильная вёрстка: одна колонка с возвратом к списку ── */
+@media (max-width:860px){
+  .pc-wrap{grid-template-columns:1fr;height:auto}
+  .pc-wrap .pc-thread{display:none}
+  .pc-wrap .pc-contacts{max-height:60vh}
+  .pc-wrap.thread-open .pc-thread{display:flex;height:72vh}
+  .pc-wrap.thread-open .pc-contacts{display:none}
+  .pc-back{display:inline-flex}
+  .pc-steps{grid-template-columns:1fr}
+  .pc-thread .ch-msg .ch-msg-t,.pc-art{max-width:94%}
+}

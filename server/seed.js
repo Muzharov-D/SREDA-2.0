@@ -1,9 +1,6 @@
 const { getDb, initDb } = require('./db');
 
-initDb().then(() => {
-  const db = getDb();
-
-  /* ── agents (копия TL_FEATURED из talent.js) ── */
+/* ── agents (копия TL_FEATURED из talent.js) ── */
 const agents = [
   { id:'tl-bd-01', name:'Тимур Вектор', role:'backend', grade:'Senior', rating:4.9, acc:98, done:312, price_task:3200, price_month:52000, domains:JSON.stringify(['финтех ×23','e-commerce ×14','логистика ×9']), spells:JSON.stringify([['Платёжные API',5],['Микросервисы',5],['Оптимизация запросов',4],['Интеграции банков',5]]), folio:JSON.stringify([['API скоринга для МФО','3 бюро КИ, 220 rps','п99 180 мс · 0 инцидентов за год'],['Биллинг подписок SaaS','рекуррентные списания + дунниг','недоплаты −34%'],['Шина заказов ритейлера','Kafka, 50k событий/мин','потери событий: 0']]), reviews:JSON.stringify([['CTO, финтех','Сильнее половины сеньоров, которых я собеседовал. Вопросы задаёт по делу.'],['Тимлид, маркетплейс','PR можно мержить не глядя. Но мы глядим — привычка.']]), passport:JSON.stringify([['forge','Скоринг-API под ключ · финтех','38 задач'],['talent','Контракт 6 мес · платёжный сервис','174 задачи'],['talent','Контракт 3 мес · биллинг','100 задач']]), featured:1 },
   { id:'tl-bd-02', name:'Марк Тензор', role:'backend', grade:'Middle+', rating:4.7, acc:94, done:156, price_task:3200, price_month:52000, domains:JSON.stringify(['SaaS ×18','медтех ×7']), spells:JSON.stringify([['REST / FastAPI',5],['Фоновые очереди',4],['Тесты (pytest)',5],['Легаси-рефакторинг',3]]), folio:JSON.stringify([['Массовая загрузка платежей','CSV до 1М строк, идемпотентность','время импорта −88%'],['API расписаний клиник','интеграция с МИС по SOAP','запись без звонка: 61%'],['Рефакторинг монолита','выделение 4 сервисов','деплой 40 мин → 6 мин']]), reviews:JSON.stringify([['Backend-лид, SaaS','Честно говорит «не возьмусь без архитектора» — это дорогого стоит.']]), passport:JSON.stringify([['forge','Чат-бот записи · медтех','21 задача'],['talent','Контракт 4 мес · SaaS-платформа','135 задач']]), featured:1 },
@@ -38,24 +35,56 @@ const invoices = [
   { kind:'forge', title:'Forge · «Прогноз спроса» — старт производства (30%)', amount:96000, status:'выставлен' }
 ];
 
-/* ── seed ── */
-db.serialize(() => {
-  const stmtA = db.prepare('INSERT OR REPLACE INTO agents (id,name,role,grade,rating,acc,done,price_task,price_month,domains,spells,folio,reviews,passport,featured) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-  agents.forEach(a => stmtA.run(a.id,a.name,a.role,a.grade,a.rating,a.acc,a.done,a.price_task,a.price_month,a.domains,a.spells,a.folio,a.reviews,a.passport,a.featured));
-  stmtA.finalize();
+/* ── messages: живой диалог с Дарьей Спектр (tg) + почта (email) ── */
+const messages = [
+  { channel:'tg:tl-da-02', who:'client', kind:'chat', text:'Дарья, добрый день. Нужен разбор воронки за май — чувствую, что теряем людей на оплате, но хочу видеть цифры.', meta:null, ago:'-3 days' },
+  { channel:'tg:tl-da-02', who:'agent', kind:'chat', text:'Принято в работу: разбор воронки за май с фокусом на шаг оплаты. Возьму данные из витрины продаж, сверю с апрелем, чтобы было с чем сравнивать. Черновик пришлю сюда же.', meta:null, ago:'-3 days' },
+  { channel:'tg:tl-da-02', who:'agent', kind:'status', text:'Статус: выгрузила данные, считаю конверсии по шагам. Предварительно — да, основная потеря на оплате. Свожу в отчёт.', meta:null, ago:'-2 days' },
+  { channel:'tg:tl-da-02', who:'agent', kind:'artifact', text:'Черновик готов. Главное: 64% всех потерь — на шаге оплаты, у мобильных пользователей отвал в 2,3 раза выше, чем на десктопе. Внутри — разбивка по шагам и три гипотезы, что чинить первым.', meta:JSON.stringify({ title:'Черновик: разбор воронки за май', desc:'готов к приёмке', actions:['accept','return'], accepted:true }), ago:'-2 days' },
+  { channel:'tg:tl-da-02', who:'client', kind:'chat', text:'Посмотрел, отличная работа. Принимаю. Про мобильную оплату заведу задачу разработке.', meta:null, ago:'-1 days' },
+  { channel:'tg:tl-da-02', who:'system', kind:'status', text:'Результат принят. Выставлен счёт: Talent · приёмка результата — Черновик: разбор воронки за май.', meta:null, ago:'-1 days' },
+  { channel:'tg:tl-da-02', who:'agent', kind:'chat', text:'Спасибо. Предлагаю повторять такой срез ежемесячно, в первый рабочий день — увидим, помогли ли правки по оплате. Скажете — поставлю в регулярку.', meta:null, ago:'-1 days' },
+  { channel:'email:tl-da-02', who:'agent', kind:'email', text:'Еженедельная сводка, неделя 23. Продажи +6% к прошлой неделе, конверсия из корзины 41% (+2 п.п.), средний чек без изменений. Аномалий в данных не зафиксировано. Полная разбивка по категориям — во вложении.', meta:JSON.stringify({ subject:'Еженедельная сводка · неделя 23', title:'Сводка за неделю 23', desc:'продажи, конверсии, аномалии' }), ago:'-2 days' },
+  { channel:'email:tl-da-02', who:'system', kind:'email', text:'Счёт на оплату: Talent · Дарья Спектр — подписка, месяц 3. Сумма 45 000 ₽. Оплатить можно в разделе «Счета» личного кабинета.', meta:JSON.stringify({ subject:'Счёт на оплату · подписка, месяц 3' }), ago:'-1 days' }
+];
 
-  const stmtP = db.prepare('INSERT OR REPLACE INTO projects (id,title,icon,tpl,status,stage,price,prog,crew,what,crit,artifacts,feed,feed_done,gate_wait,paid_lbl,meta) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-  projects.forEach(p => stmtP.run(p.id,p.title,p.icon,p.tpl,p.status,p.stage,p.price,p.prog,p.crew,p.what,p.crit,p.artifacts,p.feed,p.feed_done,p.gate_wait,p.paid_lbl,p.meta));
-  stmtP.finalize();
+/* ── seedAll: полный пересев БД (используется CLI, авто-сидом и /api/demo/reset) ── */
+function seedAll() {
+  return new Promise((resolve, reject) => {
+    const db = getDb();
+    db.serialize(() => {
+      ['agents','projects','invoices','audit_log','tasks','messages'].forEach(t => db.run(`DELETE FROM ${t}`));
 
-  const stmtI = db.prepare('INSERT OR REPLACE INTO invoices (kind,title,amount,status,created_at) VALUES (?,?,?,?,datetime("now"))');
-  invoices.forEach(i => stmtI.run(i.kind,i.title,i.amount,i.status));
-  stmtI.finalize(function() {
-    console.log('Seeded:', agents.length, 'agents,', projects.length, 'projects,', invoices.length, 'invoices');
-    db.close();
+      const stmtA = db.prepare('INSERT OR REPLACE INTO agents (id,name,role,grade,rating,acc,done,price_task,price_month,domains,spells,folio,reviews,passport,featured) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+      agents.forEach(a => stmtA.run(a.id,a.name,a.role,a.grade,a.rating,a.acc,a.done,a.price_task,a.price_month,a.domains,a.spells,a.folio,a.reviews,a.passport,a.featured));
+      stmtA.finalize();
+
+      const stmtP = db.prepare('INSERT OR REPLACE INTO projects (id,title,icon,tpl,status,stage,price,prog,crew,what,crit,artifacts,feed,feed_done,gate_wait,paid_lbl,meta) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+      projects.forEach(p => stmtP.run(p.id,p.title,p.icon,p.tpl,p.status,p.stage,p.price,p.prog,p.crew,p.what,p.crit,p.artifacts,p.feed,p.feed_done,p.gate_wait,p.paid_lbl,p.meta));
+      stmtP.finalize();
+
+      const stmtI = db.prepare('INSERT INTO invoices (kind,title,amount,status,created_at) VALUES (?,?,?,?,datetime("now"))');
+      invoices.forEach(i => stmtI.run(i.kind,i.title,i.amount,i.status));
+      stmtI.finalize();
+
+      const stmtM = db.prepare("INSERT INTO messages (channel,who,kind,text,meta,created_at) VALUES (?,?,?,?,?,datetime('now',?))");
+      messages.forEach(m => stmtM.run(m.channel,m.who,m.kind,m.text,m.meta,m.ago));
+      stmtM.finalize(function(err) {
+        db.close();
+        if (err) return reject(err);
+        console.log('Seeded:', agents.length, 'agents,', projects.length, 'projects,', invoices.length, 'invoices,', messages.length, 'messages');
+        resolve();
+      });
+    });
   });
-});
-}).catch(err => {
-  console.error('Seed failed:', err.message);
-  process.exit(1);
-});
+}
+
+module.exports = { seedAll };
+
+/* ── CLI: npm run seed ── */
+if (require.main === module) {
+  initDb().then(seedAll).catch(err => {
+    console.error('Seed failed:', err.message);
+    process.exit(1);
+  });
+}

@@ -4345,5 +4345,20 @@ body.portal-mode .who,body.portal-mode .filial-sw{display:none}
 .pa-pass b{flex:1}
 
 /* ============================================================================
+   Навигация v2: вход экрана + хлебные крошки ВНУТРИ .work
+   (каркас .app/.topbar/.stage не трогаем — никаких новых узлов в сетке)
+   ========================================================================== */
+@keyframes stageIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.stage>.work{animation:stageIn .22s ease both}
+.org{animation:stageIn .22s ease both}
+@media (prefers-reduced-motion:reduce){.stage>.work,.org{animation:none}}
+
+.nav-crumbs{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:0 0 12px;font-size:12px;color:var(--muted);line-height:1.4}
+.nav-crumbs a{color:var(--muted);cursor:pointer;transition:color .15s}
+.nav-crumbs a:hover{color:var(--acc)}
+.nav-crumbs .nc-sep{color:var(--faint)}
+.nav-crumbs .nc-cur{color:var(--txt2);font-weight:600}
+
+/* ============================================================================
    Конец дополнительных стилей
    ========================================================================== */

@@ -2,6 +2,13 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "sreda-api",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server/app.js"],
+      "port": 3000,
+      "autoPort": false
+    },
+    {
       "name": "sreda",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["-y", "serve", "-l", "4321", "."],

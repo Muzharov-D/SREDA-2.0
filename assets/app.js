@@ -44,26 +44,26 @@ function streamChat(root, st, u, a){
 
 const state = { ws: 'dev', screen: 'dev', running: false };
 
-/* --- Breadcrumb & navigation stack --- */
+/* --- Back-stack с контекстом: откуда пришли, скролл и заголовок экрана --- */
 const NAV = {
   stack: [],
-  maxDepth: 12,
-  push(id){ if(this.stack[this.stack.length-1]!==id) this.stack.push(id); if(this.stack.length>this.maxDepth) this.stack.shift(); },
-  pop(){ return this.stack.length>1 ? this.stack.pop() : this.stack[0]; },
-  peek(){ return this.stack[this.stack.length-1]; },
-  canBack(){ return this.stack.length>1; },
-  reset(id){ this.stack=[id]; }
+  maxDepth: 30,
+  push(entry){ const top=this.stack[this.stack.length-1]; if(top && top.screen===entry.screen) return; this.stack.push(entry); if(this.stack.length>this.maxDepth) this.stack.shift(); },
+  pop(){ return this.stack.pop() || null; },
+  peek(){ return this.stack[this.stack.length-1] || null; },
+  canBack(){ return this.stack.length>0; },
+  reset(){ this.stack=[]; }
 };
 
-let _navDir = 'forward'; // 'forward' | 'back'
+const scrollMem = {}; /* screen → scrollTop, восстановление при popstate */
 
-function goBack(){
+function goBack(fallback){
   if(state.running){ toast('Идёт прогон — дождитесь завершения'); return; }
-  if(!NAV.canBack()){ navTo('pulse'); return; }
-  NAV.pop();
-  const prev = NAV.peek();
-  _navDir = 'back';
-  navTo(prev, {noPush:true});
+  const p = NAV.pop();
+  if(!p){ navTo(fallback || (window.__PORTAL?'modules':'pulse')); return; }
+  navTo(p.screen, {noPush:true});
+  history.replaceState({screen:p.screen}, '', '#'+p.screen);
+  if(p.scroll) requestAnimationFrame(()=>{ const w=document.getElementById('work'); if(w) w.scrollTop=p.scroll; });
 }
 
 let _toastT;
@@ -106,49 +106,107 @@ function renderNav(){
   const nav = $('#nav'); nav.innerHTML = '';
   nav.appendChild(el(`<div class="nav-ws"><span class="nav-ws-ic">${ws.icon}</span><div><b>${ws.label}</b><small>${ws.kind==='role'?'изолированный кабинет':ws.kind==='owner'?'управление платформой':'управление'}</small></div></div>`));
   if (ws.kind==='owner') nav.appendChild(el(`<div class="nav-note">Управление Средой: цифровой штат, бюджеты, политики</div>`));
+  /* детальные роуты (person:, worker:, …) подсвечивают родительский пункт nav */
+  let hiId=state.screen, g=0;
+  while(hiId && g++<6){ if(ws.nav.some(n=>n.id===hiId)) break; hiId=navParent(hiId); }
+  hiId = hiId || state.screen;
   ws.nav.forEach(n=>{ let badge='';
     if (n.sep){ nav.appendChild(el(`<div class="nav-group">${n.sep}</div>`)); return; }
     if(n.id.indexOf('flow:')===0){ const rid=n.id.slice(5); const FS=flowState();
       const cnt=FLOWS.filter(f=>{ const c=FS[f.id]; return f.steps[c] && f.steps[c].role===rid; }).length;
       if(cnt) badge=`<span class="ni-badge">${cnt}</span>`; }
-    const it=el(`<button class="nav-item ${n.id===state.screen?'active':''}"><span class="ni-ic">${n.icon}</span><span class="ni-l">${n.label}</span>${badge}</button>`);
-    it.onclick=()=>{ if(state.running){ toast('Идёт прогон — дождитесь завершения'); return; } state.screen=n.id; renderNav(); renderStage(n.id); }; nav.appendChild(it); });
+    const it=el(`<button class="nav-item ${n.id===hiId?'active':''}"><span class="ni-ic">${n.icon}</span><span class="ni-l">${n.label}</span>${badge}</button>`);
+    it.onclick=()=>navTo(n.id); nav.appendChild(it); });
 }
 
 function navTo(id, opts={}){
   if(state.running){ toast('Идёт прогон — дождитесь завершения'); return; }
-  const ws=WORKSPACES.find(w=>w.nav.some(n=>n.id===id)); if(ws) state.ws=ws.id;
-  state.screen=id; renderNav(); renderTopWho();
-  // animation
-  const stage = $('#stage');
-  const dirClass = _navDir==='back' ? 'back-enter' : 'enter';
-  stage.classList.add(dirClass);
-  requestAnimationFrame(()=>{
-    renderStage(id);
-    requestAnimationFrame(()=>{
-      stage.classList.add(dirClass+'-active');
-      setTimeout(()=>stage.classList.remove('enter','enter-active','back-enter','back-enter-active'), 240);
-    });
-  });
-  _navDir = 'forward';
-  if(!opts.noPush){
-    NAV.push(id);
-    history.pushState({screen:id}, '', '#' + id);
+  if(id===state.screen) return;
+  /* телепортация между кабинетами — только если текущий кабинет экрана не знает */
+  const cur=WORKSPACES.find(w=>w.id===state.ws);
+  if(!(cur && cur.nav.some(n=>n.id===id))){
+    const ws=WORKSPACES.find(w=>w.nav.some(n=>n.id===id));
+    if(ws && ws.id!==state.ws){ state.ws=ws.id; toast('Кабинет: '+ws.label); }
   }
+  /* контекст для возврата: экран, скролл, заголовок */
+  const w=document.getElementById('work');
+  const fromScroll=w?w.scrollTop:0;
+  scrollMem[state.screen]=fromScroll;
+  if(!opts.noPush) NAV.push({screen:state.screen, scroll:fromScroll, label:screenLabel(state.screen)});
+  state.screen=id; renderNav(); renderTopWho();
+  renderStage(id);
+  decorateStage(id);
+  if(!opts.noPush) history.pushState({screen:id}, '', '#' + id);
 }
 const selectDept = navTo;
-function setWorkspace(id){ const ws=WORKSPACES.find(w=>w.id===id); if(!ws) return; state.ws=id; state.screen=ws.nav[0].id; renderNav(); renderTopWho(); navTo(state.screen); }
+function setWorkspace(id){ const ws=WORKSPACES.find(w=>w.id===id); if(!ws) return; state.ws=id; renderNav(); renderTopWho(); navTo(ws.nav[0].id); }
 
-/* History API — кнопки назад/вперёд работают */
-window.addEventListener('popstate', (e) => {
-  const screen = location.hash.slice(1) || 'dev';
-  const ws = WORKSPACES.find(w => w.nav.some(n => n.id === screen));
-  if (ws) state.ws = ws.id;
-  state.screen = screen;
-  _navDir = 'back';
-  renderNav();
-  renderTopWho();
+/* --- Родительская цепочка детальных роутов: крошки + подсветка sidebar --- */
+function navParent(id){
+  if(id.indexOf('person:')===0) return 'team:'+id.split(':')[1];
+  if(id.indexOf('worker:')===0) return 'workers';
+  if(id.indexOf('tagent:')===0) return 'talent';
+  if(id.indexOf('fproj:')===0) return 'forge';
+  if(id.indexOf('dpulse:')===0) return 'pulse';
+  if(id.indexOf('domain:')===0) return 'federation';
+  if(id.indexOf('diplomat:')===0) return 'federation';
+  if(id.indexOf('channel:')===0) return 'team:'+id.slice(8);
+  return null;
+}
+const EXTRA_LABELS = { federation:'Федерация доменов', contracts:'Междоменные контракты', arbitration:'Арбитраж', economy:'Внутренняя экономика' };
+function workTitle(){
+  const w=document.getElementById('work');
+  const h=w && w.querySelector('.work-head h1,.work-head h2,h1,h2');
+  if(!h) return '';
+  return ((h.childNodes[0]&&h.childNodes[0].textContent)||h.textContent||'').trim();
+}
+function screenLabel(id){
+  for(const w of WORKSPACES){ const n=w.nav.find(x=>x.id===id); if(n) return n.label; }
+  if(EXTRA_LABELS[id]) return EXTRA_LABELS[id];
+  return (id===state.screen && workTitle()) || id;
+}
+const trimLabel = s => s.length>28 ? s.slice(0,27)+'…' : s;
+
+function crumbsHTML(id){
+  if(!navParent(id)) return '';
+  const chain=[]; let p=navParent(id), g=0;
+  while(p && g++<6){ chain.unshift(p); p=navParent(p); }
+  const cur = trimLabel(workTitle() || screenLabel(id));
+  return `<div class="nav-crumbs">`+
+    chain.map(c=>`<a onclick="navTo('${c}')">${escHtml(trimLabel(screenLabel(c)))}</a><span class="nc-sep">›</span>`).join('')+
+    `<span class="nc-cur">${escHtml(cur)}</span></div>`;
+}
+
+/* Крошки и подпись «Назад» — поверх готового рендера, каркас .app/.topbar не трогаем.
+   Внутренние перерисовки экрана (табы) затирают #work — observer возвращает крошки. */
+function decorateStage(id){
+  const work=document.getElementById('work');
+  if(window.__decorObs){ window.__decorObs.disconnect(); window.__decorObs=null; }
+  if(!work) return;
+  const apply=()=>{
+    if(!work.querySelector('.nav-crumbs')){
+      const html=crumbsHTML(id);
+      if(html) work.insertAdjacentHTML('afterbegin', html);
+    }
+    const p=NAV.peek();
+    const btn=work.querySelector('.worker-profile-back');
+    if(btn && p && !btn.dataset.ctx){ btn.dataset.ctx='1'; btn.textContent='← Назад · '+trimLabel(p.label||screenLabel(p.screen)); }
+  };
+  apply();
+  window.__decorObs = new MutationObserver(apply);
+  window.__decorObs.observe(work, {childList:true});
+}
+
+/* History API — кнопки назад/вперёд браузера работают и не дублируют стек */
+window.addEventListener('popstate', () => {
+  const screen = location.hash.slice(1) || (window.__PORTAL?'modules':'pulse');
+  if(screen===state.screen) return;
+  const top=NAV.peek();
+  const isBack = top && top.screen===screen;
+  if(isBack) NAV.pop();
   navTo(screen, {noPush:true});
+  const pos = isBack ? (top.scroll||0) : (scrollMem[screen]||0);
+  if(pos) requestAnimationFrame(()=>{ const w=document.getElementById('work'); if(w) w.scrollTop=pos; });
 });
 
 /* Keyboard shortcuts */
@@ -3116,7 +3174,7 @@ function renderFederation(work){
       <div class="fed-d-sov">${dom.sovereignty.map(s => `<span class="fed-tag">${s}</span>`).join('')}</div>
       <button class="fed-d-btn" data-id="${dom.id}">Конституция и детали →</button>
     </div>`);
-    card.querySelector('.fed-d-btn').onclick = () => { state.screen = 'domain:' + dom.id; renderNav(); renderStage('domain:' + dom.id); };
+    card.querySelector('.fed-d-btn').onclick = () => navTo('domain:' + dom.id);
     orbit.appendChild(card);
   });
 
@@ -3188,7 +3246,7 @@ function renderDomain(work, domId){
           </div>`).join('')}
         </div>
       </div>`;
-      body.querySelectorAll('.dom-a-card').forEach(c => c.onclick = () => { state.screen = 'worker:' + c.dataset.aid; renderNav(); renderStage('worker:' + c.dataset.aid); });
+      body.querySelectorAll('.dom-a-card').forEach(c => c.onclick = () => navTo('worker:' + c.dataset.aid));
     } else if (activeTab === 'Послы'){
       body.innerHTML = `<div class="dom-dips">
         <h3>🕊️ Цифровые сотрудники-послы · ${diplomats.length}</h3>
@@ -3210,7 +3268,7 @@ function renderDomain(work, domId){
           </div>`;
         }).join('')}
       </div>`;
-      body.querySelectorAll('.dom-d-card').forEach(c => c.querySelector('.dom-d-btn').onclick = () => { state.screen = 'diplomat:' + c.dataset.did; renderNav(); renderStage('diplomat:' + c.dataset.did); });
+      body.querySelectorAll('.dom-d-card').forEach(c => c.querySelector('.dom-d-btn').onclick = () => navTo('diplomat:' + c.dataset.did));
     } else if (activeTab === 'Контракты'){
       body.innerHTML = `<div class="dom-contracts">
         <h3>📜 Междоменные контракты · ${contracts.length}</h3>
@@ -3809,7 +3867,7 @@ function renderWorkerProfile(root, workerId) {
     return '';
   }
   function wire(){
-    $('#wpBack',root).onclick = ()=>history.back();
+    $('#wpBack',root).onclick = ()=>goBack('workers');
     root.querySelectorAll('.gp-tab').forEach(b=>b.onclick=()=>{ tab=b.dataset.t; draw(); });
     const lp=root.querySelector('[data-leadprof]'); if(lp) lp.onclick=()=>navTo('person:'+w.dept+':'+leadIdx);
     const gb=root.querySelector('[data-gobudget]'); if(gb) gb.onclick=()=>navTo('aibudget');
@@ -4005,7 +4063,7 @@ function renderPersonProfile(root, dept, idx){
     return '';
   }
   function wire(){
-    $('#ppBack',root).onclick=()=>history.back();
+    $('#ppBack',root).onclick=()=>goBack('team:'+dept);
     root.querySelectorAll('.gp-tab').forEach(b=>b.onclick=()=>{ tab=b.dataset.t; draw(); });
     root.querySelectorAll('[data-wgo]').forEach(b=>b.onclick=()=>navTo('worker:'+b.dataset.wgo));
     const ch=root.querySelector('[data-go-ch]'); if(ch) ch.onclick=()=>navTo('channel:'+dept);
@@ -4265,7 +4323,7 @@ function renderTalentAgent(root, id){
       if(i===steps.length-1){ tlHire(a.id, dept, mode); toast(`«${a.name}» в строю — смотрите команду «${roleLabel(dept)}»`); setTimeout(draw, 500); } }, 520*(i+1)));
   }
   function wire(){
-    $('#taBack',root).onclick=()=>navTo('talent');
+    $('#taBack',root).onclick=()=>goBack('talent');
     const ivb=$('#taIv',root); if(ivb) ivb.onclick=()=>{ view='interview'; iv={step:0}; draw(); ivRun(); };
     const st=$('#taStaff',root); if(st) st.onclick=()=>hireFlow('staff');
     const tk=$('#taTask',root); if(tk) tk.onclick=()=>hireFlow('result');
@@ -4390,7 +4448,7 @@ function renderForgeProject(root, id){
     wire();
   }
   function wire(){
-    $('#fgBack',root).onclick=()=>navTo('forge');
+    $('#fgBack',root).onclick=()=>goBack('forge');
     root.querySelectorAll('[data-crew]').forEach(b=>b.onclick=()=>navTo('tagent:'+b.dataset.crew));
     root.querySelectorAll('[data-art]').forEach(b=>b.onclick=()=>{ const art=p.artifacts[+b.dataset.art];
       if(art[2]==='dpulse:dev'){ if(isExtWS()){ toast('Артефакт передан в ваш контур: репозиторий, сервис, документация (демо)'); }
@@ -4497,7 +4555,9 @@ function init(){
   renderNav();
   renderTopWho();
   renderStage(state.screen);
-  NAV.reset(state.screen);
+  decorateStage(state.screen);
+  NAV.reset();
+  history.replaceState({screen:state.screen}, '', '#'+state.screen);
   initModal();
   injectTour();
   const meter=$('#meterBtn'); if(meter){ meter.style.cursor='pointer'; meter.onclick=()=>navTo(window.__PORTAL?'bills':'aibudget'); }

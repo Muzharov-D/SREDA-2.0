@@ -78,7 +78,23 @@ function initDb() {
         note TEXT,
         done TEXT,
         fresh INTEGER,
-        dept TEXT
+        dept TEXT,
+        contract TEXT,
+        status TEXT
+      )`);
+
+      // Миграция для БД, созданных до появления колонок contract/status
+      db.run('ALTER TABLE tasks ADD COLUMN contract TEXT', () => {});
+      db.run('ALTER TABLE tasks ADD COLUMN status TEXT', () => {});
+
+      db.run(`CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        channel TEXT,
+        who TEXT,
+        kind TEXT,
+        text TEXT,
+        meta TEXT,
+        created_at DATETIME
       )`, function(err) {
         db.close();
         if (err) return reject(err);

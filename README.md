@@ -4,20 +4,32 @@
 сотрудника в одном штатном расписании, живой «Пульс компании», золотые профили,
 передачи работы между отделами, governance и аудит.
 
-Чистая статика: HTML + CSS + vanilla JS, без сборки и без бэкенда.
-Все данные — моки (`assets/mock.js`).
+Фронт: HTML + CSS + vanilla JS без сборки. Бэкенд: Express + SQLite (`server/`),
+он же отдаёт статику. При первом старте БД наполняется демо-данными автоматически.
 
-## Запуск локально
-
-Любой статический сервер из корня проекта:
+## Запуск
 
 ```bash
-npx serve -l 4321 .
-# или
-node server.js          # порт 3000
+npm install
+npm start          # http://localhost:3000
 ```
 
-Откройте http://localhost:4321
+Маршруты:
+
+| URL | Что открывается |
+|---|---|
+| http://localhost:3000 | внутренний контур «Среда» (`index.html`) |
+| http://localhost:3000/inside | то же самое |
+| http://localhost:3000/portal | внешний портал клиента (`portal.html`) |
+| http://localhost:3000/office | офис (`office.html`) |
+
+Полезное:
+
+```bash
+npm run seed                          # пересеять БД вручную
+# или по HTTP (нужен заголовок X-API-Key):
+curl -X POST http://localhost:3000/api/demo/reset -H "X-API-Key: sreda-prototype-key-2026"
+```
 
 ## Структура
 
@@ -61,10 +73,10 @@ vercel --prod
 
 ## Деплой на Render
 
-1. render.com → **New → Static Site** → подключите репозиторий.
-2. Render сам прочитает `render.yaml` (Blueprint) — либо вручную:
-   Build Command — пусто, Publish Directory — `.`.
-3. **Create Static Site**.
+1. render.com → **New → Blueprint** → подключите репозиторий.
+2. Render прочитает `render.yaml` (web service: `npm install` → `node server/app.js`) — подтвердите.
+3. **Apply**. После старта БД засеется автоматически; диск эфемерный, после
+   редеплоя данные вернутся к демо-состоянию (это поведение прототипа, так и задумано).
 
 ## Что не попадает в репозиторий
 
