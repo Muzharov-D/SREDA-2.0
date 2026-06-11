@@ -308,10 +308,13 @@ function cortexMap(stage, opts){
   }
 
   /* --- цикл ---------------------------------------------------------------- */
+  /* a11y: при prefers-reduced-motion замораживаем самодвижение (dt=0),
+     но цикл живёт — зум/наведение/раскладка остаются отзывчивыми. */
+  const REDUCED_MOTION = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   function frame(now){
     if (!alive) return;
     if (!document.body.contains(canvas)){ destroy(); return; }
-    const dt = Math.min(0.05, (now - last) / 1000); last = now; t += dt;
+    const dt = REDUCED_MOTION ? 0 : Math.min(0.05, (now - last) / 1000); last = now; t += dt;
     if (W) draw(dt);
     requestAnimationFrame(frame);
   }

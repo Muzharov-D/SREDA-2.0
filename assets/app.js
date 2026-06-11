@@ -108,7 +108,7 @@ const WORKSPACES = ROLE_IDS.map(id => { const d = DEPARTMENTS.find(x=>x.id===id)
       {id:'modules',label:'С чего начать',icon:'🪜'}, {id:'talent',label:'Цифровой найм',icon:'🌊'}, {id:'forge',label:'Цифровое производство',icon:'🏭'}, {id:'bills',label:'Счета Среды',icon:'🧾'} ] },
   { id:'platform', kind:'ext', icon:'🌐', label:'Платформа Среды', persona:'Клиент без Inside',
     nav:[ {id:'modules',label:'С чего начать',icon:'🪜'}, {id:'talent',label:'Цифровой найм',icon:'🌊'}, {id:'forge',label:'Цифровое производство',icon:'🏭'}, {id:'bills',label:'Счета Среды',icon:'🧾'} ] },
-  { id:'owner', kind:'owner', icon:'⚙️', label:'Владелец платформы', persona:'Платформа · Авандок',
+  { id:'owner', kind:'owner', icon:'⚙️', label:'Владелец платформы', persona:'Платформа · Среда',
     nav:[ {id:'workers',label:'Штат цифровых сотрудников',icon:'🤖'},{id:'aibudget',label:'Бюджеты ИИ',icon:'💰'},{id:'router',label:'Маршрутизатор моделей',icon:'🔀'},{id:'audit',label:'Аудит и доступ',icon:'🛡️'},{id:'market',label:'Полная библиотека',icon:'📚'},{id:'studio',label:'Студия',icon:'🛠️'},
       {sep:'Видение'},
       {id:'power',label:'Суперсила',icon:'⚡'},{id:'path',label:'Путь',icon:'🧭'},{id:'core',label:'Контур',icon:'♾️'} ] },
@@ -149,9 +149,21 @@ function navTo(id, opts={}){
   state.screen=id; renderNav(); renderTopWho();
   renderStage(id);
   decorateStage(id);
+  announceRoute(id);
   if(!opts.noPush) history.pushState({screen:id}, '', '#' + id);
 }
 const selectDept = navTo;
+
+/* A11y: SPA-навигация немая для скринридеров — объявляем смену экрана через
+   aria-live и переводим фокус на заголовок нового раздела (WCAG 3.2.3 / 4.1.3). */
+function announceRoute(id){
+  const live=document.getElementById('routeAnnounce');
+  const w=document.getElementById('work');
+  const h=w&&w.querySelector('.work-head h1,.work-head h2,h1,h2');
+  const label=((h&&((h.childNodes[0]&&h.childNodes[0].textContent)||h.textContent))||screenLabel(id)||'').trim();
+  if(live) live.textContent=label?('Раздел: '+label):'';
+  if(h){ if(!h.hasAttribute('tabindex')) h.setAttribute('tabindex','-1'); try{h.focus({preventScroll:true});}catch(e){} }
+}
 function setWorkspace(id){ const ws=WORKSPACES.find(w=>w.id===id); if(!ws) return; state.ws=id; renderNav(); renderTopWho(); navTo(ws.nav[0].id); }
 
 /* --- Родительская цепочка детальных роутов: крошки + подсветка sidebar --- */
@@ -187,9 +199,9 @@ function crumbsHTML(id){
   const chain=[]; let p=navParent(id), g=0;
   while(p && g++<6){ chain.unshift(p); p=navParent(p); }
   const cur = trimLabel(workTitle() || screenLabel(id));
-  return `<div class="nav-crumbs">`+
-    chain.map(c=>`<a onclick="navTo('${c}')">${escHtml(trimLabel(screenLabel(c)))}</a><span class="nc-sep">›</span>`).join('')+
-    `<span class="nc-cur">${escHtml(cur)}</span></div>`;
+  return `<nav class="nav-crumbs" aria-label="Хлебные крошки">`+
+    chain.map(c=>`<a href="#${c}" onclick="navTo('${c}');return false;">${escHtml(trimLabel(screenLabel(c)))}</a><span class="nc-sep" aria-hidden="true">›</span>`).join('')+
+    `<span class="nc-cur" aria-current="page">${escHtml(cur)}</span></nav>`;
 }
 
 /* Крошки и подпись «Назад» — поверх готового рендера, каркас .app/.topbar не трогаем.
@@ -653,7 +665,7 @@ function renderPulse(root, d){
         <div class="pls-core" id="plsCore" title="Запустить рой">
           <span class="pls-ring r1"></span><span class="pls-ring r2"></span>
           <div class="pls-logo">${PULSE_LOGO}</div>
-          <b>АВАНДОК СРЕДА 2.0</b><i>больше, чем результат</i>
+          <b>СРЕДА</b>
         </div>
       </div>
       <aside class="pls-side">
@@ -895,7 +907,7 @@ function renderPulse(root, d){
         const deps=[...new Set(pr.phases.flatMap(ph=>ph.tasks.map(t=>roleLabel(t.dept))))].join(' · ');
         return `<div class="mp-q"><div class="mp-qh"><i>${pr.icon}</i><div><b>${pr.title}</b><small>${pr.ask}</small><small class="pj-meta">${n} задач · ${deps} · ${pr.deadline}</small></div></div>
           <button class="btn go" data-mplaunch="${pr.id}">⚡ Запустить рой</button></div>`; }).join('')}</div>`
-      :'<div class="od-gov">Очередь пуста — все запросы запущены.</div>'}
+      :'<div class="od-gov empty-note">Очередь пуста — все запросы запущены.</div>'}
     <div class="od-gov">Уровни запуска: проекты компании — здесь · задачи отдела — «⚡» на пульсе отдела · обычная задача — ⌘K «Поставить задачу Среде».</div>`;
   }
   function setLaunch(on){
@@ -1033,7 +1045,7 @@ function renderDeptPulse(root, roleId){
     return `<div class="pj-head"><b>⚡ Очередь отдела</b><small>Бэклог доски «${cfg.role}»: запуск назначает исполнителя, задача уходит «В работу», импульс — на карте.</small></div>
     ${bk.length?bk.map((it,i)=>`<div class="mp-q"><div class="mp-qh"><i>📋</i><div><b>${it.id}</b><small>${it.t}</small></div></div>
       <button class="btn go" data-dql="${i}">⚡ Запустить</button></div>`).join('')
-      :'<div class="od-gov">Бэклог пуст. Обычная задача — ⌘K «Поставить задачу Среде».</div>'}`;
+      :'<div class="od-gov empty-note">Бэклог пуст. Обычная задача — ⌘K «Поставить задачу Среде».</div>'}`;
   }
   function setDQ(on){ dq=on; const q=$('#dpQueue',root), sb=$('#dpSurge',root);
     if(q){ q.style.display=on?'':'none'; if(on){ q.innerHTML=dpQueueHTML(); wireDQ(); } }
@@ -3051,9 +3063,25 @@ function setNavLock(lock){
 }
 function initModal(){
   const ov = $('#overlay');
-  $('#cmdBtn').onclick = () => { if (!state.running) ov.classList.add('show'); $('#taskText').focus(); };
-  $('#mClose').onclick = () => ov.classList.remove('show');
-  ov.onclick = e => { if (e.target === ov) ov.classList.remove('show'); };
+  const modal = ov.querySelector('.modal');
+  let lastFocus = null;
+  const focusables = () => [...modal.querySelectorAll('button,[href],textarea,input,select,[tabindex]:not([tabindex="-1"])')]
+    .filter(el => !el.disabled && el.offsetParent !== null);
+  function onTrap(e){
+    if (e.key !== 'Tab') return;
+    const f = focusables(); if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+  }
+  function openModal(){ if (state.running) return; lastFocus = document.activeElement; ov.classList.add('show');
+    modal.addEventListener('keydown', onTrap); $('#taskText').focus(); }
+  function closeModal(){ ov.classList.remove('show'); modal.removeEventListener('keydown', onTrap);
+    if (lastFocus && lastFocus.focus){ try{ lastFocus.focus(); }catch(e){} } }
+  ov._open = openModal; ov._close = closeModal;   // для глобальных ⌘K / Escape
+  $('#cmdBtn').onclick = openModal;
+  $('#mClose').onclick = closeModal;
+  ov.onclick = e => { if (e.target === ov) closeModal(); };
 
   const examples = [
     {t:'campaign', label:'📣 Кампания к запуску'},
@@ -3071,7 +3099,7 @@ function initModal(){
   $('#mGo').onclick = () => {
     const v = $('#taskText').value.trim();
     if (!v){ toast('Опишите задачу своими словами'); $('#taskText').focus(); return; }
-    ov.classList.remove('show'); $('#taskText').value='';
+    closeModal(); $('#taskText').value='';
     if (rpgPhraseCheck(v)) return;
     /* маршрутизация по ключевым словам → ассистент нужной роли */
     let role = 'marketing';
@@ -3136,7 +3164,7 @@ function renderFilials(root){
 /*  ТУР — сквозная история одной сделки «Гамма» через всю компанию        */
 /* ========================================================================== */
 const TOUR = [
-  { screen:'pulse', title:'Авандок Среда 2.0 · Пульс компании', text:'Живое сердце компании: в центре — Среда, вокруг — 8 отделов. Каждая частица — реальная задача в работе. Больше, чем результат.', sel:'.pls-core' },
+  { screen:'pulse', title:'СРЕДА · Пульс компании', text:'Живое сердце компании: в центре — Среда, вокруг — 8 отделов. Каждая частица — реальная задача в работе.', sel:'.pls-core' },
   { screen:'company', title:'Компания на ИИ', text:'Одна Среда = одна компания. В штате 314: 150 людей и 164 цифровых сотрудника — у людей рои под должность, у цифровых должностные инструкции и руководители-люди. Проследим сделку «Гамма» насквозь.' },
   { screen:'asst:sales', title:'1 · Личный чат', text:'Оля из продаж просит ассистента словами: «собери КП для Гаммы». ИИ отвечает черновиком — как в нашем с вами чате.', sel:'.asst-chat' },
   { screen:'sales', title:'2 · Артефакт + контроль', text:'ИИ собрал КП, Оля правит скидку руками. Гейт не пускает дальше с превышением политики — ИИ даёт черновик, человек контролирует.', sel:'.chatx-art' },
@@ -3769,7 +3797,7 @@ function renderWorkerWorkforce(root) {
 const DEPT_INTEG = { dev:['repo','ci','jira','cloud'], sales:['crm','mail','drive'], marketing:['crm','drive','mail','analytics'], design:['figma','drive','jira'], analytics:['analytics','bill','cloud','drive'], hr:['crm','drive','mail'], finance:['bill','1c','drive'], legal:['drive','mail','siem'] };
 function renderWorkerProfile(root, workerId) {
   const w = ALL_DIGITAL.find(x => x.id === workerId);
-  if (!w) { root.innerHTML = workHead({icon:'🤖',label:'Цифровой сотрудник'}, 'не найден') + '<div class="od-gov">Сотрудник не найден — откройте «Штат цифровых сотрудников».</div>'; return; }
+  if (!w) { root.innerHTML = workHead({icon:'🤖',label:'Цифровой сотрудник'}, 'не найден') + '<div class="od-gov empty-note">Сотрудник не найден — откройте «Штат цифровых сотрудников».</div>'; return; }
   const dept = DEPARTMENTS.find(d => d.id === w.dept);
   const h = strHash(w.id);
   const c = DEPT_TASK[w.dept].c;
@@ -3984,7 +4012,7 @@ function initialsAv(name, surname, color, big){
 function renderPersonProfile(root, dept, idx){
   const p = personOf(dept, +idx);
   const dep = DEPARTMENTS.find(x=>x.id===dept);
-  if (!p){ root.innerHTML = workHead(dep||{icon:'👤',label:'Сотрудник'}, 'не найден') + '<div class="od-gov">Откройте штат отдела и выберите сотрудника.</div>'; return; }
+  if (!p){ root.innerHTML = workHead(dep||{icon:'👤',label:'Сотрудник'}, 'не найден') + '<div class="od-gov empty-note">Откройте штат отдела и выберите сотрудника.</div>'; return; }
   const c = DEPT_TASK[dept].c;
   const cfg = COCKPITS[dept];
   const M = cfg.metrics.slice(0,4).map(m=>Array.isArray(m)?{k:m[0],b:m[1],a:m[2]}:{k:m.k,b:m.before,a:m.after});
@@ -4133,7 +4161,7 @@ const GEN_HUMAN_C = '#60a5fa', GEN_DIGIT_C = '#36c994';
 
 function renderGenPerson(root, dept, idx){
   const dep = DEPARTMENTS.find(x=>x.id===dept) || {icon:'👤',label:dept};
-  if (typeof genPerson !== 'function'){ root.innerHTML = workHead(dep,'профиль недоступен')+'<div class="od-gov">Генератор личностей не загружен.</div>'; return; }
+  if (typeof genPerson !== 'function'){ root.innerHTML = workHead(dep,'профиль недоступен')+'<div class="od-gov empty-note">Генератор личностей не загружен.</div>'; return; }
   const p = genPerson(dept, +idx);
   const c = GEN_HUMAN_C;
   const back = ()=>goBack('dpulse:'+dept);
@@ -4187,7 +4215,7 @@ function renderGenPerson(root, dept, idx){
 
 function renderGenWorker(root, dept, idx){
   const dep = DEPARTMENTS.find(x=>x.id===dept) || {icon:'🤖',label:dept};
-  if (typeof genWorker !== 'function'){ root.innerHTML = workHead(dep,'профиль недоступен')+'<div class="od-gov">Генератор личностей не загружен.</div>'; return; }
+  if (typeof genWorker !== 'function'){ root.innerHTML = workHead(dep,'профиль недоступен')+'<div class="od-gov empty-note">Генератор личностей не загружен.</div>'; return; }
   const w = genWorker(dept, +idx);
   const c = GEN_DIGIT_C;
   const back = ()=>goBack('dpulse:'+dept);
@@ -4344,7 +4372,7 @@ function renderTalent(root){
       <div class="kpi"><div class="l">Агентов в пуле</div><div class="v">${cat.length}</div><div class="d up">▲ 8 ролей · все с верифицированной историей</div></div>
       <div class="kpi"><div class="l">Средний рейтинг</div><div class="v">${(cat.reduce((x,a)=>x+a.rating,0)/cat.length).toFixed(2)}★</div><div class="d up">двусторонние отзывы</div></div>
       <div class="kpi"><div class="l">Старт работы</div><div class="v">4 мин</div><div class="d up">договор · почта · доступы · канал</div></div>
-      <div class="kpi"><div class="l">У вас на контрактах</div><div class="v">${hired.length}</div><div class="d flat">● в командах Авандока</div></div>
+      <div class="kpi"><div class="l">У вас на контрактах</div><div class="v">${hired.length}</div><div class="d flat">● в командах Среды</div></div>
     </div>
     ${hired.length?`<div class="panel" style="margin-bottom:13px"><h2>🤝 Ваши контракты <span class="tag">контактная поверхность</span></h2>
       ${hired.map(h=>{ const a=talentAgent(h.aid); return `<div class="tl-row" data-go="${a.id}">${hexAv(a)}<div><b>${a.name} <i class="dgt-tag tl">агент Среды</i></b><small>${TL_ROLES[a.role].label} · ${roleLabel(h.dept)} · ${h.sinceLbl} · принято результатов: ${h.accepted}</small></div><span class="gp-bdg acc">${h.mode==='staff'?'в штате':'за результат'}</span><span class="dp-swarm prof">контракт →</span></div>`; }).join('')}</div>`:''}
@@ -4730,8 +4758,8 @@ function init(){
   const brand=$('#brandHome'); if(brand){ brand.style.cursor='pointer'; brand.onclick=()=>{ setWorkspace('exec'); }; }
   /* ⌘K / Ctrl+K — глобальная постановка задачи; Esc закрывает модалку */
   document.addEventListener('keydown', e=>{
-    if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); if(!state.running){ $('#overlay').classList.add('show'); $('#taskText').focus(); } }
-    if(e.key==='Escape'){ $('#overlay').classList.remove('show'); const m=$('#wsMenu'); if(m) m.remove(); const f=$('#fsMenu'); if(f) f.remove(); }
+    if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); const ov=$('#overlay'); if(!state.running && ov && ov._open){ ov._open(); } }
+    if(e.key==='Escape'){ const ov=$('#overlay'); if(ov){ ov._close ? ov._close() : ov.classList.remove('show'); } const m=$('#wsMenu'); if(m) m.remove(); const f=$('#fsMenu'); if(f) f.remove(); }
   });
 }
 document.addEventListener('DOMContentLoaded', init);

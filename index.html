@@ -4,11 +4,11 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <meta name="color-scheme" content="dark"/>
-  <title>Авандок Среда 2.0 — больше, чем результат</title>
-  <meta name="description" content="Операционная среда компании на ИИ: 150 людей и 164 цифровых сотрудника в одном штате. Больше, чем результат."/>
+  <title>СРЕДА</title>
+  <meta name="description" content="Операционная среда компании на ИИ: 150 людей и 164 цифровых сотрудника в одном штате."/>
   <meta property="og:type" content="website"/>
-  <meta property="og:title" content="Авандок Среда 2.0"/>
-  <meta property="og:description" content="Операционная среда компании на ИИ: люди и цифровые сотрудники в одном штате. Больше, чем результат."/>
+  <meta property="og:title" content="СРЕДА"/>
+  <meta property="og:description" content="Операционная среда компании на ИИ: люди и цифровые сотрудники в одном штате."/>
   <meta property="og:image" content="https://sreda-2-0.vercel.app/assets/og.png"/>
   <meta property="og:url" content="https://sreda-2-0.vercel.app/"/>
   <meta property="og:image:width" content="1200"/>
@@ -20,13 +20,15 @@
 </head>
 <body>
   <div class="app">
+    <h1 class="sr-only">СРЕДА</h1>
+    <!-- A11y: объявление смены экрана для скринридеров -->
+    <div id="routeAnnounce" class="sr-only" role="status" aria-live="polite"></div>
     <!-- Верхняя панель -->
     <header class="topbar">
       <div class="brand" id="brandHome" title="На Пульс компании">
-        <img src="assets/logo.svg" alt="Авандок Среда 2.0" class="logo-img" width="38" height="38"/>
+        <img src="assets/logo.svg" alt="СРЕДА" class="logo-img" width="38" height="38"/>
         <div class="brand-t">
-          <b>АВАНДОК <span>СРЕДА 2.0</span></b>
-          <small>Больше, чем результат</small>
+          <b><span>СРЕДА</span></b>
         </div>
       </div>
 
@@ -37,14 +39,14 @@
       </button>
 
       <div class="tb-right">
-        <div class="meter" id="meterBtn" title="Открыть бюджеты ИИ"><b>₽184k</b><span>ИИ за неделю · −8%</span></div>
+        <button class="meter" id="meterBtn" type="button" aria-label="Открыть бюджеты ИИ"><b>₽184k</b><span>ИИ за неделю · −8%</span></button>
         <div class="filial-sw" id="filialSw"></div>
-        <div class="who" id="who"></div>
+        <button class="who" id="who" type="button" aria-haspopup="menu" aria-label="Профиль и роль"></button>
       </div>
     </header>
 
     <!-- Левый навигатор отделов -->
-    <nav class="nav" id="nav"></nav>
+    <nav class="nav" id="nav" aria-label="Основная навигация"></nav>
 
     <!-- Рабочая область (меняет лицо под роль) -->
     <main class="stage" id="stage"></main>
@@ -52,12 +54,13 @@
 
   <!-- Модалка глобальной постановки задачи -->
   <div class="overlay" id="overlay">
-    <div class="modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalDesc">
       <div class="modal-head">
-        <img src="assets/logo.svg" alt="Авандок Среда 2.0" width="28" height="28"/>
-        <h2>Поставить задачу Среде</h2>
+        <img src="assets/logo.svg" alt="" width="28" height="28"/>
+        <h2 id="modalTitle">Поставить задачу Среде</h2>
       </div>
-      <p>Опишите задачу словами — оркестратор сам разберёт её на подзадачи, подберёт цифровых сотрудников и модели.</p>
+      <p id="modalDesc">Опишите задачу словами — оркестратор сам разберёт её на подзадачи, подберёт цифровых сотрудников и модели.</p>
+      <label for="taskText" class="sr-only">Описание задачи для Среды</label>
       <textarea id="taskText" placeholder="Напр.: собери кампанию к запуску в четверг…"></textarea>
       <div class="ex" id="mEx"></div>
       <div class="row">

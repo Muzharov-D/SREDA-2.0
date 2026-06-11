@@ -364,7 +364,7 @@ function renderProjectDetail(root){
         <div class="panel"><h2>Артефакты <span class="tag">${p.artifacts.length}</span></h2>
           ${p.artifacts.map(ar=>`<div class="pa-pass"><span class="chip">${ar[0]}</span><b>${ar[1]}</b><span>${ar[3]}</span></div>`).join('')}</div>
         <div class="panel"><h2>Лента цеха</h2>
-          <div class="portal-feed">${(p.status==='done'&&p.feedDone?p.feedDone:p.feed).slice(0,6).map(f=>`<div class="of-row">⚙ ${f}</div>`).join('')||'<div class="od-gov">Цех набирает обороты…</div>'}</div></div>
+          <div class="portal-feed">${(p.status==='done'&&p.feedDone?p.feedDone:p.feed).slice(0,6).map(f=>`<div class="of-row">⚙ ${f}</div>`).join('')||'<div class="od-gov empty-note">Цех набирает обороты…</div>'}</div></div>
       </div>
     </div>`;
 

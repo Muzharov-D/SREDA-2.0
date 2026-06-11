@@ -173,8 +173,9 @@ const Organism = (() => {
     core.pulse=1; ambientStats.doneToday+=Math.round(20+Math.random()*30); }
 
   /* --- Рендер ------------------------------------------------------------- */
+  const PREFERS_REDUCED=!!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   function draw(now){
-    const t=(now-t0)/1000; ctx.clearRect(0,0,W,H);
+    const t=PREFERS_REDUCED?0:(now-t0)/1000; ctx.clearRect(0,0,W,H);
     const cx=W/2, cy=H/2;
     const g=ctx.createRadialGradient(cx,cy,0,cx,cy,Math.min(W,H)*0.5);
     g.addColorStop(0,'rgba(52,211,153,0.05)'); g.addColorStop(1,'rgba(0,0,0,0)');

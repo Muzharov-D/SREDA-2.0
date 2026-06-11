@@ -18,6 +18,8 @@
 </head>
 <body>
   <div class="app">
+    <h1 class="sr-only">Платформа Среды</h1>
+    <div id="routeAnnounce" class="sr-only" role="status" aria-live="polite"></div>
     <header class="topbar">
       <div class="brand" id="brandHome" title="Платформа Среды">
         <img src="assets/logo.svg" alt="Платформа Среды" class="logo-img" width="38" height="38"/>
@@ -32,21 +34,22 @@
         <kbd>⌘K</kbd>
       </button>
       <div class="tb-right">
-        <div class="meter" id="meterBtn" title="Счета Среды"><b>₽184k</b><span>счета платформы</span></div>
+        <button class="meter" id="meterBtn" type="button" aria-label="Счета Среды"><b>₽184k</b><span>счета платформы</span></button>
         <div class="filial-sw" id="filialSw"></div>
-        <div class="who" id="who"></div>
+        <button class="who" id="who" type="button" aria-haspopup="menu" aria-label="Профиль и роль"></button>
       </div>
     </header>
-    <nav class="nav" id="nav"></nav>
+    <nav class="nav" id="nav" aria-label="Основная навигация"></nav>
     <main class="stage" id="stage"></main>
   </div>
   <div class="overlay" id="overlay">
-    <div class="modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalDesc">
       <div class="modal-head">
-        <img src="assets/logo.svg" alt="Платформа Среды" width="28" height="28"/>
-        <h2>Поставить задачу Среде</h2>
+        <img src="assets/logo.svg" alt="" width="28" height="28"/>
+        <h2 id="modalTitle">Поставить задачу Среде</h2>
       </div>
-      <p>Опишите задачу словами — подберём агента и вернём результат. Платите только за принятое.</p>
+      <p id="modalDesc">Опишите задачу словами — подберём агента и вернём результат. Платите только за принятое.</p>
+      <label for="taskText" class="sr-only">Описание задачи для Среды</label>
       <textarea id="taskText" placeholder="Напр.: разбор воронки регистраций за май…"></textarea>
       <div class="ex" id="mEx"></div>
       <div class="row">
