@@ -1,0 +1,116 @@
+/* ============================================================================
+   SINGULAR THEME — override for SREDA platform
+   Void Black · Synaptic Violet · Axon Light · Cosmic Dust
+   ========================================================================== */
+
+:root{
+  --bg:#050A14;
+  --bg2:#0A1120;
+  --bg3:#0F1A2E;
+  --panel:#0A1120;
+  --panel2:#0F1A2E;
+  --panel-hover:#152238;
+
+  --line:#1a2744;
+  --line2:#243555;
+  --line3:#3a5070;
+
+  --txt:#F0F4F8;
+  --txt2:#C8D4E0;
+  --muted:#9EADB8;
+  --faint:#6B7B8A;
+
+  --acc:#B06AEE;
+  --acc-soft:rgba(176,106,238,.12);
+  --acc-hover:#9d55d8;
+  --acc-glow:rgba(176,106,238,.35);
+  --acc-deep:#7B2FBE;
+
+  --vio:#B06AEE;
+  --vio-soft:rgba(176,106,238,.10);
+  --amber:#fbbf24;
+  --red:#f87171;
+  --green:#34d399;
+  --blue:#60a5fa;
+  --teal:#2dd4bf;
+
+  --r:16px;
+  --r-sm:12px;
+  --r-xs:8px;
+
+  --shadow-sm:0 1px 2px rgba(0,0,0,.5);
+  --shadow:0 2px 6px rgba(0,0,0,.55),0 1px 2px rgba(0,0,0,.4);
+  --shadow-md:0 6px 14px rgba(0,0,0,.6),0 2px 5px rgba(0,0,0,.4);
+  --shadow-lg:0 14px 32px rgba(0,0,0,.65),0 4px 10px rgba(0,0,0,.45);
+}
+
+/* Hero canvas background */
+#neuroBg{
+  position:fixed;
+  top:0;left:0;
+  width:100%;height:100%;
+  z-index:0;
+  pointer-events:none;
+  opacity:.35;
+}
+
+.app{position:relative;z-index:1}
+
+/* Topbar */
+.topbar{
+  background:linear-gradient(180deg,rgba(5,10,20,.95),rgba(5,10,20,.8));
+  border-bottom:1px solid var(--line);
+  backdrop-filter:blur(20px);
+}
+.brand b{color:var(--txt)}
+.brand span{color:var(--acc)}
+.brand small{color:var(--muted)}
+
+/* Navigation */
+.nav{
+  background:var(--bg2);
+  border-right:1px solid var(--line);
+}
+.nav-ws{background:var(--bg3)}
+.nav-item:hover{background:var(--panel-hover)}
+.nav-item.active{background:var(--acc-soft);border-left-color:var(--acc)}
+
+/* Stage */
+.stage{background:var(--bg)}
+
+/* Cards / Panels */
+.panel,.kpi,.work-head,.gp-card,.rpg-card,.chatx-b,.table-wrap,.modal,.wb-overlay,.toast,.ws-menu,.fs-menu{
+  background:var(--panel);
+  border-color:var(--line);
+}
+.panel:hover,.kpi:hover{border-color:var(--line2)}
+
+/* Buttons */
+.btn.go{background:var(--acc);color:var(--bg)}
+.btn.go:hover{background:var(--acc-hover)}
+.btn.ghost{border-color:var(--line);color:var(--txt2)}
+.btn.ghost:hover{border-color:var(--acc);color:var(--acc)}
+
+/* Accents */
+.tag{background:var(--acc-soft);color:var(--acc)}
+.chip{background:var(--bg3);color:var(--txt2);border-color:var(--line)}
+.gp-bdg.ok{background:rgba(52,211,153,.15);color:var(--green)}
+.gp-bdg.acc{background:rgba(176,106,238,.15);color:var(--acc)}
+
+/* Progress / Bars */
+.oc-seg::after{background:var(--acc)}
+.pcv-seg.act{border-color:var(--acc);background:var(--acc-soft)}
+.pcv-seg.done{border-color:var(--green);background:rgba(52,211,153,.08)}
+
+/* Typography accents */
+h1,h2,h3,h4{color:var(--txt)}
+.lead,p,li{color:var(--txt2)}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--line3)}
+
+/* Singular labels override */
+.singular-label .nav-ws b::after{content:' · Сингулярная Метрополия'}
