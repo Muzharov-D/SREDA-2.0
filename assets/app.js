@@ -66,50 +66,6 @@ function goBack(){
   navTo(prev, {noPush:true});
 }
 
-function renderBreadcrumb(id){
-  const stage = $('#stage');
-  let bar = stage.previousElementSibling;
-  if(!bar || !bar.classList.contains('bc-bar')){
-    bar = document.createElement('div');
-    bar.className = 'bc-bar';
-    stage.parentNode.insertBefore(bar, stage);
-  }
-  const ws = WORKSPACES.find(w=>w.id===state.ws) || WORKSPACES[0];
-  const item = ws.nav.find(n=>n.id===id);
-  const label = item ? item.label : (SCREEN_NAMES[id] || id);
-  const crumbs = [
-    {id: ws.nav[0]?.id || 'pulse', label: ws.label, icon: ws.icon},
-    {id: id, label: label}
-  ];
-  bar.innerHTML = crumbs.map((c,i)=>{
-    if(i===crumbs.length-1) return `<span class="bc-current">${c.icon||''} ${escHtml(c.label)}</span>`;
-    return `<button onclick="navTo('${c.id}')">${c.icon||''} ${escHtml(c.label)}</button><span class="bc-sep">›</span>`;
-  }).join('');
-}
-
-function renderBackButton(){
-  let btn = document.querySelector('.back-btn');
-  if(!btn){
-    btn = document.createElement('button');
-    btn.className = 'back-btn';
-    btn.innerHTML = `← Назад <kbd>Esc</kbd>`;
-    btn.onclick = goBack;
-    const brand = document.querySelector('.brand');
-    if(brand) brand.parentNode.insertBefore(btn, brand.nextSibling);
-  }
-  btn.style.visibility = NAV.canBack() ? 'visible' : 'hidden';
-}
-
-/* --- Screen name map for breadcrumbs --- */
-const SCREEN_NAMES = {
-  pulse:'Пульс компании', exec:'Дашборд компании', company:'Оргструктура',
-  flowx:'Передачи компании', project:'Проекты на ревью', modules:'С чего начать',
-  talent:'Цифровой найм', forge:'Цифровое производство', bills:'Счета Среды',
-  workers:'Штат цифровых сотрудников', aibudget:'Бюджеты ИИ', router:'Маршрутизатор моделей',
-  audit:'Аудит и доступ', market:'Полная библиотека', studio:'Студия',
-  power:'Суперсила', path:'Путь', core:'Контур'
-};
-
 let _toastT;
 function toast(msg){
   let t = document.querySelector('.toast');
@@ -169,8 +125,6 @@ function navTo(id, opts={}){
   stage.classList.add(dirClass);
   requestAnimationFrame(()=>{
     renderStage(id);
-    renderBreadcrumb(id);
-    renderBackButton();
     requestAnimationFrame(()=>{
       stage.classList.add(dirClass+'-active');
       setTimeout(()=>stage.classList.remove('enter','enter-active','back-enter','back-enter-active'), 240);
@@ -4544,8 +4498,6 @@ function init(){
   renderTopWho();
   renderStage(state.screen);
   NAV.reset(state.screen);
-  renderBreadcrumb(state.screen);
-  renderBackButton();
   initModal();
   injectTour();
   const meter=$('#meterBtn'); if(meter){ meter.style.cursor='pointer'; meter.onclick=()=>navTo(window.__PORTAL?'bills':'aibudget'); }

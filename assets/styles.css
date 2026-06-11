@@ -4345,32 +4345,5 @@ body.portal-mode .who,body.portal-mode .filial-sw{display:none}
 .pa-pass b{flex:1}
 
 /* ============================================================================
-   Навигация: breadcrumbs, transitions, keyboard hints
-   ========================================================================== */
-
-/* --- Переходы между экранами --- */
-.stage{transition:opacity .22s ease, transform .22s ease}
-.stage.enter{opacity:0;transform:translateY(8px)}
-.stage.enter-active{opacity:1;transform:translateY(0)}
-.stage.back-enter{opacity:0;transform:translateX(-12px)}
-.stage.back-active{opacity:1;transform:translateX(0)}
-
-/* --- Breadcrumbs --- */
-.bc-bar{display:flex;align-items:center;gap:6px;padding:8px 14px;background:var(--bg2);border-bottom:1px solid var(--line);font-size:12px;color:var(--muted);min-height:36px}
-.bc-bar button{background:none;border:none;color:var(--txt2);cursor:pointer;padding:2px 6px;border-radius:6px;font-size:12px}
-.bc-bar button:hover{background:var(--panel-hover);color:var(--txt)}
-.bc-bar .bc-sep{color:var(--faint)}
-.bc-bar .bc-current{color:var(--txt);font-weight:600}
-
-/* --- Smart Back Button (в topbar) --- */
-.back-btn{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r-xs);padding:5px 10px;color:var(--txt2);font-size:12px;cursor:pointer;transition:.15s}
-.back-btn:hover{border-color:var(--line2);color:var(--txt);background:var(--panel-hover)}
-.back-btn kbd{background:var(--bg3);border:1px solid var(--line);border-radius:4px;padding:1px 4px;font-size:10px;color:var(--faint)}
-
-/* --- Keyboard shortcut hints (подсветка при удержании Alt) --- */
-.kb-hint{position:fixed;bottom:10px;right:10px;background:var(--bg2);border:1px solid var(--line);border-radius:var(--r-xs);padding:8px 12px;font-size:11px;color:var(--muted);opacity:0;transition:opacity .2s;pointer-events:none;z-index:9999}
-.kb-hint.show{opacity:1}
-
-/* ============================================================================
    Конец дополнительных стилей
    ========================================================================== */

@@ -91,28 +91,6 @@ function renderPortalStage(){
     stage.classList.add('enter-active');
     setTimeout(()=>stage.classList.remove('enter','enter-active'), 240);
   });
-  renderPortalBreadcrumb();
-}
-
-/* ── breadcrumb для портала ── */
-function renderPortalBreadcrumb(){
-  const stage = $('#stage'); if(!stage) return;
-  let bar = stage.previousElementSibling;
-  if(!bar || !bar.classList.contains('bc-bar')){
-    bar = document.createElement('div');
-    bar.className = 'bc-bar';
-    stage.parentNode.insertBefore(bar, stage);
-  }
-  const names = {catalog:'Цифровой найм', orders:'Мои заказы', bills:'Счета', support:'Поддержка'};
-  const cur = portalState.screen;
-  const label = names[cur] || cur;
-  if(cur==='agent' && portalState.selectedAgent){
-    bar.innerHTML = `<button onclick="portalState.screen='catalog'; portalState.selectedAgent=null; renderPortalNav(); renderPortalStage();">🌊 Цифровой найм</button><span class="bc-sep">›</span><span class="bc-current">${escHtml(portalState.selectedAgent.name)}</span>`;
-  } else if(cur==='project' && portalState.selectedProject){
-    bar.innerHTML = `<button onclick="portalState.screen='orders'; portalState.selectedProject=null; renderPortalNav(); renderPortalStage();">🏭 Мои заказы</button><span class="bc-sep">›</span><span class="bc-current">${escHtml(portalState.selectedProject.title)}</span>`;
-  } else {
-    bar.innerHTML = `<span class="bc-current">${escHtml(label)}</span>`;
-  }
 }
 
 /* ── шапка экрана портала ── */
