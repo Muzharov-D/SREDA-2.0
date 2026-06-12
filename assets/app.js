@@ -4396,10 +4396,25 @@ function renderTalent(root){
   const cat = talentCatalog();
   const S = talentStore();
   let fRole = '', fQ = '', tail = 24;
+  const match = a => (!fRole||a.role===fRole) && (!fQ||a.name.toLowerCase().includes(fQ)||TL_ROLES[a.role].label.toLowerCase().includes(fQ));
+  const featCard = a => `<div class="tl-card" data-go="${a.id}">
+        <div class="tl-h">${hexAv(a)}<div><b>${a.name}</b><small>${TL_ROLES[a.role].icon} ${TL_ROLES[a.role].label} · ${a.grade}</small></div><span class="tl-rate">${tlStars(a.rating)}</span></div>
+        <div class="tl-doms">${a.domains.slice(0,1).map(d=>`<span>${d}</span>`).join('')}${a.domains.length>1?`<span>+${a.domains.length-1} ${a.domains.length-1===1?'домен':'доменов'}</span>`:''}</div>
+        <div class="tl-price"><b>₽${a.priceTask.toLocaleString('ru')}</b><small>за результат</small><b>₽${a.priceMonth.toLocaleString('ru')}</b><small>в штат / мес</small></div>
+      </div>`;
+  const poolRow = a => `<div class="tl-row" data-go="${a.id}">${hexAv(a)}<div><b>${a.name}</b><small>${TL_ROLES[a.role].label} · ${a.grade} · ${a.domains[0]}</small></div><span class="tl-rate sm">${a.rating}★</span><span class="tl-sm">${a.done} задач</span><span class="tl-sm">₽${a.priceTask.toLocaleString('ru')}/рез</span></div>`;
+  /* обновляем ТОЛЬКО результаты — поле поиска и фильтр не пересоздаются (фокус/курсор сохраняются, без моргания) */
+  function refresh(){
+    const feat = cat.filter(a=>a.featured && match(a));
+    const rest = cat.filter(a=>!a.featured && match(a));
+    const g=root.querySelector('#tlGrid'); if(g) g.innerHTML=(!feat.length && window.__API_LOADING) ? skeletonCards(6,'tl-card') : feat.map(featCard).join('');
+    const tl=root.querySelector('#tlTail'); if(tl) tl.innerHTML=rest.slice(0,tail).map(poolRow).join('');
+    const n=root.querySelector('#tlPoolN'); if(n) n.textContent=`${rest.length} агентов · репутация верифицирована`;
+    const mw=root.querySelector('#tlMoreWrap'); if(mw){ mw.innerHTML = rest.length>tail?`<button class="btn ghost" id="tlMore" style="margin-top:9px">Показать ещё ${Math.min(30,rest.length-tail)} из ${rest.length-tail}</button>`:''; const m=root.querySelector('#tlMore'); if(m) m.onclick=()=>{ tail+=30; refresh(); }; }
+    a11yActivate(root.querySelectorAll('#tlGrid [data-go], #tlTail [data-go]'), c=>navTo('tagent:'+c.dataset.go));
+  }
   function draw(){
     const hired = S.hired.filter(h=>h.status==='active');
-    const feat = cat.filter(a=>a.featured && (!fRole||a.role===fRole) && (!fQ||a.name.toLowerCase().includes(fQ)||TL_ROLES[a.role].label.toLowerCase().includes(fQ)));
-    const rest = cat.filter(a=>!a.featured && (!fRole||a.role===fRole) && (!fQ||a.name.toLowerCase().includes(fQ)||TL_ROLES[a.role].label.toLowerCase().includes(fQ)));
     root.innerHTML = portalHead('🌊','Цифровой найм', 'Рынок труда агентов Среды: проверенная репутация, старт за 4 минуты, оплата за результат или подписка','фаза «жидкость»') + `
     <div class="grid-kpi" style="margin-bottom:13px">
       <div class="kpi"><div class="l">Агентов в пуле</div><div class="v">${cat.length}</div><div class="d up">▲ 8 ролей · все с верифицированной историей</div></div>
@@ -4415,22 +4430,15 @@ function renderTalent(root){
         ${Object.keys(TL_ROLES).map(r=>`<option value="${r}" ${fRole===r?'selected':''}>${TL_ROLES[r].icon} ${TL_ROLES[r].label}</option>`).join('')}</select>
       <span class="od-gov" style="margin:0">Карточка → собеседование с живым тестовым → найм. Как с человеком, только быстрее.</span>
     </div>
-    <div class="tl-grid">
-      ${(!feat.length && window.__API_LOADING) ? skeletonCards(6,'tl-card') : ''}
-      ${feat.map(a=>`<div class="tl-card" data-go="${a.id}">
-        <div class="tl-h">${hexAv(a)}<div><b>${a.name}</b><small>${TL_ROLES[a.role].icon} ${TL_ROLES[a.role].label} · ${a.grade}</small></div><span class="tl-rate">${tlStars(a.rating)}</span></div>
-        <div class="tl-doms">${a.domains.slice(0,1).map(d=>`<span>${d}</span>`).join('')}${a.domains.length>1?`<span>+${a.domains.length-1} ${a.domains.length-1===1?'домен':'доменов'}</span>`:''}</div>
-        <div class="tl-price"><b>₽${a.priceTask.toLocaleString('ru')}</b><small>за результат</small><b>₽${a.priceMonth.toLocaleString('ru')}</b><small>в штат / мес</small></div>
-      </div>`).join('')}
-    </div>
-    <div class="panel" style="margin-top:13px"><h2>Полный пул <span class="tag">${rest.length} агентов · репутация верифицирована</span></h2>
-      <div class="tl-tail">${rest.slice(0,tail).map(a=>`<div class="tl-row" data-go="${a.id}">${hexAv(a)}<div><b>${a.name}</b><small>${TL_ROLES[a.role].label} · ${a.grade} · ${a.domains[0]}</small></div><span class="tl-rate sm">${a.rating}★</span><span class="tl-sm">${a.done} задач</span><span class="tl-sm">₽${a.priceTask.toLocaleString('ru')}/рез</span></div>`).join('')}</div>
-      ${rest.length>tail?`<button class="btn ghost" id="tlMore" style="margin-top:9px">Показать ещё ${Math.min(30,rest.length-tail)} из ${rest.length-tail}</button>`:''}
+    <div class="tl-grid" id="tlGrid"></div>
+    <div class="panel" style="margin-top:13px"><h2>Полный пул <span class="tag" id="tlPoolN"></span></h2>
+      <div class="tl-tail" id="tlTail"></div>
+      <div id="tlMoreWrap"></div>
     </div>`;
-    a11yActivate(root.querySelectorAll('[data-go]'), c=>navTo('tagent:'+c.dataset.go));
-    $('#tlRole',root).onchange=e=>{ fRole=e.target.value; draw(); };
-    $('#tlQ',root).oninput=e=>{ fQ=e.target.value.toLowerCase().trim(); draw(); };
-    const m=$('#tlMore',root); if(m) m.onclick=()=>{ tail+=30; draw(); };
+    a11yActivate(root.querySelectorAll('.tl-row[data-go]'), c=>navTo('tagent:'+c.dataset.go));   // контракты (статичные)
+    $('#tlRole',root).onchange=e=>{ fRole=e.target.value; refresh(); };
+    $('#tlQ',root).oninput=e=>{ fQ=e.target.value.toLowerCase().trim(); refresh(); };
+    refresh();
   }
   draw();
 }
@@ -4576,17 +4584,8 @@ function renderTalentAgent(root, id){
 function renderForge(root){
   const S = forgeStore();
   let openTpl = null;
-  function draw(){
-    root.innerHTML = portalHead('🏭','Цифровое производство','Заказ под ключ: фиксированная цена, бригада агентов в изолированном цехе, вы решаете только на воротах','фаза «газ»') + `
-    <div class="panel" style="margin-bottom:13px"><h2>🏗 Ваши проекты в цехе <span class="tag">${S.projects.length}</span></h2>
-      <div class="fg-projects">${S.projects.map(p=>{ const ov=fgOverall(p);
-        return `<div class="fg-pcard st-${p.status}" data-p="${p.id}">
-          <div class="fg-ph"><span class="fg-pic">${p.icon}</span><div><b>${p.title}</b><small>${fgStageLabel(p)}</small></div>${p.meta?'<span class="gp-bdg acc">мета: модуль для Среды</span>':''}</div>
-          <div class="fg-mini">${FG_STAGES.map((s,i)=>`<div class="fg-mseg ${p.prog[i]>=100?'done':p.prog[i]>0?'run':''}" style="--p:${p.prog[i]}%"></div>`).join('')}</div>
-          <div class="fg-pfoot"><span>₽${p.price.toLocaleString('ru')} · фикс</span><b>${ov}%</b>${p.status==='gate'?'<span class="fg-wait">⏸ нужны вы</span>':p.status==='done'?'<span class="fg-done">✓ сдан</span>':'<span class="fg-run">● в работе</span>'}</div>
-        </div>`; }).join('')}</div></div>
-    <div class="panel"><h2>📚 Каталог производства <span class="tag">фиксированная цена · оплата 30/40/30 по этапам</span></h2>
-      <div class="fg-cat">${FG_TEMPLATES.map(t=>`<div class="fg-tpl ${openTpl===t.id?'open':''}" data-t="${t.id}">
+  function catHtml(){
+    return FG_TEMPLATES.map(t=>`<div class="fg-tpl ${openTpl===t.id?'open':''}" data-t="${t.id}">
         <div class="fg-th"><span class="fg-pic">${t.icon}</span><b>${t.title}</b><span class="fg-price">₽${t.price.toLocaleString('ru')}</span></div>
         <ul class="fg-what">${t.what.map(w=>`<li>${w}</li>`).join('')}</ul>
         ${openTpl===t.id?`<div class="fg-order">
@@ -4597,14 +4596,31 @@ function renderForge(root){
             <b id="fgPrice">₽${t.price.toLocaleString('ru')}</b></div>
           <button class="btn go" data-order="${t.id}" style="width:100%">🏭 Запустить производство — бригада соберётся за 4 минуты</button>
         </div>`:''}
-      </div>`).join('')}</div></div>`;
-    a11yActivate(root.querySelectorAll('[data-p]'), c=>navTo('fproj:'+c.dataset.p));
-    root.querySelectorAll('.fg-tpl').forEach(c=>c.addEventListener('click',e=>{ if(e.target.closest('.fg-order')) return; openTpl = openTpl===c.dataset.t?null:c.dataset.t; draw(); }));
+      </div>`).join('');
+  }
+  function wireCat(){
+    root.querySelectorAll('.fg-tpl').forEach(c=>c.addEventListener('click',e=>{ if(e.target.closest('.fg-order')) return;
+      openTpl = openTpl===c.dataset.t?null:c.dataset.t;
+      const cat=root.querySelector('.fg-cat'); if(cat){ cat.innerHTML=catHtml(); wireCat(); } }));   // только каталог, без перерисовки шапки/проектов
     root.querySelectorAll('input[name="cplx"]').forEach(r=>r.onchange=()=>{ const t=FG_TEMPLATES.find(x=>x.id===openTpl);
       $('#fgPrice',root).textContent='₽'+(Math.round(t.price*parseFloat(r.value)/1000)*1000).toLocaleString('ru'); });
     const ob=root.querySelector('[data-order]'); if(ob) ob.onclick=(e)=>{ e.stopPropagation();
       const k=parseFloat((root.querySelector('input[name="cplx"]:checked')||{value:'1'}).value);
       const p=fgOrder(ob.dataset.order,{complex:k}); toast('Производство запущено — бригада собрана, цех изолирован'); navTo('fproj:'+p.id); };
+  }
+  function draw(){
+    root.innerHTML = portalHead('🏭','Цифровое производство','Заказ под ключ: фиксированная цена, бригада агентов в изолированном цехе, вы решаете только на воротах','фаза «газ»') + `
+    <div class="panel" style="margin-bottom:13px"><h2>🏗 Ваши проекты в цехе <span class="tag">${S.projects.length}</span></h2>
+      <div class="fg-projects">${S.projects.map(p=>{ const ov=fgOverall(p);
+        return `<div class="fg-pcard st-${p.status}" data-p="${p.id}">
+          <div class="fg-ph"><span class="fg-pic">${p.icon}</span><div><b>${p.title}</b><small>${fgStageLabel(p)}</small></div>${p.meta?'<span class="gp-bdg acc">мета: модуль для Среды</span>':''}</div>
+          <div class="fg-mini">${FG_STAGES.map((s,i)=>`<div class="fg-mseg ${p.prog[i]>=100?'done':p.prog[i]>0?'run':''}" style="--p:${p.prog[i]}%"></div>`).join('')}</div>
+          <div class="fg-pfoot"><span>₽${p.price.toLocaleString('ru')} · фикс</span><b>${ov}%</b>${p.status==='gate'?'<span class="fg-wait">⏸ нужны вы</span>':p.status==='done'?'<span class="fg-done">✓ сдан</span>':'<span class="fg-run">● в работе</span>'}</div>
+        </div>`; }).join('')}</div></div>
+    <div class="panel"><h2>📚 Каталог производства <span class="tag">фиксированная цена · оплата 30/40/30 по этапам</span></h2>
+      <div class="fg-cat">${catHtml()}</div></div>`;
+    a11yActivate(root.querySelectorAll('[data-p]'), c=>navTo('fproj:'+c.dataset.p));
+    wireCat();
   }
   draw();
 }
