@@ -3959,7 +3959,10 @@ function renderWorkerProfile(root, workerId) {
   }
   function wire(){
     $('#wpBack',root).onclick = ()=>goBack('workers');
-    root.querySelectorAll('.gp-tab').forEach(b=>b.onclick=()=>{ tab=b.dataset.t; draw(); });
+    root.querySelectorAll('.gp-tab').forEach(b=>b.onclick=()=>{ tab=b.dataset.t;
+      root.querySelectorAll('.gp-tab').forEach(x=>x.classList.toggle('on', x.dataset.t===tab));
+      const st=DW_STATUS[w.status]||DW_STATUS.active;
+      const gb=root.querySelector('.gp-body'); if(gb) gb.innerHTML=body(st); wire(); });   // только панель, без перерисовки шапки/аватара
     const lp=root.querySelector('[data-leadprof]'); if(lp) lp.onclick=()=>navTo('person:'+w.dept+':'+leadIdx);
     const gb=root.querySelector('[data-gobudget]'); if(gb) gb.onclick=()=>navTo('aibudget');
     const pauseBtn=$('#wpPause',root); if(pauseBtn) pauseBtn.onclick = ()=>{ const paused = w.status==='paused';
@@ -4155,7 +4158,9 @@ function renderPersonProfile(root, dept, idx){
   }
   function wire(){
     $('#ppBack',root).onclick=()=>goBack('team:'+dept);
-    root.querySelectorAll('.gp-tab').forEach(b=>b.onclick=()=>{ tab=b.dataset.t; draw(); });
+    root.querySelectorAll('.gp-tab').forEach(b=>b.onclick=()=>{ tab=b.dataset.t;
+      root.querySelectorAll('.gp-tab').forEach(x=>x.classList.toggle('on', x.dataset.t===tab));
+      const gb=root.querySelector('.gp-body'); if(gb) gb.innerHTML=body(); wire(); });   // только панель, без перерисовки шапки/аватара = без моргания
     root.querySelectorAll('[data-wgo]').forEach(b=>b.onclick=()=>navTo('worker:'+b.dataset.wgo));
     const ch=root.querySelector('[data-go-ch]'); if(ch) ch.onclick=()=>navTo('channel:'+dept);
     const tm=root.querySelector('[data-go-team]'); if(tm) tm.onclick=()=>navTo('team:'+dept);
