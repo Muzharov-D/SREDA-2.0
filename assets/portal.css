@@ -5,9 +5,10 @@
 /*  Префикс новых классов: .pc-* (не пересекается с .pc-top/.pc-emoji и т.п.) */
 /* ========================================================================== */
 
-/* ── fade перехода экранов (классы enter/enter-active ставит portal-app) ── */
-.stage.enter #work{opacity:0;transform:translateY(8px)}
-.stage.enter-active #work{opacity:1;transform:none;transition:opacity .22s ease,transform .22s ease}
+/* без анимации входа: переключение экранов портала мгновенное, контент не уходит
+   в opacity:0 (иначе каждый переход моргает как перезагрузка). */
+.stage.enter #work{opacity:1}
+.stage.enter-active #work{opacity:1}
 
 /* ── плашка «Подключить в свой Telegram / Email» ── */
 .pc-connect{display:flex;align-items:center;gap:12px;margin-top:12px;padding:11px 14px;

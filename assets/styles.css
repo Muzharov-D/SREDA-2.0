@@ -4397,8 +4397,10 @@ body.portal-mode .who,body.portal-mode .filial-sw{display:none}
 /* stageIn НЕ трогает opacity: если кадр анимации застрянет (скрытая вкладка/троттлинг/
    гонка первого кадра) — контент остаётся видимым, максимум слегка смещён. Пустого экрана быть не может. */
 @keyframes stageIn{from{transform:translateY(8px)}to{transform:none}}
-.stage>.work{opacity:1;animation:stageIn .22s ease}
-.org{opacity:1;animation:stageIn .22s ease}
+/* без анимации входа: переключение экранов мгновенное, без «загрузочного» сдвига.
+   opacity:1 сохранён намеренно (страховка от застрявшего пустого .work). */
+.stage>.work{opacity:1}
+.org{opacity:1}
 @media (prefers-reduced-motion: reduce){
   /* вход экрана для reduce-motion полностью выключаем — контент виден сразу */
   .stage>.work,.org{animation:none!important}

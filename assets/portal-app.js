@@ -97,12 +97,22 @@ async function initPortal(){
 /* ── навигация ── */
 function renderPortalNav(){
   const nav = $('#nav'); if(!nav) return;
+  const unread = (typeof pcUnreadTotal === 'function') ? pcUnreadTotal() : 0;
+  const badgeHtml = u => (u>0) ? `<span class="pc-nav-badge">${u}</span>` : '';
+  /* инкрементально: меню портала строим один раз, далее только active + бейдж (без мигания) */
+  if(nav.dataset.built==='1' && nav.querySelector('.nav-item')){
+    nav.querySelectorAll('.nav-item').forEach(it=>{
+      it.classList.toggle('active', it.dataset.id===portalState.screen);
+      if(it.dataset.id==='team'){ const b=it.querySelector('.pc-nav-badge'), html=badgeHtml(unread);
+        if(html){ if(b) b.outerHTML=html; else it.insertAdjacentHTML('beforeend', html); } else if(b){ b.remove(); } }
+    });
+    return;
+  }
+  nav.dataset.built = '1';
   nav.innerHTML = '';
   nav.appendChild(el(`<div class="nav-ws"><span class="nav-ws-ic">🌊</span><div><b>Платформа Среды</b><small>внешний контур</small></div></div>`));
-  const unread = (typeof pcUnreadTotal === 'function') ? pcUnreadTotal() : 0;
   PORTAL_NAV.forEach(n=>{
-    const badge = (n.id==='team' && unread>0) ? `<span class="pc-nav-badge">${unread}</span>` : '';
-    const it = el(`<button class="nav-item ${n.id===portalState.screen?'active':''}"><span class="ni-ic">${n.icon}</span><span class="ni-l">${n.label}</span>${badge}</button>`);
+    const it = el(`<button class="nav-item ${n.id===portalState.screen?'active':''}" data-id="${n.id}"><span class="ni-ic">${n.icon}</span><span class="ni-l">${n.label}</span>${n.id==='team'?badgeHtml(unread):''}</button>`);
     it.onclick = () => { portalState.screen = n.id; portalState.selectedAgent = null; portalState.selectedProject = null; renderPortalNav(); renderPortalStage(); };
     nav.appendChild(it);
   });

@@ -114,27 +114,46 @@ const WORKSPACES = ROLE_IDS.map(id => { const d = DEPARTMENTS.find(x=>x.id===id)
       {id:'power',label:'Суперсила',icon:'⚡'},{id:'path',label:'Путь',icon:'🧭'},{id:'core',label:'Контур',icon:'♾️'} ] },
 ]);
 
+function navBadge(n){
+  if(n.id.indexOf('flow:')!==0) return '';
+  const rid=n.id.slice(5), FS=flowState();
+  const cnt=FLOWS.filter(f=>{ const c=FS[f.id]; return f.steps[c] && f.steps[c].role===rid; }).length;
+  return cnt?`<span class="ni-badge">${cnt}</span>`:'';
+}
 function renderNav(){
   const ws = WORKSPACES.find(w=>w.id===state.ws) || WORKSPACES[0];
-  const nav = $('#nav'); nav.innerHTML = '';
-  nav.appendChild(el(`<div class="nav-ws"><span class="nav-ws-ic">${ws.icon}</span><div><b>${ws.label}</b><small>${ws.kind==='role'?'изолированный кабинет':ws.kind==='owner'?'управление платформой':'управление'}</small></div></div>`));
-  if (ws.kind==='owner') nav.appendChild(el(`<div class="nav-note">Управление Средой: цифровой штат, бюджеты, политики</div>`));
-  /* детальные роуты (person:, worker:, …) подсвечивают родительский пункт nav */
+  const nav = $('#nav');
+  /* подсветка: детальные роуты (person:, worker:, …) подсвечивают родительский пункт */
   let hiId=state.screen, g=0;
   while(hiId && g++<6){ if(ws.nav.some(n=>n.id===hiId)) break; hiId=navParent(hiId); }
   hiId = hiId || state.screen;
-  ws.nav.forEach(n=>{ let badge='';
+  /* ИНКРЕМЕНТАЛЬНО: тот же кабинет уже построен → только active + бейджи, без пересборки
+     (иначе всё меню моргает на каждый клик и переход читается как перезагрузка) */
+  if(nav.dataset.ws===ws.id && nav.querySelector('.nav-item')){
+    nav.querySelectorAll('.nav-item').forEach(it=>{
+      it.classList.toggle('active', it.dataset.id===hiId);
+      const n=ws.nav.find(x=>x.id===it.dataset.id);
+      if(n && n.id.indexOf('flow:')===0){ const cur=it.querySelector('.ni-badge'), html=navBadge(n);
+        if(html){ if(cur) cur.outerHTML=html; else it.insertAdjacentHTML('beforeend', html); }
+        else if(cur){ cur.remove(); } }
+    });
+    return;
+  }
+  /* полная пересборка — только при смене кабинета */
+  nav.dataset.ws=ws.id;
+  nav.innerHTML = '';
+  nav.appendChild(el(`<div class="nav-ws"><span class="nav-ws-ic">${ws.icon}</span><div><b>${ws.label}</b><small>${ws.kind==='role'?'изолированный кабинет':ws.kind==='owner'?'управление платформой':'управление'}</small></div></div>`));
+  if (ws.kind==='owner') nav.appendChild(el(`<div class="nav-note">Управление Средой: цифровой штат, бюджеты, политики</div>`));
+  ws.nav.forEach(n=>{
     if (n.sep){ nav.appendChild(el(`<div class="nav-group">${n.sep}</div>`)); return; }
-    if(n.id.indexOf('flow:')===0){ const rid=n.id.slice(5); const FS=flowState();
-      const cnt=FLOWS.filter(f=>{ const c=FS[f.id]; return f.steps[c] && f.steps[c].role===rid; }).length;
-      if(cnt) badge=`<span class="ni-badge">${cnt}</span>`; }
-    const it=el(`<button class="nav-item ${n.id===hiId?'active':''}"><span class="ni-ic">${n.icon}</span><span class="ni-l">${n.label}</span>${badge}</button>`);
+    const it=el(`<button class="nav-item ${n.id===hiId?'active':''}" data-id="${n.id}"><span class="ni-ic">${n.icon}</span><span class="ni-l">${n.label}</span>${navBadge(n)}</button>`);
     it.onclick=()=>navTo(n.id); nav.appendChild(it); });
 }
 
 function navTo(id, opts={}){
   if(state.running){ toast('Идёт прогон — дождитесь завершения'); return; }
   if(id===state.screen) return;
+  const wsBefore=state.ws;
   /* телепортация между кабинетами — только если текущий кабинет экрана не знает */
   const cur=WORKSPACES.find(w=>w.id===state.ws);
   if(!(cur && cur.nav.some(n=>n.id===id))){
@@ -146,7 +165,7 @@ function navTo(id, opts={}){
   const fromScroll=w?w.scrollTop:0;
   scrollMem[state.screen]=fromScroll;
   if(!opts.noPush) NAV.push({screen:state.screen, scroll:fromScroll, label:screenLabel(state.screen)});
-  state.screen=id; renderNav(); renderTopWho();
+  state.screen=id; renderNav(); if(state.ws!==wsBefore) renderTopWho();
   renderStage(id);
   decorateStage(id);
   announceRoute(id);
