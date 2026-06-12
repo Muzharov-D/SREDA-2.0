@@ -557,7 +557,7 @@ function renderAssistant(root, id){
       : '';
     root.innerHTML = workHead(d, who?`Вы: ${who.name} · ${who.role} · рабочее место и личный ассистент`:'Моё рабочее место · личный ассистент') + `
     <div class="asst-top">
-      <div class="asst-sen"><span class="asst-sen-l">Мой уровень:</span>${SENIORITY.map(s=>`<button data-sen="${s.id}" class="${s.id===sen?'on':''}">${s.label}</button>`).join('')}<span class="asst-sen-hint">↔ переключите — права, панели и видимые данные меняются</span></div>
+      <div class="asst-sen"><span class="asst-sen-l">Мой уровень:</span><span class="tag" title="Демо-линза: показывает, как меняются права, панели и видимые данные по уровню сениорити. В реальном продукте уровень задаётся не самим сотрудником.">демо-линза</span>${SENIORITY.map(s=>`<button data-sen="${s.id}" class="${s.id===sen?'on':''}">${s.label}</button>`).join('')}<span class="asst-sen-hint">↔ переключите — права, панели и видимые данные меняются</span></div>
       <div class="asst-can">Ассистент: <b>${senO.autonomy}</b> · охват: <b>${senO.scope}</b>
         ${who && personIdxByName(id, who.name)>=0 ? `<button class="btn ghost asst-myprof" data-myprof="${id}:${personIdxByName(id, who.name)}" style="margin-left:10px;padding:5px 11px;font-size:11.5px">Мой профиль →</button>` : ''}</div>
     </div>
@@ -1329,7 +1329,7 @@ function workHead(d, sub){
   return `<div class="work-head">
     <div class="ico">${d.icon}</div>
     <div style="flex:1">
-      <h1>${d.label}</h1>
+      <h2>${d.label}</h2>
       <p>${sub}</p>
     </div>
     <span class="badge"><span class="dot"></span>Среда · закрытый периметр</span>
@@ -1353,7 +1353,7 @@ function renderOrganism(stage, d){
 
       <div class="org-top">
         <div class="org-title">
-          <h1>Пульс компании</h1>
+          <h2>Пульс компании</h2>
           <p>Один организм на любой размер — <b>логика одна, отличается лишь глубина дерева</b></p>
           <div class="crumb" id="orgCrumb"></div>
         </div>
@@ -1816,7 +1816,7 @@ function envCore(root, d, build){
     const rail = queue.length>1
       ? `<div class="env-queue"><span class="eq-l">📋 Очередь работы</span>${queue.map((w,i)=>`<button class="eq-item ${i===ai?'on':''} ${done(i)?'done':''}" data-q="${i}">${w.title}${done(i)?' ✓':(i===0?' ●':'')}</button>`).join('')}<span class="eq-hint">${queue.filter((w,i)=>done(i)).length}/${queue.length} готово · правь руками → гейт → принять</span></div>`
       : '';
-    root.innerHTML = rail + (ai===0 ? build(ctx) : genericDraftHtml(d, ctx));
+    root.innerHTML = `<h2 class="sr-only">${d.label} — рабочий стол роли</h2>` + rail + (ai===0 ? build(ctx) : genericDraftHtml(d, ctx));
     root.querySelectorAll('.ed[data-ed]').forEach(e=>e.oninput=()=>{ st.edited[+e.dataset.ed]=e.textContent; });
     root.querySelectorAll('[data-hint]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.hint; st.edited[i]=WB.draft[i].issue.fix; draw();
       const e=root.querySelector(`.ed[data-ed="${i}"]`); if(e){ e.focus(); document.getSelection().selectAllChildren(e); document.getSelection().collapseToEnd(); } toast('Подсказка вставлена — можно поправить вручную'); });
@@ -2737,7 +2737,7 @@ function renderRoadmap(root){
     <div class="rm">
       <div class="rm-hero">
         <div class="rm-kick">Роадмеп зрелости</div>
-        <h1>От ручной работы — к саморазработке</h1>
+        <h2>От ручной работы — к саморазработке</h2>
         <p class="rm-thesis">${ROADMAP_THESIS}</p>
         <div class="rm-hands">
           <span class="rm-hands-l">В руках человека:</span>
@@ -2828,7 +2828,7 @@ function renderProject(root){
       <div class="work-head">
         <div class="ico">📁</div>
         <div style="flex:1">
-          <h1>${PROJECT.title}</h1>
+          <h2>${PROJECT.title}</h2>
           <p>Владелец: ${PROJECT.owner} · дедлайн ${PROJECT.deadline} · единый проект из работы роя</p>
         </div>
         <span class="badge"><span class="dot"></span>${done}/${total} шагов</span>
@@ -3817,12 +3817,12 @@ function renderWorkerProfile(root, workerId) {
     <div class="worker-profile animate-fade">
       <div class="worker-profile-header">
         <button class="worker-profile-back" id="wpBack">← Назад</button>
-        <div class="worker-profile-title"><h1>Профиль цифрового сотрудника</h1><p>золотой профиль · должностная инструкция, KPI, доступы и журнал в одном месте</p></div>
+        <div class="worker-profile-title"><h2>Профиль цифрового сотрудника</h2><p>золотой профиль · должностная инструкция, KPI, доступы и журнал в одном месте</p></div>
       </div>
       <div class="gp-head">
         <span class="gp-av big dgt" style="--c:${c}">${w.emoji}</span>
         <div class="gp-id">
-          <h1>${w.name} <i class="dgt-tag">цифровой сотрудник</i></h1>
+          <h2>${w.name} <i class="dgt-tag">цифровой сотрудник</i></h2>
           <p>${w.title} · ${dept.label} · функция «${w.fn}»</p>
           <div class="gp-badges">
             <span class="gp-bdg acc">v${1 + h % 4}.${h % 10}</span>
@@ -4024,12 +4024,12 @@ function renderPersonProfile(root, dept, idx){
     <div class="worker-profile animate-fade">
       <div class="worker-profile-header">
         <button class="worker-profile-back" id="ppBack">← Назад</button>
-        <div class="worker-profile-title"><h1>Профиль сотрудника</h1><p>золотой профиль · данные собраны из всех систем компании</p></div>
+        <div class="worker-profile-title"><h2>Профиль сотрудника</h2><p>золотой профиль · данные собраны из всех систем компании</p></div>
       </div>
       <div class="gp-head">
         ${(window.AVATARS && window.AVATARS[dept+':'+p.name]) ? humanAv(dept, p.name, c, 'big') : initialsAv(p.name, p.surname, c, true)}
         <div class="gp-id">
-          <h1>${p.name} ${p.surname}</h1>
+          <h2>${p.name} ${p.surname}</h2>
           <p>${p.role} · ${dep.label} · функция «${p.fn||'Команда'}»</p>
           <div class="gp-badges">
             <span class="gp-bdg acc">${p.grade}</span>
@@ -4169,12 +4169,12 @@ function renderGenPerson(root, dept, idx){
     <div class="worker-profile animate-fade">
       <div class="worker-profile-header">
         <button class="worker-profile-back" id="gpBack">← Назад</button>
-        <div class="worker-profile-title"><h1>Профиль сотрудника</h1><p>рядовой состав штата · профиль собран автоматически</p></div>
+        <div class="worker-profile-title"><h2>Профиль сотрудника</h2><p>рядовой состав штата · профиль собран автоматически</p></div>
       </div>
       <div class="gp-head">
         ${initialsAv(p.name, p.surname, c, true)}
         <div class="gp-id">
-          <h1>${p.name} ${p.surname}</h1>
+          <h2>${p.name} ${p.surname}</h2>
           <p>${p.role} · ${dep.label} · функция «${p.fn}»</p>
           <div class="gp-badges">
             <span class="gp-bdg acc">${p.grade}</span>
@@ -4224,12 +4224,12 @@ function renderGenWorker(root, dept, idx){
     <div class="worker-profile animate-fade">
       <div class="worker-profile-header">
         <button class="worker-profile-back" id="gwBack">← Назад</button>
-        <div class="worker-profile-title"><h1>Профиль цифрового сотрудника</h1><p>рядовой состав цифрового штата · должностная инструкция и навыки</p></div>
+        <div class="worker-profile-title"><h2>Профиль цифрового сотрудника</h2><p>рядовой состав цифрового штата · должностная инструкция и навыки</p></div>
       </div>
       <div class="gp-head">
         <span class="gp-av big dgt" style="--c:${c}">${w.emoji}</span>
         <div class="gp-id">
-          <h1>${w.name} <i class="dgt-tag">цифровой сотрудник</i></h1>
+          <h2>${w.name} <i class="dgt-tag">цифровой сотрудник</i></h2>
           <p>${w.title} · ${dep.label} · функция «${w.fn}»</p>
           <div class="gp-badges">
             <span class="gp-bdg">${w.id}</span>
@@ -4302,7 +4302,7 @@ function renderAIBudgets(root){
           ${ROLE_IDS.map(r=>{ const dep=DEPARTMENTS.find(x=>x.id===r); const b=S.depts[r]; const pct=Math.min(100,Math.round(b.spent/b.limit*100));
             return `<div class="aib-row" data-r="${r}">
               <div class="aib-h"><b>${dep.icon} ${dep.label}</b><span class="aib-sp">₽${b.spent.toLocaleString('ru')} из</span>
-                <span class="aib-edit">₽<input type="text" value="${b.limit.toLocaleString('ru')}" data-lim="${r}" /></span><span class="aib-sp">/день</span></div>
+                <span class="aib-edit">₽<input type="text" value="${b.limit.toLocaleString('ru')}" data-lim="${r}" aria-label="Дневной лимит ИИ — ${dep.label}" /></span><span class="aib-sp">/день</span></div>
               <div class="track"><div class="fill" style="width:${pct}%;background:${pct>90?'var(--red)':pct>75?'var(--amber)':'var(--acc)'}"></div></div>
             </div>`; }).join('')}
           <div class="od-gov" style="margin-top:10px">Лимит — жёсткая граница: при достижении цифровые сотрудники отдела встают на паузу, задачи возвращаются людям, CEO получает уведомление.</div>
@@ -4341,7 +4341,7 @@ function renderAIBudgets(root){
 /* ========================================================================== */
 function portalHead(icon, label, sub, phase){
   return `<div class="work-head portal"><div class="ico">${icon}</div><div style="flex:1">
-    <h1>${label} <span class="ph-tag">${phase}</span></h1><p>${sub}</p></div>
+    <h2>${label} <span class="ph-tag">${phase}</span></h2><p>${sub}</p></div>
     <span class="badge out"><span class="dot"></span>Платформа Среды · внешний контур</span></div>`;
 }
 const tlColor = (a) => DEPT_TASK[TL_ROLES[a.role].dept].c;
@@ -4359,6 +4359,15 @@ function tlPassportHTML(a){
   <div class="od-gov" style="margin-top:8px">Паспорт переносится между фазами целиком. Из чужих компаний — только <b>обезличенные навыки</b>: паттерны и практики, никогда — данные.</div>`;
 }
 
+/* a11y: делает несемантичные кликабельные карточки доступными с клавиатуры
+   (role=button + tabindex + Enter/Space). Для <button>/<a> ничего не трогает. */
+function a11yActivate(els, fn){
+  els.forEach(c=>{
+    if(c.tagName!=='BUTTON' && c.tagName!=='A'){ c.setAttribute('role','button'); c.setAttribute('tabindex','0'); }
+    c.onclick=e=>fn(c,e);
+    c.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); fn(c,e); } };
+  });
+}
 function renderTalent(root){
   const cat = talentCatalog();
   const S = talentStore();
@@ -4394,7 +4403,7 @@ function renderTalent(root){
       <div class="tl-tail">${rest.slice(0,tail).map(a=>`<div class="tl-row" data-go="${a.id}">${hexAv(a)}<div><b>${a.name}</b><small>${TL_ROLES[a.role].label} · ${a.grade} · ${a.domains[0]}</small></div><span class="tl-rate sm">${a.rating}★</span><span class="tl-sm">${a.done} задач</span><span class="tl-sm">₽${a.priceTask.toLocaleString('ru')}/рез</span></div>`).join('')}</div>
       ${rest.length>tail?`<button class="btn ghost" id="tlMore" style="margin-top:9px">Показать ещё ${Math.min(30,rest.length-tail)} из ${rest.length-tail}</button>`:''}
     </div>`;
-    root.querySelectorAll('[data-go]').forEach(c=>c.onclick=()=>navTo('tagent:'+c.dataset.go));
+    a11yActivate(root.querySelectorAll('[data-go]'), c=>navTo('tagent:'+c.dataset.go));
     $('#tlRole',root).onchange=e=>{ fRole=e.target.value; draw(); };
     $('#tlQ',root).oninput=e=>{ fQ=e.target.value.toLowerCase().trim(); draw(); };
     const m=$('#tlMore',root); if(m) m.onclick=()=>{ tail+=30; draw(); };
@@ -4415,7 +4424,7 @@ function renderTalentAgent(root, id){
     <button class="worker-profile-back" id="taBack">← В каталог</button>
     <div class="gp-head" style="margin-top:10px">
       ${hexAv(a,true)}
-      <div class="gp-id"><h1>${a.name} <i class="dgt-tag tl">агент Среды</i></h1>
+      <div class="gp-id"><h2>${a.name} <i class="dgt-tag tl">агент Среды</i></h2>
         <p>${R.icon} ${R.label} · ${a.grade} · паспорт ${tlPassId(a)}</p>
         <div class="gp-badges"><span class="gp-bdg acc">${a.rating}★ · ${a.done} задач</span><span class="gp-bdg">приёмка без правок ${a.acc}%</span>${c?'<span class="gp-bdg ok">● у вас на контракте</span>':'<span class="gp-bdg">в пуле · старт 4 мин</span>'}</div></div>
       <div class="gp-rate"><b>₽${a.priceTask.toLocaleString('ru')}</b><small>за результат · ₽${a.priceMonth.toLocaleString('ru')}/мес в штат</small></div>
@@ -4565,7 +4574,7 @@ function renderForge(root){
           <button class="btn go" data-order="${t.id}" style="width:100%">🏭 Запустить производство — бригада соберётся за 4 минуты</button>
         </div>`:''}
       </div>`).join('')}</div></div>`;
-    root.querySelectorAll('[data-p]').forEach(c=>c.onclick=()=>navTo('fproj:'+c.dataset.p));
+    a11yActivate(root.querySelectorAll('[data-p]'), c=>navTo('fproj:'+c.dataset.p));
     root.querySelectorAll('.fg-tpl').forEach(c=>c.addEventListener('click',e=>{ if(e.target.closest('.fg-order')) return; openTpl = openTpl===c.dataset.t?null:c.dataset.t; draw(); }));
     root.querySelectorAll('input[name="cplx"]').forEach(r=>r.onchange=()=>{ const t=FG_TEMPLATES.find(x=>x.id===openTpl);
       $('#fgPrice',root).textContent='₽'+(Math.round(t.price*parseFloat(r.value)/1000)*1000).toLocaleString('ru'); });

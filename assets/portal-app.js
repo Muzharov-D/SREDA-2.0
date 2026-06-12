@@ -7,6 +7,14 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const el = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
 function escHtml(s){ return String(s).replace(/[&<>]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch])); }
+/* a11y: несемантичные кликабельные карточки → доступны с клавиатуры (role=button + Enter/Space) */
+function a11yActivate(els, fn){
+  els.forEach(c=>{
+    if(c.tagName!=='BUTTON' && c.tagName!=='A'){ c.setAttribute('role','button'); c.setAttribute('tabindex','0'); }
+    c.onclick=e=>fn(c,e);
+    c.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); fn(c,e); } };
+  });
+}
 
 let _toastT;
 function toast(msg){
@@ -174,12 +182,10 @@ function renderCatalog(root){
     portalState.filters = { role:'', grade:'', min:0, max:200000 };
     renderCatalog(root);
   };
-  root.querySelectorAll('.portal-card').forEach(c=>c.onclick=()=>{
-    portalState.selectedAgent = c.dataset.aid;
-    portalState.screen = 'agent';
-    renderPortalNav();
-    renderPortalStage();
-  });
+  const _cards = root.querySelectorAll('.portal-card');
+  const _open = c => { portalState.selectedAgent = c.dataset.aid; portalState.screen = 'agent'; renderPortalNav(); renderPortalStage(); };
+  if (typeof a11yActivate === 'function') a11yActivate(_cards, _open);   // role=button + клавиатура
+  else _cards.forEach(c => c.onclick = () => _open(c));
 }
 
 function renderAgentCard(a){

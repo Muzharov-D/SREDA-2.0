@@ -257,7 +257,7 @@ function pcRenderThread(){
       <div class="ch-msgs" id="pcMsgs"></div>
       <div class="ch-composer">
         <input class="ch-input" id="pcInput" placeholder="Сообщение или задача для ${escHtml(pcFirstName(a))}… (Enter — отправить)"/>
-        <button class="ch-send" id="pcSendBtn">➤</button>
+        <button class="ch-send" id="pcSendBtn" aria-label="Отправить сообщение">➤</button>
       </div>` : `
       <div class="pc-mail" id="pcMail"></div>`}
   `;

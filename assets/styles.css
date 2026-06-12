@@ -522,7 +522,7 @@ h1[tabindex="-1"]:focus,h2[tabindex="-1"]:focus{outline:none}
   box-shadow:var(--shadow-sm);
   flex-shrink:0;
 }
-.work-head h1{
+.work-head :is(h1,h2){
   margin:0;
   font-size:22px;
   font-weight:700;
@@ -998,7 +998,7 @@ h1[tabindex="-1"]:focus,h2[tabindex="-1"]:focus{outline:none}
 #orgCanvas{position:absolute;inset:0;display:block}
 
 .org-top{position:absolute;top:18px;left:22px;right:22px;display:flex;align-items:flex-start;gap:16px;z-index:5;pointer-events:none}
-.org-title h1{margin:0;font-size:20px}
+.org-title :is(h1,h2){margin:0;font-size:20px}
 .org-title p{margin:3px 0 0;color:var(--muted);font-size:12px}
 .org-title b{color:var(--acc)}
 .org-launch{margin-left:auto;display:flex;gap:9px;pointer-events:auto}
@@ -1250,7 +1250,7 @@ h1[tabindex="-1"]:focus,h2[tabindex="-1"]:focus{outline:none}
 .ed:focus{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 7%,transparent);border-style:solid}
 .ed.code{font-family:var(--mono);font-size:12px;color:#cfd6e4}
 .env-tools{display:flex;gap:6px;flex-shrink:0}
-.env-hint,.env-accept{font-size:10px;border-radius:6px;padding:3px 9px;cursor:pointer;white-space:nowrap}
+.env-hint,.env-accept{font-size:11px;border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap;min-height:24px;display:inline-flex;align-items:center;box-sizing:border-box}
 .env-hint{color:var(--amber);border:1px solid rgba(251,191,36,.4);background:rgba(251,191,36,.08)}
 .env-hint:hover{filter:brightness(1.12)}
 .env-accept{color:var(--acc);border:1px solid color-mix(in srgb,var(--acc) 45%,transparent);background:var(--acc-soft)}
@@ -1639,7 +1639,7 @@ h1[tabindex="-1"]:focus,h2[tabindex="-1"]:focus{outline:none}
 .rm{max-width:1000px;margin:0 auto}
 .rm-hero{padding:6px 0 22px;border-bottom:1px solid var(--line);margin-bottom:26px}
 .rm-kick{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--acc);font-weight:700}
-.rm-hero h1{margin:8px 0 6px;font-size:30px;letter-spacing:-.5px;
+.rm-hero :is(h1,h2){margin:8px 0 6px;font-size:30px;letter-spacing:-.5px;
   background:linear-gradient(120deg,#fff,#9fb0c7);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .rm-thesis{margin:0 0 18px;font-size:15px;color:var(--muted);max-width:680px;line-height:1.5}
 .rm-hands{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--panel);
@@ -2491,7 +2491,7 @@ button.fx-node{cursor:pointer}button.fx-node:hover{transform:translateY(-2px);bo
 .ap-header{display:flex;gap:16px;align-items:center;padding:16px 18px;border:1px solid var(--line);border-radius:14px;background:var(--panel);margin-bottom:14px}
 .ap-avatar{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;flex-shrink:0;border:2px solid var(--line)}
 .ap-info{flex:1;min-width:0}
-.ap-info h1{margin:0;font-size:22px;letter-spacing:-.3px}
+.ap-info :is(h1,h2){margin:0;font-size:22px;letter-spacing:-.3px}
 .ap-sub{font-size:12px;color:var(--muted);margin-top:3px}
 .ap-badges{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
 .ap-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid var(--line);background:var(--bg2)}
@@ -3325,7 +3325,7 @@ button.fx-node{cursor:pointer}button.fx-node:hover{transform:translateY(-2px);bo
   border-color: var(--line2);
 }
 
-.worker-profile-title h1 {
+.worker-profile-title :is(h1,h2) {
   margin: 0;
   font-size: 22px;
   font-weight: 700;
@@ -3735,7 +3735,7 @@ h2 .ic{width:14px;height:14px;color:var(--acc);vertical-align:-0.1em}
 .cmd-icon{line-height:1}
 #tourFab .ic{width:13px;height:13px;color:var(--acc)}
 .asst-inflow .aif-ic .ic{width:16px;height:16px;color:var(--acc)}
-.worker-profile-title h1 .ic{width:20px;height:20px;color:var(--acc)}
+.worker-profile-title :is(h1,h2) .ic{width:20px;height:20px;color:var(--acc)}
 
 /* Оргструктура: стек-бар люди+цифровые, цифровые в дереве */
 .oc-bar.oc-split{display:flex;gap:2px}
@@ -3763,7 +3763,7 @@ h2 .ic{width:14px;height:14px;color:var(--acc);vertical-align:-0.1em}
 .gp-av.ph img{width:100%;height:100%;object-fit:cover;display:block;transform:scale(1.08)}
 .ch-msg-ph{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
 .gp-id{flex:1;min-width:0}
-.gp-id h1{margin:0;font-size:21px;letter-spacing:-.01em}
+.gp-id :is(h1,h2){margin:0;font-size:21px;letter-spacing:-.01em}
 .gp-id p{margin:3px 0 0;font-size:13px;color:var(--muted)}
 .gp-badges{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:9px}
 .gp-bdg{font-size:11px;font-weight:700;color:var(--txt2);background:var(--bg3);border:1px solid var(--line);
@@ -4415,6 +4415,43 @@ body.portal-mode .who,body.portal-mode .filial-sw{display:none}
 .nav-crumbs a:hover{color:var(--acc)}
 .nav-crumbs .nc-sep{color:var(--faint)}
 .nav-crumbs .nc-cur{color:var(--txt2);font-weight:600}
+
+/* ============================================================================
+   АДАПТИВ (F17/F18) — планшет/мобайл: сайдбар не давит контент, нав сворачивается
+   в горизонтальную ленту, сетки рефлоутятся, нет горизонтального скролла.
+   Десктоп (>880px) — без изменений.
+   ========================================================================== */
+@media (max-width: 880px){
+  html, body{ overflow-x:hidden; max-width:100vw; }
+  .app{
+    grid-template-columns:minmax(0,1fr);     /* min:0 — трек ужимается до вьюпорта, контент не распирает сетку */
+    grid-template-rows:56px auto 1fr;
+    height:auto; min-height:100vh; max-width:100vw;
+  }
+  .topbar{ grid-column:1; flex-wrap:wrap; gap:10px; padding:0 14px; height:auto; min-height:56px; }
+  .topbar .cmd{ order:3; flex:1 1 100%; min-width:0; }
+  .nav{
+    grid-column:1;
+    flex-direction:row; align-items:center; flex-wrap:nowrap;
+    overflow-x:auto; overflow-y:hidden;
+    gap:6px; padding:8px 12px;
+    border-right:none; border-bottom:1px solid var(--line);
+    scrollbar-width:thin;
+  }
+  .nav-group{ display:none; }                 /* секции-разделители прячем в ленте */
+  .nav-ws{ flex:0 0 auto; margin-bottom:0; padding:8px 10px; }
+  .nav-ws small{ display:none; }
+  .nav > *{ flex:0 0 auto; white-space:nowrap; }
+  .stage{ min-width:0; overflow-x:auto; }    /* широкий контент скроллит внутри сцены, не страницу */
+  .work{ min-width:0; }
+  .grid-kpi{ grid-template-columns:repeat(2,1fr); }
+  .two-col{ grid-template-columns:1fr; }
+  .dp-wrap{ grid-template-columns:1fr; }
+}
+@media (max-width: 560px){
+  .grid-kpi{ grid-template-columns:1fr; }
+  .topbar{ padding:0 10px; }
+}
 
 /* ============================================================================
    Конец дополнительных стилей
