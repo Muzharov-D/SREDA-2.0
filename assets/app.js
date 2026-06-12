@@ -669,7 +669,7 @@ function renderPulse(root, d){
         </div>
       </div>
       <aside class="pls-side">
-        <button class="btn go pls-surge" id="plsSurge">⚡ Запустить рой</button>
+        <button class="btn go pls-surge" id="plsSurge" title="Открыть пусковую: очередь проектов, которые можно запустить роем по всей компании">⚡ Запустить рой</button>
         <button class="btn ghost pls-proj" id="plsProj">🚀 ${MEGA_PROJECT.title} · ${projProgress().pct}%</button>
         <div class="side-normal">
         <div class="of-live"><span class="of-dot"></span><b id="pls-inflight">—</b> задач в работе <i>прямо сейчас</i></div>
@@ -1016,7 +1016,7 @@ function renderDeptPulse(root, roleId){
     <div class="dp-wrap">
       <div class="dp-stage nm-stage" id="dpStage" role="group" aria-label="Карта-пульс отдела «${cfg.role}»: функции и сотрудники как нейроны"><div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Пульс отдела «${cfg.role}»: ${hc} людей и ${dhc} цифровых сотрудников по функциям — ${fns.map((f,fi)=>`${f}: ${hAlloc[fi]} людей и ${dAlloc[fi]} цифровых`).join('; ')}. Клик по нейрону — профиль сотрудника.</div></div>
       <aside class="dp-side">
-        <button class="btn go pls-surge" id="dpSurge">⚡ Запустить рой</button>
+        <button class="btn go pls-surge" id="dpSurge" title="Открыть пусковую отдела: очередь задач бэклога, которые можно запустить роем">⚡ Запустить рой</button>
         <div class="side-proj" id="dpQueue" style="display:none"></div>
         <div class="of-live"><span class="of-dot"></span><b id="dp-inflight">—</b> задач в работе <i>в отделе</i></div>
         <div class="of-live"><span class="lg-mark d"></span><b id="dp-inf-d">—</b> делают цифровые сотрудники</div>

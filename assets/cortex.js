@@ -162,10 +162,26 @@ function cortexMap(stage, opts){
   }
 
   /* --- отрисовка ----------------------------------------------------------- */
+  /* анти-каша: реестр размещённых подписей на кадр + лимит.
+     Не рисуем плашку, если она пересекается с уже нарисованной — в плотных
+     кластерах поток помеченных импульсов иначе сваливается в нечитаемую кучу. */
+  const placedLabels = [];
+  const MAX_LABELS = 8;
+  function tryPlace(x, y, w, h, force){
+    if (force === true){ placedLabels.push({ x, y, w, h }); return true; } // гейт: всегда
+    if (force !== 'soft' && placedLabels.length >= MAX_LABELS) return false; // лимит — только для фоновых импульсов
+    for (let i = 0; i < placedLabels.length; i++){
+      const r = placedLabels[i];
+      if (x < r.x + r.w + 4 && x + w + 4 > r.x && y < r.y + r.h + 3 && y + h + 3 > r.y) return false;
+    }
+    placedLabels.push({ x, y, w, h });
+    return true;
+  }
   function draw(dt){
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.clearRect(0, 0, W, H);
     ctx.translate(ox, oy); ctx.scale(k, k);
+    placedLabels.length = 0;
 
     const [ccx, ccy] = coreC();
 
@@ -233,9 +249,12 @@ function cortexMap(stage, opts){
         ctx.strokeStyle = '#e8c468'; ctx.lineWidth = 1.6; ctx.globalAlpha = 0.95;
         ctx.beginPath(); ctx.arc(n.x, n.y, n.r + 4.5, 0, 7); ctx.stroke();
         ctx.font = '600 9.5px Inter, sans-serif'; ctx.textAlign = 'center';
-        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(18,19,16,.85)';
-        ctx.strokeText(n.ref.name || '', n.x, n.y + n.r + 12);
-        ctx.fillStyle = '#e8d9b0'; ctx.fillText(n.ref.name || '', n.x, n.y + n.r + 12);
+        const nm = n.ref.name || '', wN = ctx.measureText(nm).width;
+        if (tryPlace(n.x - wN / 2, n.y + n.r + 5, wN, 12, 'soft')){
+          ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(18,19,16,.85)';
+          ctx.strokeText(nm, n.x, n.y + n.r + 12);
+          ctx.fillStyle = '#e8d9b0'; ctx.fillText(nm, n.x, n.y + n.r + 12);
+        }
         ctx.textAlign = 'left'; ctx.globalAlpha = 1;
       }
     });
@@ -246,6 +265,8 @@ function cortexMap(stage, opts){
       ctx.font = '600 9.5px Inter, sans-serif'; ctx.textAlign = 'center';
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(18,19,16,.85)';
       nodes.forEach(n => { if (!n.named || !n.ref.name) return;
+        const wN = ctx.measureText(n.ref.name).width;
+        if (!tryPlace(n.x - wN / 2, n.y + n.r + 3, wN, 12, 'soft')) return;
         ctx.globalAlpha = aN * 0.92;
         ctx.strokeText(n.ref.name, n.x, n.y + n.r + 10);
         ctx.fillStyle = '#e6e7e0'; ctx.fillText(n.ref.name, n.x, n.y + n.r + 10);
@@ -268,7 +289,7 @@ function cortexMap(stage, opts){
         ctx.globalAlpha = blink;
         ctx.fillStyle = '#f87171'; ctx.shadowColor = '#f87171'; ctx.shadowBlur = 14;
         ctx.beginPath(); ctx.arc(P[0], P[1], 4.4, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
-        drawImpLabel(P, p.label || '⛔ гейт закрыт', '#f87171', blink);
+        drawImpLabel(P, p.label || '⛔ гейт закрыт', '#f87171', blink, true);
         ctx.globalAlpha = 1;
         if (p.ttl > 2.4){ p.done(false); impulses.splice(i, 1); }
         continue;
@@ -296,12 +317,13 @@ function cortexMap(stage, opts){
       opts.coreEl.style.setProperty('--zoom', k.toFixed(3));
     }
   }
-  function drawImpLabel(P, text, color, alpha){
+  function drawImpLabel(P, text, color, alpha, force){
     ctx.font = '600 10.5px Inter, sans-serif';
     const wT = ctx.measureText(text).width;
+    const x = P[0] + 9, y = P[1] - 19, h = 16;
+    if (!tryPlace(x, y, wT + 12, h, force)) return;   // место занято — не наслаиваем
     ctx.globalAlpha = 0.88 * alpha;
     ctx.fillStyle = 'rgba(18,19,16,.92)'; ctx.strokeStyle = color; ctx.lineWidth = 0.8;
-    const x = P[0] + 9, y = P[1] - 19, h = 16;
     ctx.beginPath(); ctx.roundRect(x, y, wT + 12, h, 7); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#f1f0ea'; ctx.fillText(text, x + 6, y + 11.5);
     ctx.globalAlpha = 1;

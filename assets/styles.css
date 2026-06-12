@@ -1056,7 +1056,9 @@ h1[tabindex="-1"]:focus,h2[tabindex="-1"]:focus{outline:none}
 
 /* Пульс отдела — заземлённый живой граф у главы направления */
 .dp-wrap{display:grid;grid-template-columns:1fr 270px;gap:14px;align-items:start}
-.dp-stage{position:relative;height:560px;border:1px solid var(--line);border-radius:16px;overflow:hidden;
+/* высота тянется под доступную высоту кадра (neural пере-раскладывается по ResizeObserver),
+   с полом и потолком — иначе на широком десктопе нижняя треть пустовала. */
+.dp-stage{position:relative;height:clamp(520px,calc(100vh - 300px),720px);border:1px solid var(--line);border-radius:16px;overflow:hidden;
   background:radial-gradient(440px 340px at 50% 50%,color-mix(in srgb,var(--acc) 7%,transparent),transparent 70%),var(--panel)}
 .dp-links{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
 .dp-links line{stroke:rgba(255,255,255,.08);stroke-width:1}
@@ -3848,9 +3850,9 @@ h2 .ic{width:14px;height:14px;color:var(--acc);vertical-align:-0.1em}
    ========================================================================== */
 /* маркер-точка: цифровой = изумрудное кольцо, человек = сплошная точка цвета отдела */
 .lg-mark{display:inline-block;width:9px;height:9px;border-radius:50%;flex-shrink:0;vertical-align:-0.5px}
-.lg-mark.d{background:color-mix(in srgb,var(--acc) 15%,transparent);border:2px solid var(--acc);box-shadow:0 0 7px color-mix(in srgb,var(--acc) 45%,transparent)}
+.lg-mark.d{background:color-mix(in srgb,var(--acc) 15%,transparent);border:2px solid var(--acc);box-shadow:0 0 7px color-mix(in srgb,var(--acc) 45%,transparent);border-radius:1.5px;transform:rotate(45deg)}
 .lg-mark.h{background:var(--c,#60a5fa);border:2px solid transparent}
-.kind-legend .lg-d::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;
+.kind-legend .lg-d::before{content:'';display:inline-block;width:8px;height:8px;border-radius:1.5px;transform:rotate(45deg);margin-right:6px;
   background:color-mix(in srgb,var(--acc) 15%,transparent);border:2px solid var(--acc);vertical-align:-1px}
 .kind-legend .lg-h::before{content:'';display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;
   background:var(--c,#60a5fa);vertical-align:-1px}
@@ -3950,10 +3952,13 @@ h2 .ic{width:14px;height:14px;color:var(--acc);vertical-align:-0.1em}
 .nm-node .nm-av .gp-av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 .nm-node.k-d .nm-av{border-radius:12px;transform:rotate(45deg);border-style:dashed;background:var(--bg2)}
 .nm-node.k-d .nm-av .nm-em{transform:rotate(-45deg);font-size:17px;line-height:1}
-.nm-node.k-cluster{z-index:2;opacity:.95}
+/* пилюли-подписи кластеров — НАД аватарами (иначе узлы перекрывают текст и он
+   выглядит обрезанным: «КОВОДСТ», «БЭКЕН…»). Плотный фон + лёгкая тень отделяют от меша. */
+.nm-node.k-cluster{z-index:5;opacity:1}
 .nm-node.k-cluster .nm-av{display:none}
-.nm-node.k-cluster .nm-name{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
-  border:1px dashed var(--line2);border-radius:8px;padding:4px 9px;background:rgba(18,19,16,.72)}
+.nm-node.k-cluster .nm-name{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--txt);
+  border:1px solid var(--line2);border-radius:8px;padding:4px 9px;background:rgba(14,15,12,.95);
+  box-shadow:0 2px 10px rgba(0,0,0,.55);white-space:nowrap}
 .nm-node.k-cluster .nm-sub{color:var(--faint)}
 .nm-name{font-size:11px;font-weight:700;color:var(--txt);text-shadow:0 1px 6px rgba(0,0,0,.9);line-height:1.15}
 .nm-sub{font-size:9px;color:var(--muted);max-width:104px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
