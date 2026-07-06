@@ -1362,7 +1362,11 @@ ${learned.map(r=>'— ['+r.v+'] '+r.rule).join('\n')}
   /* живое обучение из петли: правка эксперта или возврат → правило агенту,
      версия +0.1, всё в аудит и в localStorage (переживает F5). */
   const LEARN_KEY = 'sreda_kam_learn';
-  function persistLearn(e){ try{ const arr=JSON.parse(localStorage.getItem(LEARN_KEY)||'[]'); arr.push(e); localStorage.setItem(LEARN_KEY, JSON.stringify(arr.slice(-100))); }catch(err){} }
+  function persistLearn(e){
+    try{ const arr=JSON.parse(localStorage.getItem(LEARN_KEY)||'[]'); arr.push(e); localStorage.setItem(LEARN_KEY, JSON.stringify(arr.slice(-100))); }catch(err){}
+    /* бэкенд — общее состояние между устройствами и зрителями; офлайн не мешает */
+    try{ if (typeof apiPost==='function') apiPost('/kam/learn', e).catch(()=>{}); }catch(err){}
+  }
   window.__ORG_LEARN = function(w, riskText, humanText, source, opts, silent){
     if (!w.loop || !w.loop.spec) return null;
     const ra = ruleAgent(w.loop.crew, riskText+' '+humanText);
@@ -1543,11 +1547,28 @@ ${learned.map(r=>'— ['+r.v+'] '+r.rule).join('\n')}
   Object.keys(DIGITAL_STAFF).forEach(k=>DIGITAL_STAFF[k].forEach(w=>ALL_DIGITAL.push({...w, dept:k})));
 
   /* восстановить выученное из прошлых сессий (переживает F5); ?reset — очистка */
-  if (/[?&#]reset\b/.test(q)){ try{ localStorage.removeItem('sreda_kam_learn'); }catch(e){} }
-  try{ JSON.parse(localStorage.getItem('sreda_kam_learn')||'[]').forEach(e=>{
-    const w = ALL_DIGITAL.find(x=>x.id===e.wid);
-    if (w && window.__ORG_LEARN) window.__ORG_LEARN(w, e.riskText, e.humanText, e.source+' · прошлая сессия', {riskRef:e.riskRef, applied:e.applied}, true);
-  }); }catch(e){}
+  if (/[?&#]reset\b/.test(q)){
+    try{ localStorage.removeItem('sreda_kam_learn'); }catch(e){}
+    try{ if (typeof apiPost==='function') apiPost('/kam/reset').catch(()=>{}); }catch(e){}
+  } else {
+    try{ JSON.parse(localStorage.getItem('sreda_kam_learn')||'[]').forEach(e=>{
+      const w = ALL_DIGITAL.find(x=>x.id===e.wid);
+      if (w && window.__ORG_LEARN) window.__ORG_LEARN(w, e.riskText, e.humanText, e.source+' · прошлая сессия', {riskRef:e.riskRef, applied:e.applied}, true);
+    }); }catch(e){}
+    /* и подтянуть с бэкенда (другие устройства/зрители) — с дедупликацией */
+    try{ if (typeof apiGet==='function') apiGet('/kam/learn').then(rows=>{
+      if (!Array.isArray(rows)) return;
+      rows.forEach(r=>{
+        const w = ALL_DIGITAL.find(x=>x.id===r.wid);
+        if (!w || !w.loop || !w.loop.spec || !window.__ORG_LEARN) return;
+        const ref = r.risk_ref || undefined;
+        const dup = w.loop.spec.agents.some(a=>a.learned.some(l=>l.live &&
+          ((ref && l.riskRef===ref && l.applied===(r.applied||r.human_text)) || l.rule==='Правка эксперта: '+r.human_text)));
+        if (dup) return;
+        window.__ORG_LEARN(w, r.risk_text||'', r.human_text, (r.source||'петля')+' · синхронизировано', {riskRef:ref, applied:r.applied||r.human_text}, true);
+      });
+    }).catch(()=>{}); }catch(e){}
+  }
 
   /* рабочие столы: KAM-артефакты с гейтами (правка руками) */
   if (typeof WORKBENCH !== 'undefined'){ Object.assign(WORKBENCH, KAM_WB); }

@@ -1,4 +1,7 @@
 {
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://sreda-2-0.onrender.com/api/:path*" }
+  ]
 }

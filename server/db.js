@@ -87,6 +87,19 @@ function initDb() {
       db.run('ALTER TABLE tasks ADD COLUMN contract TEXT', () => {});
       db.run('ALTER TABLE tasks ADD COLUMN status TEXT', () => {});
 
+      /* выученные правила двойников KAM: переживают F5 и разные устройства.
+         НЕ входит в demo/reset (seedAll) — у обучения свой сброс /api/kam/reset */
+      db.run(`CREATE TABLE IF NOT EXISTS kam_learn (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        wid TEXT NOT NULL,
+        risk_text TEXT,
+        human_text TEXT,
+        source TEXT,
+        risk_ref TEXT,
+        applied TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`);
+
       db.run(`CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         channel TEXT,

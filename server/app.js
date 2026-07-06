@@ -40,6 +40,7 @@ initDb().then(seedIfEmpty).then(() => {
   app.use('/api/audit', require('./routes/audit'));
   app.use('/api/messages', require('./routes/messages'));
   app.use('/api/tasks', require('./routes/tasks'));
+  app.use('/api/kam', require('./routes/kam'));
 
   // Demo: полный пересев БД к исходному состоянию
   app.post('/api/demo/reset', (req, res) => {

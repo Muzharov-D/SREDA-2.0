@@ -189,7 +189,8 @@
             <h2>Поставить задачу <span class="tag">каждый результат — черновик вам, не действие</span></h2>
             <div class="dwl-chips">${L.scenarios.map((s,i)=>`<button class="dwl-chip-q" data-sc="${i}">${escHtml(s.q)}${s.time?` <i>${escHtml(s.time[0])} → ${escHtml(s.time[1])}</i>`:''}</button>`).join('')}</div>
             <div class="ji-ask" style="margin-top:8px"><input type="text" placeholder="Или своими словами — «${escHtml(w.name)}» подберёт сценарий…" data-dwlask/><button class="btn go" data-dwlgo>→</button></div>
-            <div class="od-gov" style="margin-top:9px">Петля Среды: двойник работает агентами по базам знаний → приносит черновик с точками проверки → вы правите руками → принимаете или возвращаете. Отправить вовне сам он <b>не может</b> — попробуйте.</div>
+            <div class="od-gov" style="margin-top:9px">Петля Среды: двойник работает агентами по базам знаний → приносит черновик с точками проверки → вы правите руками → принимаете или возвращаете. Отправить вовне сам он <b>не может</b> — попробуйте. Сценарии можно проходить сколько угодно раз: выученное применяется, остальные точки возвращаются.</div>
+            <button class="dwl-btn ghost" data-dwreset style="margin-top:8px" title="Стереть выученные правила на этом устройстве и на сервере — стенд вернётся к исходным версиям агентов">↺ Сбросить обучение · демо</button>
           </div>
           <div class="dwl-mount" data-dwlmount>
             <div class="dwl-empty">⟵ выберите задачу — эпизод работы проиграется здесь: шаги агентов, черновик, ваша правка, приёмка, след в аудите.</div>
@@ -317,6 +318,12 @@
         (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(
           ()=>toast('Промпты всех агентов — в буфере обмена'),
           ()=>toast('Буфер недоступен — используйте «Скачать JSON»'));
+      };
+      const rst=root.querySelector('[data-dwreset]'); if (rst) rst.onclick=()=>{
+        try{ localStorage.removeItem('sreda_kam_learn'); }catch(e){}
+        try{ if (typeof apiPost==='function') apiPost('/kam/reset').catch(()=>{}); }catch(e){}
+        toast('Обучение сброшено — агенты вернутся к исходным версиям');
+        setTimeout(()=>{ location.href = location.pathname + '?org=kam'; }, 650);
       };
       root.querySelectorAll('[data-raglock]').forEach(b=>b.onclick=()=>{
         const r = L.rags.filter(x=>x.denied)[+b.dataset.raglock];
