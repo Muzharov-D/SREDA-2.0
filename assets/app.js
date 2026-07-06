@@ -3830,7 +3830,8 @@ function renderWorkerProfile(root, workerId) {
   const leadIdx = COCKPITS[w.dept] ? COCKPITS[w.dept].team.findIndex(t => (Array.isArray(t)?t[0]:t.name) === leadName) : -1;
   const logSeed = (DEPT_TASK[w.dept]||{l:['задача']}).l;
   const C = workerRPG(w);
-  let tab = 'stats';
+  const hasLoop = !!(w.loop && window.DWLOOP);        // глубокий двойник: петля, состав, RAG, живой журнал
+  let tab = hasLoop ? 'work' : 'stats';
   function draw(){
     const st = DW_STATUS[w.status] || DW_STATUS.active;
     root.innerHTML = `
@@ -3862,13 +3863,14 @@ function renderWorkerProfile(root, workerId) {
         <span class="gp-sys-note">запущен ${String(1 + h % 12).padStart(2,'0')}.2025 · подотчётен: <b style="color:var(--txt)">${w.lead}</b></span>
       </div>
       <div class="gp-tabs">
-        ${[['stats',LEX('stats')],['ji','Должностная инструкция'],['kpi','KPI · SLA'],['access','Доступы и интеграции'],['budget','Бюджет'],['log','Журнал'],['mgmt','Управление']].map(t=>`<button class="gp-tab ${tab===t[0]?'on':''}" data-t="${t[0]}">${t[1]}</button>`).join('')}
+        ${(hasLoop?window.DWLOOP.tabs(w):[]).concat([['stats',LEX('stats')],['ji','Должностная инструкция'],['kpi','KPI · SLA'],['access','Доступы и интеграции'],['budget','Бюджет'],['log','Журнал'],['mgmt','Управление']]).map(t=>`<button class="gp-tab ${tab===t[0]?'on':''}" data-t="${t[0]}">${t[1]}</button>`).join('')}
       </div>
       <div class="gp-body">${body(st)}</div>
     </div>`;
     wire();
   }
   function body(st){
+    if (hasLoop){ const b = window.DWLOOP.tabBody(w, tab); if (b !== null) return b; }
     if (tab==='stats'){ const manaPct=Math.round(C.mana.cur/C.mana.max*100);
       return `<div class="two-col" style="align-items:start">
       <div class="panel gp-card hc crd">
@@ -3979,6 +3981,7 @@ function renderWorkerProfile(root, workerId) {
       pushAudit({ who:'Вы', what:`Задача «${w.name}»: ${v}`, verdict:'allow' });
       toast(`Задача принята: «${w.name}» вернёт результат черновиком руководителю`); };
       go.onclick=send; ask.onkeydown=e=>{ if(e.key==='Enter') send(); }; }
+    if (hasLoop) window.DWLOOP.wire(root, w);
   }
   draw();
 }
