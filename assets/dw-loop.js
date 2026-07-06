@@ -239,10 +239,14 @@
               <div class="dwl-spec-kv"><span>Контроль качества</span><b>${S.evals?S.evals.golden.length+' golden-задач · LLM-judge по рубрикам · релиз версии только без регресса':'—'}</b></div>
             </div>
             <div class="dwl-spec-actions">
-              <button class="dwl-btn acc" data-specdl>⬇ Скачать JSON-спецификацию</button>
-              <button class="dwl-btn ghost" data-speccopy>Скопировать все промпты</button>
-              <span class="dwl-tag">${S.agents.length} агентов · ${S.orchestration.length} пайплайнов · ${S.audit_events.length} аудит-событий</span>
+              <button class="dwl-btn acc" data-launchdl>🚀 Пусковой пакет — запустить вне демо</button>
+              <button class="dwl-btn acc" data-launchcopy>Скопировать пусковой промпт</button>
+              <button class="dwl-btn ghost" data-openaidl>assistant.json (OpenAI-совместимый)</button>
+              <button class="dwl-btn ghost" data-specdl>⬇ JSON-спецификация</button>
+              <button class="dwl-btn ghost" data-speccopy>Промпты агентов</button>
+              <span class="dwl-tag">${S.agents.length} агентов · ${S.orchestration.length} пайплайнов</span>
             </div>
+            <div class="od-gov" style="margin-top:9px"><b>Запуск за 2 минуты:</b> «Скопировать пусковой промпт» → вставить system-промптом (или первым сообщением) в любой LLM-чат — GigaChat, YandexGPT, Claude, GPT — и поставить задачу. Двойник ведёт пайплайн ролей, выдаёт черновики с точками проверки, честно запрашивает недостающие данные и держит границы ДИ. Для OpenAI Assistants/GPTs — assistant.json с function-схемами MCP.</div>
           </div>
           <div class="panel gp-card"><h2>Оркестрация <span class="tag">пайплайны задач · гейт приёмки человеком</span></h2>
             ${S.orchestration.map(o=>`<div class="dwl-orch"><b>${escHtml(o.task)}</b>${o.timing?`<i class="dwl-orch-t">⏱ ${escHtml(o.timing)}</i>`:''}
@@ -327,6 +331,23 @@
         mount.prepend(note);
         pushAudit({who:w.name, emoji:w.emoji, act:'принял задачу: '+v.slice(0,60), dept:'петля'});
       }; go.onclick=send; ask.onkeydown=e=>{ if(e.key==='Enter') send(); }; }
+      const dlFile=(text, name, type)=>{ const blob=new Blob([text],{type}); const a=document.createElement('a');
+        a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(()=>URL.revokeObjectURL(a.href), 2000); };
+      const ld=root.querySelector('[data-launchdl]'); if (ld) ld.onclick=()=>{
+        dlFile(window.__ORG_LAUNCH.prompt(w), 'sreda-dw-'+w.id+'-launch.md', 'text/markdown');
+        pushAudit({who:'вы', emoji:'🚀', act:'выгружен пусковой пакет «'+w.name+'» — запуск вне демо', dept:'платформа'});
+        toast('Пусковой пакет скачан — вставьте в любой LLM-чат и поставьте задачу');
+      };
+      const lc=root.querySelector('[data-launchcopy]'); if (lc) lc.onclick=()=>{
+        (navigator.clipboard ? navigator.clipboard.writeText(window.__ORG_LAUNCH.prompt(w)) : Promise.reject()).then(
+          ()=>toast('Пусковой промпт в буфере — вставьте в чат и поставьте задачу'),
+          ()=>toast('Буфер недоступен — используйте «Пусковой пакет»'));
+      };
+      const od=root.querySelector('[data-openaidl]'); if (od) od.onclick=()=>{
+        dlFile(JSON.stringify(window.__ORG_LAUNCH.openai(w), null, 2), 'sreda-dw-'+w.id+'-assistant.json', 'application/json');
+        toast('assistant.json скачан — импорт в OpenAI Assistants / основа для GPTs');
+      };
       const dl=root.querySelector('[data-specdl]'); if (dl) dl.onclick=()=>{
         const blob = new Blob([JSON.stringify(L.spec, null, 2)], {type:'application/json'});
         const a = document.createElement('a');
