@@ -3966,6 +3966,9 @@ h2 .ic{width:14px;height:14px;color:var(--acc);vertical-align:-0.1em}
    по умолчанию чистый рой из нейронов. Заголовки функций (.k-cluster) остаются. */
 .dp-stage .nm-node:not(.k-cluster) .nm-name,
 .dp-stage .nm-node:not(.k-cluster) .nm-sub{opacity:0;transition:opacity .14s ease;pointer-events:none}
+/* малая карта (отдел ≤12 узлов): подписи видны всегда */
+.dp-stage.nm-lite .nm-node:not(.k-cluster) .nm-name,
+.dp-stage.nm-lite .nm-node:not(.k-cluster) .nm-sub{opacity:1}
 .dp-stage .nm-node:not(.k-cluster):hover .nm-name,
 .dp-stage .nm-node:not(.k-cluster):hover .nm-sub,
 .dp-stage .nm-node.near:not(.k-cluster) .nm-name,

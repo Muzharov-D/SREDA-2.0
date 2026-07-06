@@ -1053,6 +1053,8 @@ function renderDeptPulse(root, roleId){
       </aside>
     </div>`;
   const stage=$('#dpStage',root);
+  /* малая карта: имена и роли видны всегда — иначе отдел из 3-5 узлов нечитаем */
+  if (nodes.filter(n=>n.kind!=='cluster').length <= 12) stage.classList.add('nm-lite');
   const map = neuralMap(stage, { nodes, links,
     layout:(W,H)=>neuralClusterLayout(W,H, fns.map(f=>({ id:f, items:[...groupsH[f].map(p=>'h'+p.i), ...(digsByFn[f]||[]).map(w=>'d'+w.i), ...genH.filter(x=>x.f===f).map(x=>x.id), ...genD.filter(x=>x.f===f).map(x=>x.id)] })), { memberR:50, rx:.36, ry:.34 }),
     onClick:(n)=>{ if(n.gen&&n.kind==='h') navTo('gperson:'+roleId+':'+n.gi); else if(n.gen&&n.kind==='d') navTo('gworker:'+roleId+':'+n.gi); else if(n.kind==='h') navTo('person:'+roleId+':'+n.p.i); else if(n.t) navTo('tagent:'+n.t.a.id); else if(n.kind==='d') navTo('worker:'+n.w.id); else navTo('team:'+roleId); } });
