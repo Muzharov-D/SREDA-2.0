@@ -49,6 +49,19 @@
       const lr = liveRules.find(x=>x.riskRef===r.note);
       if (lr){ st.resolved.add(i); st.edited[i]=lr.applied; st.applied[i]=lr; }
     });
+    /* ОБОБЩЕНИЕ: правило из другой задачи подсказывается на родственном риске
+       (тот же домен + пересечение значимых слов) — применяет человек */
+    const toks = s=>String(s).toLowerCase().match(/[а-яёa-z0-9]{5,}/g)||[];
+    st.genHint = {};
+    risks.forEach(i=>{ if (st.applied[i]) return;
+      const r = sc.draft.lines[i].risk;
+      const dom = window.__ORG_RULE_DOMAIN ? window.__ORG_RULE_DOMAIN(w, r.note+' '+r.fix) : null;
+      const rt = toks(r.note+' '+r.fix);
+      const hit = liveRules.find(x=>x.riskRef!==r.note
+        && (w.loop.spec.agents.find(a=>a.name===x.agent)||{}).type===dom
+        && toks(x.rule).some(t=>rt.includes(t)));
+      if (hit) st.genHint[i] = hit;
+    });
 
     function stepRow(s,i,state){
       return `<div class="dwl-step ${state}" data-si="${i}">
@@ -70,6 +83,7 @@
           ${res?'':`<button class="dwl-hint" data-hint="${i}" title="Подставить исправление двойника">💡</button>
           <button class="dwl-ok" data-okline="${i}" title="Принять свою правку строки">✓</button>`}
         </div>
+        ${(!res && st.genHint && st.genHint[i])?`<div class="dwl-hintrule">🧠 у агента есть правило из другой задачи: <b>[${st.genHint[i].v}]</b> «${escHtml(st.genHint[i].rule)}» <button class="dwl-btn ghost" data-genrule="${i}">применить здесь</button></div>`:''}
       </div>`;
     }
     function unresolved(){ return risks.filter(i=>!st.resolved.has(i) && sc.draft.lines[i].risk.sev<=2).length; }
@@ -104,7 +118,7 @@
         ${st.phase==='done' ? `
         <div class="dwl-done">
           <div class="dwl-done-h">${st.denied?'⛔ Отказ зафиксирован':'✓ Принято вами'} <span class="dwl-tag">${escHtml(sc.done.artifact)}</span></div>
-          <div class="dwl-done-r">${Object.keys(st.applied).length?`<span class="dwl-chip ap">⚙ применено выученных правил: ${Object.keys(st.applied).length}</span>`:''}${st.returned?'<span class="dwl-chip ret">↩ был возврат — двойник переработал</span>':''}${sc.time?`<span class="dwl-chip save">⏱ ${escHtml(sc.time[0])} → ${escHtml(sc.time[1])}</span>`:''}<span class="dwl-chip">📝 аудит: ${escHtml(sc.done.audit)}</span></div>
+          <div class="dwl-done-r">${Object.keys(st.applied).length?`<span class="dwl-chip ap">⚙ применено выученных правил: ${Object.keys(st.applied).length}</span>`:''}${st.genUsed?`<span class="dwl-chip ap">🧠 обобщено на эту задачу: ${st.genUsed}</span>`:''}${st.packName?`<span class="dwl-chip pack">📦 артефакт → пакет «${escHtml(st.packName)}»</span>`:''}${st.returned?'<span class="dwl-chip ret">↩ был возврат — двойник переработал</span>':''}${sc.time?`<span class="dwl-chip save">⏱ ${escHtml(sc.time[0])} → ${escHtml(sc.time[1])}</span>`:''}<span class="dwl-chip">📝 аудит: ${escHtml(sc.done.audit)}</span></div>
           <div class="dwl-done-c">→ ${escHtml(sc.done.chain)}</div>
           <div class="dwl-done-a"><button class="dwl-btn ghost" data-goaudit>Открыть аудит →</button><button class="dwl-btn ghost" data-gojournal>Журнал двойника →</button></div>
         </div>`:''}`;
@@ -113,6 +127,11 @@
     function wire(){
       ep.querySelectorAll('.dwl-line-t.ed').forEach(e=>e.oninput=()=>{ st.edited[+e.dataset.li]=e.textContent; });
       ep.querySelectorAll('[data-hint]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.hint; st.edited[i]=sc.draft.lines[i].risk.fix; st.resolved.add(i); draw(); toast('Исправление двойника подставлено — вы можете дописать своё'); });
+      ep.querySelectorAll('[data-genrule]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.genrule; const gh=st.genHint[i];
+        st.edited[i]=sc.draft.lines[i].risk.fix; st.resolved.add(i); st.genUsed=(st.genUsed||0)+1;
+        gh.uses=(gh.uses||0)+1;
+        pushAudit({who:'платформа', emoji:'🧠', act:'правило ['+gh.v+'] обобщено на новую задачу — подтвердил человек', dept:'обучение'});
+        draw(); toast('Правило распространилось на родственную задачу — обобщение подтверждено вами'); });
       ep.querySelectorAll('[data-okline]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.okline; const v=(st.edited[i]||'').trim();
         if(!v || v===sc.draft.lines[i].t.trim()){ toast('Сначала поправьте строку руками (или нажмите 💡)'); return; }
         st.resolved.add(i); draw(); toast('Правка эксперта принята'); });
@@ -133,7 +152,10 @@
               }
             });
           }
-          pushAudit({who:w.name+' + вы', emoji:w.emoji, act:sc.done.audit, dept:'петля'}); dwLog(w, sc.q+' — принято'+(st.returned?' после возврата':''), st.returned?'ret':'ok'); w.now='ждёт следующую задачу'; }
+          pushAudit({who:w.name+' + вы', emoji:w.emoji, act:sc.done.audit, dept:'петля'}); dwLog(w, sc.q+' — принято'+(st.returned?' после возврата':''), st.returned?'ret':'ok'); w.now='ждёт следующую задачу';
+          /* принятый артефакт пополняет пакет знаний направления — второй источник качества виден живьём */
+          if (window.__ORG_PACK_ADD){ const pk = window.__ORG_PACK_ADD(w, sc);
+            if (pk){ st.packName = pk.pack; pushAudit({who:'платформа', emoji:'📦', act:'артефакт «'+sc.done.artifact+'» добавлен в пакет знаний «'+pk.pack+'»', dept:'обучение'}); } } }
         draw(); };
       const ret=ep.querySelector('[data-ret]'); if(ret) ret.onclick=()=>{ const box=ep.querySelector('.dwl-retbox'); box.hidden=!box.hidden; if(!box.hidden) box.querySelector('input').focus(); };
       const ret2=ep.querySelector('.ret2'); if(ret2) ret2.onclick=()=>{
@@ -230,7 +252,7 @@
           <div class="panel gp-card"><h2>Знания платформы <span class="tag">качество растёт данными, не ручными правками</span></h2>
             <div class="dwl-spec-g">
               <div><b class="dwl-spec-h">Пакеты знаний проектов</b>
-                ${(S.knowledge_packs||[]).map(p=>`<div class="dwl-spec-li">📦 <b>${escHtml(p.name)}</b> — ${escHtml(p.content)}<br/><small class="dwl-grow">↻ ${escHtml(p.grows_by)}</small></div>`).join('')||'<div class="dwl-spec-li">—</div>'}</div>
+                ${(S.knowledge_packs||[]).map((p,pi)=>`<div class="dwl-spec-li">📦 <b>${escHtml(p.name)}</b> — ${escHtml(p.content)}<br/><small class="dwl-grow">↻ ${escHtml(p.grows_by)}</small>${pi===0?(((window.__KAM_PACKX&&window.__KAM_PACKX[S.dept_id])||[]).slice(0,5).map(e=>`<div class="dwl-fn">↻ ${escHtml(e.t)} · «${escHtml(e.artifact)}» — из принятой итерации</div>`).join('')):''}</div>`).join('')||'<div class="dwl-spec-li">—</div>'}</div>
               <div><b class="dwl-spec-h">Как двойник умнеет</b>
                 ${(S.learning?S.learning.sources:[]).map(s=>`<div class="dwl-spec-li">🧠 ${escHtml(s)}</div>`).join('')}
                 <div class="dwl-spec-li" style="color:var(--acc)">✎ ${escHtml(S.learning?S.learning.manual_edits:'')}</div></div>

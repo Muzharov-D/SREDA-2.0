@@ -1495,6 +1495,24 @@ ${learned.map(r=>'— ['+r.v+'] '+r.rule).join('\n')}
     return { agent:a.name, version:v, superseded: ref ? act.length < a.learned.filter(r=>r.live).length : false };
   };
 
+  /* ---- живые пакеты знаний: принятые артефакты петли пополняют пакет ------ */
+  const PACK_KEY = 'sreda_kam_pack';
+  window.__KAM_PACKX = (function(){ try{ return JSON.parse(localStorage.getItem(PACK_KEY)||'{}'); }catch(e){ return {}; } })();
+  window.__ORG_PACK_ADD = function(w, sc){
+    const deptId = w.dept, packs = KNOW[deptId];
+    if (!packs || !packs.length || !sc || !sc.done) return null;
+    const t = new Date();
+    const entry = { artifact: sc.done.artifact, task: sc.q,
+      t: 'сегодня '+String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0') };
+    const box = (window.__KAM_PACKX[deptId] = window.__KAM_PACKX[deptId] || []);
+    box.unshift(entry);
+    try{ const all = window.__KAM_PACKX; Object.keys(all).forEach(k=>{ all[k]=all[k].slice(0,30); });
+      localStorage.setItem(PACK_KEY, JSON.stringify(all)); }catch(e){}
+    return { pack: packs[0][0], entry };
+  };
+  /* домен риска — для обобщения правил на родственные задачи */
+  window.__ORG_RULE_DOMAIN = function(w, text){ return ruleAgent((w.loop&&w.loop.crew)||[], text).k; };
+
   /* авто-сценарий для двойников без ручной проработки: петля строится из ДИ */
   function autoLoop(w, crewKey, acc, ragKeys){
     const crew = CREW[crewKey] || CREW.liaison;
@@ -1658,6 +1676,7 @@ ${learned.map(r=>'— ['+r.v+'] '+r.rule).join('\n')}
   /* восстановить выученное из прошлых сессий (переживает F5); ?reset — очистка */
   if (/[?&#]reset\b/.test(q)){
     try{ localStorage.removeItem('sreda_kam_learn'); }catch(e){}
+    try{ localStorage.removeItem('sreda_kam_pack'); window.__KAM_PACKX = {}; }catch(e){}
     try{ if (typeof apiPost==='function') apiPost('/kam/reset').catch(()=>{}); }catch(e){}
   } else {
     try{ JSON.parse(localStorage.getItem('sreda_kam_learn')||'[]').forEach(e=>{

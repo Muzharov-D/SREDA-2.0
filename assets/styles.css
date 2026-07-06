@@ -4606,6 +4606,10 @@ body.portal-mode .who,body.portal-mode .filial-sw{display:none}
 .dwl-risk-b.ap{ background:var(--acc); color:var(--on-acc); }
 .dwl-chip.ap{ border-color:var(--acc); color:var(--acc); font-weight:700; }
 .dwl-fn{ font-family:ui-monospace,'Cascadia Mono',Consolas,monospace; font-size:10.5px; color:var(--muted); padding:2px 0 2px 18px; }
+.dwl-hintrule{ margin-top:5px; font-size:11.5px; color:var(--muted); background:color-mix(in srgb, var(--acc) 6%, transparent); border:1px dashed color-mix(in srgb, var(--acc) 35%, transparent); border-radius:8px; padding:5px 9px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.dwl-hintrule b{ color:var(--acc); }
+.dwl-hintrule .dwl-btn{ padding:3px 10px; font-size:11px; }
+.dwl-chip.pack{ border-color:color-mix(in srgb, var(--acc) 55%, transparent); color:var(--acc); }
 .dwl-sup{ opacity:.55; }
 .dwl-sup .dwl-rule, .dwl-sup b, .dwl-sup{ text-decoration:line-through; }
 .dwl-sup small{ text-decoration:none; }
