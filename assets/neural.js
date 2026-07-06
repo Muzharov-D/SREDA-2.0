@@ -135,18 +135,22 @@ function neuralClusterLayout(W, H, groups, o){
   const cx = W / 2, cy = H / 2;
   const RX = Math.min(W * (o.rx || 0.36), o.rxMax || 560), RY = Math.min(H * (o.ry || 0.36), o.ryMax || 230);
   const P = {};
-  /* МАЛЫЙ ОТДЕЛ (1-2 функции, ≤12 узлов): эллипс-лейаут вырождается в кучу
-     в центре — вместо него одно широкое кольцо вокруг ядра, подписи кластеров
-     стеком в центре. Никто ни на ком не лежит. */
+  /* МАЛЫЙ ОТДЕЛ (≤12 узлов, сколько бы ни было функций): эллипс-лейаут
+     вырождается в кучи внутри групп — вместо него ОДНО широкое кольцо:
+     участники идут по кольцу группами подряд, подпись каждой функции —
+     снаружи кольца на срединном угле своей группы. Никто ни на ком не лежит. */
   const total = groups.reduce((a, g) => a + g.items.length, 0);
-  if (groups.length <= 2 && total <= 12){
-    const mr = Math.max(150, Math.min(RX, RY * 1.35));
-    const all = []; groups.forEach(g => g.items.forEach(id => all.push(id)));
-    all.forEach((id, i) => {
-      const a = -Math.PI / 2 + i / all.length * Math.PI * 2;
-      P[id] = [cx + Math.cos(a) * mr, cy + Math.sin(a) * mr * 0.62];
+  if (total <= 12){
+    const mr = Math.max(170, Math.min(RX, RY * 1.4));
+    const all = []; groups.forEach(g => g.items.forEach(id => all.push({ id, g: g.id })));
+    const ang = i => -Math.PI / 2 + i / all.length * Math.PI * 2;
+    all.forEach((m, i) => { const a = ang(i); P[m.id] = [cx + Math.cos(a) * mr, cy + Math.sin(a) * mr * 0.62]; });
+    groups.forEach(g => {
+      const idxs = all.map((m, i) => m.g === g.id ? i : -1).filter(i => i >= 0);
+      if (!idxs.length){ P['#' + g.id] = [cx, cy]; return; }
+      const a = ang(idxs.reduce((s, i) => s + i, 0) / idxs.length);
+      P['#' + g.id] = [cx + Math.cos(a) * (mr + 74), cy + Math.sin(a) * (mr * 0.62 + 52)];
     });
-    groups.forEach((g, gi) => { P['#' + g.id] = [cx, cy + (gi - (groups.length - 1) / 2) * 40]; });
     if (o.center) P[o.center] = [cx, cy];
     return P;
   }

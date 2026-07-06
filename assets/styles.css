@@ -4575,6 +4575,31 @@ body.portal-mode .who,body.portal-mode .filial-sw{display:none}
 .dwl-hub-s small{ display:block; color:var(--muted); font-size:10.5px; margin-top:1px; }
 @media (prefers-reduced-motion:reduce){ .dwl-spin{ animation:none; } .shake{ animation:none; } .dwl-ep,.dwl-line{ animation:none; } }
 
+/* спецификация внедрения двойника */
+.dwl-specwrap{ display:flex; flex-direction:column; gap:13px; }
+.dwl-spec-head{ display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:8px 18px; margin-top:9px; }
+.dwl-spec-kv span{ display:block; font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+.dwl-spec-kv b{ font-size:12.5px; line-height:1.4; }
+.dwl-spec-actions{ display:flex; gap:9px; align-items:center; flex-wrap:wrap; margin-top:13px; }
+.dwl-orch{ border:1px solid var(--line); border-radius:11px; padding:10px 12px; margin-top:8px; }
+.dwl-orch b{ font-size:12.5px; }
+.dwl-orch-t{ font-style:normal; color:var(--acc); font-size:11px; margin-left:8px; }
+.dwl-orch-p{ display:flex; flex-wrap:wrap; gap:4px 6px; align-items:center; margin-top:7px; }
+.dwl-orch-p span{ font-size:10.5px; border:1px solid var(--line); border-radius:14px; padding:2px 9px; color:var(--muted); }
+.dwl-orch-p span.gate{ border-color:var(--acc); color:var(--acc); font-weight:700; }
+.dwl-orch-p em{ color:var(--faint); font-style:normal; font-size:11px; }
+.dwl-orch-r{ display:block; margin-top:6px; color:var(--red); font-size:10.5px; }
+.dwl-prompt{ margin-top:8px; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.dwl-prompt summary{ cursor:pointer; padding:8px 12px; font-size:12px; color:var(--acc); font-weight:600; background:color-mix(in srgb, var(--acc) 5%, transparent); list-style:none; }
+.dwl-prompt summary::before{ content:'▸ '; }
+.dwl-prompt[open] summary::before{ content:'▾ '; }
+.dwl-prompt pre{ margin:0; padding:11px 13px; font:11.5px/1.6 ui-monospace,'Cascadia Mono',Consolas,monospace; color:var(--txt); white-space:pre-wrap; word-break:break-word; border-top:1px solid var(--line); max-height:340px; overflow:auto; }
+.dwl-spec-g{ display:grid; grid-template-columns:1fr 1fr; gap:12px 20px; margin-top:10px; }
+@media (max-width:760px){ .dwl-spec-g{ grid-template-columns:1fr; } }
+.dwl-spec-h{ display:block; font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px; }
+.dwl-spec-li{ font-size:12px; color:var(--txt); padding:3px 0; line-height:1.45; }
+.dwl-spec-li b{ color:var(--txt); }
+
 /* ============================================================================
    Конец дополнительных стилей
    ========================================================================== */

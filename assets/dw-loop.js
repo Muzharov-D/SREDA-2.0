@@ -150,7 +150,7 @@
   /*  ПРОФИЛЬ 2.0: вкладки «Работа» · «Состав» · «Базы знаний» · «Журнал»    */
   /* ══════════════════════════════════════════════════════════════════════ */
   const DWLOOP = {
-    tabs(w){ return [['work','Работа · петля'],['crew','Состав'],['rag','Базы знаний']]; },
+    tabs(w){ return [['work','Работа · петля'],['crew','Состав'],['spec','Спецификация'],['rag','Базы знаний']]; },
     tabBody(w, tab){
       const L = w.loop;
       if (tab==='work'){
@@ -170,6 +170,51 @@
         return `<div class="panel gp-card"><h2>Состав двойника <span class="tag">${L.crewFull.length} агентов из 10 типов платформы · допуск ${L.acc}</span></h2>
           <div class="dwl-crew">${L.crewFull.map(a=>`<div class="dwl-agent"><span class="dwl-agent-ic">${a[0]}</span><div><b>${a[1]}</b><small>${a[2]}</small></div><span class="dwl-cov" title="покрытие штата департамента этим типом агента">${a[3]}</span></div>`).join('')}</div>
           <div class="od-gov" style="margin-top:10px">Принцип ролевой специализации: не «швейцарский нож», а набор под трудовую функцию. Ассистент есть у всех 21, специализированные агенты — только у профильных ролей. Экономия: <b>${escHtml(L.save)}</b>.</div></div>`;
+      }
+      if (tab==='spec' && L.spec){
+        const S = L.spec;
+        return `<div class="dwl-specwrap">
+          <div class="panel gp-card">
+            <h2>Спецификация внедрения <span class="tag">v${S.version} · по ней двойник создаётся в платформе</span></h2>
+            <div class="dwl-spec-head">
+              <div class="dwl-spec-kv"><span>Кодовое имя</span><b>${escHtml(S.codename)}</b></div>
+              <div class="dwl-spec-kv"><span>Должность</span><b>${escHtml(S.title)}</b></div>
+              <div class="dwl-spec-kv"><span>Руководитель-человек</span><b>${escHtml(S.lead_human)}</b></div>
+              <div class="dwl-spec-kv"><span>Допуск</span><b>${escHtml(S.access_level)}</b></div>
+              <div class="dwl-spec-kv"><span>Маршрутизация моделей</span><b>${escHtml(S.model_routing.note)}</b></div>
+              <div class="dwl-spec-kv"><span>Внешние действия</span><b>${escHtml(S.limits.external_actions)}</b></div>
+            </div>
+            <div class="dwl-spec-actions">
+              <button class="dwl-btn acc" data-specdl>⬇ Скачать JSON-спецификацию</button>
+              <button class="dwl-btn ghost" data-speccopy>Скопировать все промпты</button>
+              <span class="dwl-tag">${S.agents.length} агентов · ${S.orchestration.length} пайплайнов · ${S.audit_events.length} аудит-событий</span>
+            </div>
+          </div>
+          <div class="panel gp-card"><h2>Оркестрация <span class="tag">пайплайны задач · гейт приёмки человеком</span></h2>
+            ${S.orchestration.map(o=>`<div class="dwl-orch"><b>${escHtml(o.task)}</b>${o.timing?`<i class="dwl-orch-t">⏱ ${escHtml(o.timing)}</i>`:''}
+              <div class="dwl-orch-p">${o.pipeline.map(p=>`<span>${escHtml(p)}</span>`).join('<em>→</em>')}<em>→</em><span class="gate">гейт: человек</span></div>
+              ${o.refusal?`<small class="dwl-orch-r">⛔ отказ: ${escHtml(o.refusal)}</small>`:''}</div>`).join('')}
+          </div>
+          ${S.agents.map((a,ai)=>`<div class="panel gp-card dwl-agentspec">
+            <h2>${a.icon} ${escHtml(a.name)} <span class="tag">модель: ${a.model_tier} · покрытие штата: ${escHtml(a.coverage)}</span></h2>
+            <details class="dwl-prompt" ${ai===0?'open':''}><summary>Системный промпт — готов к использованию</summary><pre>${escHtml(a.prompt)}</pre></details>
+            <div class="dwl-spec-g">
+              <div><b class="dwl-spec-h">Инструменты и права</b>${a.tools.map(t=>`<div class="dwl-spec-li">🔧 <b>${escHtml(t[0])}</b> — ${escHtml(t[1])}</div>`).join('')}</div>
+              <div><b class="dwl-spec-h">Триггеры запуска</b>${a.triggers.map(t=>`<div class="dwl-spec-li">⚡ ${escHtml(t)}</div>`).join('')}</div>
+              <div><b class="dwl-spec-h">Выходные артефакты</b>${a.outputs.map(t=>`<div class="dwl-spec-li">📄 ${escHtml(t)}</div>`).join('')}</div>
+              <div><b class="dwl-spec-h">Guardrails</b>${a.guardrails.slice(0,5).map(t=>`<div class="dwl-spec-li">⛔ ${escHtml(t)}</div>`).join('')}</div>
+            </div>
+          </div>`).join('')}
+          <div class="panel gp-card"><h2>Аудит и контроль</h2>
+            <div class="dwl-spec-g">
+              <div><b class="dwl-spec-h">События в аудит</b>${S.audit_events.map(e=>`<div class="dwl-spec-li">📝 ${escHtml(e)}</div>`).join('')}</div>
+              <div><b class="dwl-spec-h">KPI из должностной инструкции</b>${S.kpi.map(k=>`<div class="dwl-spec-li">🎯 ${escHtml(k.metric)}: <b>${escHtml(k.target)}</b></div>`).join('')}
+                <b class="dwl-spec-h" style="margin-top:9px">Лимиты</b>
+                <div class="dwl-spec-li">💰 ${escHtml(S.limits.budget)}</div>
+                <div class="dwl-spec-li">🔒 ${escHtml(S.limits.data_perimeter)}</div></div>
+            </div>
+          </div>
+        </div>`;
       }
       if (tab==='rag'){
         const open = L.rags.filter(r=>!r.denied), closed = L.rags.filter(r=>r.denied);
@@ -208,6 +253,21 @@
         const sc = score(best)>0 ? best : {...L.scenarios[0], q:v};
         dwEpisode(mount, w, sc);
       }; go.onclick=send; ask.onkeydown=e=>{ if(e.key==='Enter') send(); }; }
+      const dl=root.querySelector('[data-specdl]'); if (dl) dl.onclick=()=>{
+        const blob = new Blob([JSON.stringify(L.spec, null, 2)], {type:'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = 'sreda-dw-'+w.id+'.json';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+        pushAudit({who:'вы', emoji:'⬇', act:'выгружена спецификация внедрения «'+w.name+'»', dept:'платформа'});
+        toast('Спецификация скачана — по ней двойник создаётся в платформе');
+      };
+      const cp=root.querySelector('[data-speccopy]'); if (cp) cp.onclick=()=>{
+        const txt = L.spec.agents.map(a=>'### '+a.name+'\n\n'+a.prompt).join('\n\n---\n\n');
+        (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(
+          ()=>toast('Промпты всех агентов — в буфере обмена'),
+          ()=>toast('Буфер недоступен — используйте «Скачать JSON»'));
+      };
       root.querySelectorAll('[data-raglock]').forEach(b=>b.onclick=()=>{
         const r = L.rags.filter(x=>x.denied)[+b.dataset.raglock];
         b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake');
@@ -229,6 +289,8 @@
   const exWS = WORKSPACES.find(w=>w.id==='exec');
   if (exWS){ const i = exWS.nav.findIndex(n=>n.sep==='Платформа Среды'); if (i>=0) exWS.nav.splice(i, exWS.nav.length-i); }
   const pIdx = WORKSPACES.findIndex(w=>w.id==='platform'); if (pIdx>=0) WORKSPACES.splice(pIdx,1);
+  const ownWS = WORKSPACES.find(w=>w.id==='owner');
+  if (ownWS){ const i = ownWS.nav.findIndex(n=>n.sep==='Видение'); if (i>=0) ownWS.nav.splice(i, ownWS.nav.length-i); }
   const hideCss = document.createElement('style');
   hideCss.textContent = '#tourFab{display:none!important}';
   document.head.appendChild(hideCss);
