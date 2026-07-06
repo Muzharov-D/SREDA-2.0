@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="robots" content="noindex"/>
+<title>СРЕДА × KAM — критический разбор и защита</title>
+<link rel="stylesheet" href="assets/fonts/inter.css?v=10"/>
+<style>
+  :root{
+    --bg:#121310; --bg2:#191b17; --panel:#1c1e1a; --line:#2a2d27;
+    --txt:#e8e8e3; --muted:#8e9288; --faint:#6a6e64;
+    --acc:#36c994; --on-acc:#06231b; --amber:#e8b448; --red:#e86a5e; --blue:#60a5fa;
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html{ color-scheme:dark; scroll-behavior:smooth; }
+  body{ background:var(--bg); color:var(--txt); font:15px/1.65 Inter,-apple-system,'Segoe UI',Roboto,sans-serif; }
+  .wrap{ max-width:980px; margin:0 auto; padding:0 22px 90px; }
+  a{ color:var(--acc); text-decoration:none; }
+  a:hover{ text-decoration:underline; }
+
+  /* ── шапка ── */
+  header{ padding:64px 0 34px; border-bottom:1px solid var(--line); margin-bottom:40px; }
+  .kicker{ font-size:12px; letter-spacing:2.5px; text-transform:uppercase; color:var(--acc); font-weight:700; }
+  h1{ font-size:clamp(26px,4.5vw,40px); font-weight:800; line-height:1.18; margin:14px 0 12px; letter-spacing:-.5px; }
+  .lede{ font-size:16.5px; color:var(--muted); max-width:760px; }
+  .lede b{ color:var(--txt); }
+  .hero-meta{ display:flex; gap:10px; flex-wrap:wrap; margin-top:22px; }
+  .pill{ font-size:12px; padding:5px 13px; border-radius:22px; border:1px solid var(--line); color:var(--muted); }
+  .pill.acc{ border-color:color-mix(in srgb,var(--acc) 45%,transparent); color:var(--acc); }
+  .pill.amb{ border-color:color-mix(in srgb,var(--amber) 45%,transparent); color:var(--amber); }
+
+  /* ── секции ── */
+  section{ margin-bottom:58px; }
+  h2{ font-size:22px; font-weight:800; letter-spacing:-.3px; margin-bottom:6px; }
+  h2 .n{ color:var(--acc); font-feature-settings:'tnum'; margin-right:8px; }
+  .sub{ color:var(--muted); font-size:14px; margin-bottom:22px; max-width:760px; }
+  .panel{ background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:20px 22px; }
+
+  /* ── день департамента ── */
+  .day{ display:flex; flex-direction:column; gap:0; }
+  .slot{ display:grid; grid-template-columns:86px 22px 1fr; gap:0 16px; }
+  .slot-t{ font-size:12.5px; color:var(--acc); font-weight:700; text-align:right; padding-top:20px; font-feature-settings:'tnum'; }
+  .slot-l{ position:relative; }
+  .slot-l::before{ content:''; position:absolute; left:50%; top:0; bottom:0; width:1px; background:var(--line); }
+  .slot-l::after{ content:''; position:absolute; left:50%; top:26px; width:9px; height:9px; border-radius:50%; background:var(--acc); transform:translateX(-50%); box-shadow:0 0 0 4px color-mix(in srgb,var(--acc) 18%,transparent); }
+  .slot:last-child .slot-l::before{ bottom:auto; height:30px; }
+  @media (max-width:560px){
+    .slot{ grid-template-columns:1fr; }
+    .slot-l{ display:none; }
+    .slot-t{ text-align:left; padding-top:14px; }
+    .slot-b{ margin-top:2px; }
+  }
+  .slot-b{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:15px 18px; margin:8px 0; }
+  .slot-b h3{ font-size:14.5px; font-weight:700; margin-bottom:5px; }
+  .slot-b h3 small{ color:var(--faint); font-weight:500; font-size:12px; margin-left:6px; }
+  .slot-b p{ font-size:13.5px; color:var(--muted); }
+  .slot-b p b{ color:var(--txt); }
+  .was{ display:inline-block; font-size:11px; padding:2px 9px; border-radius:14px; background:color-mix(in srgb,var(--acc) 12%,transparent); color:var(--acc); font-weight:700; margin-top:8px; }
+  .gate-chip{ display:inline-block; font-size:11px; padding:2px 9px; border-radius:14px; background:color-mix(in srgb,var(--red) 12%,transparent); color:var(--red); font-weight:700; margin-top:8px; margin-left:6px; }
+
+  /* ── kpi ── */
+  .kpis{ display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-top:22px; }
+  .kpi{ background:var(--bg2); border:1px solid var(--line); border-radius:14px; padding:15px 17px; }
+  .kpi b{ display:block; font-size:24px; font-weight:800; color:var(--acc); letter-spacing:-.5px; font-feature-settings:'tnum'; }
+  .kpi span{ font-size:12px; color:var(--muted); }
+
+  /* ── разбор: претензия/сделано/хвост ── */
+  .claim{ border:1px solid var(--line); border-radius:16px; overflow:hidden; margin-bottom:16px; }
+  .claim-h{ display:flex; align-items:center; gap:12px; padding:14px 20px; background:var(--bg2); border-bottom:1px solid var(--line); }
+  .claim-h .sev{ font-size:10.5px; font-weight:800; letter-spacing:1px; padding:3px 10px; border-radius:16px; flex:none; }
+  .sev.was-bad{ background:var(--red); color:#fff; }
+  .claim-h b{ font-size:15px; }
+  .claim-g{ display:grid; grid-template-columns:1fr 1fr; }
+  @media (max-width:760px){ .claim-g{ grid-template-columns:1fr; } }
+  .claim-c{ padding:16px 20px; }
+  .claim-c + .claim-c{ border-left:1px solid var(--line); }
+  @media (max-width:760px){ .claim-c + .claim-c{ border-left:none; border-top:1px solid var(--line); } }
+  .claim-c h4{ font-size:11px; letter-spacing:1.6px; text-transform:uppercase; margin-bottom:9px; font-weight:800; }
+  .claim-c.done h4{ color:var(--acc); }
+  .claim-c.rest h4{ color:var(--amber); }
+  .claim-c ul{ list-style:none; }
+  .claim-c li{ font-size:13.5px; color:var(--muted); padding:4px 0 4px 20px; position:relative; }
+  .claim-c li b{ color:var(--txt); }
+  .claim-c.done li::before{ content:'✓'; position:absolute; left:0; color:var(--acc); font-weight:800; }
+  .claim-c.rest li::before{ content:'→'; position:absolute; left:0; color:var(--amber); font-weight:800; }
+
+  /* ── Q&A ── */
+  .qa{ border-bottom:1px solid var(--line); padding:18px 2px; }
+  .qa:last-child{ border-bottom:none; }
+  .qa b.q{ display:block; font-size:15px; margin-bottom:7px; }
+  .qa b.q::before{ content:'— '; color:var(--acc); }
+  .qa p{ font-size:13.5px; color:var(--muted); }
+  .qa p b{ color:var(--txt); }
+
+  /* ── вердикт ── */
+  .verdict{ border:1px solid color-mix(in srgb,var(--acc) 40%,transparent); background:linear-gradient(180deg,color-mix(in srgb,var(--acc) 7%,transparent),transparent); border-radius:18px; padding:26px 28px; }
+  .verdict h2{ margin-bottom:12px; }
+  .verdict p{ font-size:14.5px; color:var(--muted); max-width:800px; }
+  .verdict p b{ color:var(--txt); }
+  .verdict .cta{ display:inline-block; margin-top:18px; background:var(--acc); color:var(--on-acc); font-weight:800; padding:11px 22px; border-radius:12px; font-size:14px; }
+  .verdict .cta:hover{ text-decoration:none; filter:brightness(1.08); }
+
+  .foot{ margin-top:56px; padding-top:22px; border-top:1px solid var(--line); font-size:12px; color:var(--faint); display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+  code{ font-family:ui-monospace,'Cascadia Mono',Consolas,monospace; font-size:.92em; background:var(--bg2); border:1px solid var(--line); border-radius:6px; padding:1px 6px; color:var(--acc); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">СРЕДА × Департамент KAM · внутренний документ</div>
+  <h1>Критический разбор — и защита:<br/>как теперь работает департамент</h1>
+  <p class="lede">Стенд пересобран после вердикта «удовлетворён на 10%». Ниже — честный разбор: что было слабым,
+  что построено вместо этого, что осталось хвостами, и <b>как выглядит рабочий день департамента из 21 человека
+  и 34 цифровых сотрудников</b>, когда петля «черновик → правка эксперта → приёмка» становится способом работать.</p>
+  <div class="hero-meta">
+    <span class="pill acc">стенд: sreda-2-0.vercel.app/?org=kam</span>
+    <span class="pill">источник: «Архитектура допуска» v1.0 · перенос 1:1</span>
+    <span class="pill">проверено: 133/133 экранов · 0 ошибок консоли</span>
+    <span class="pill amb">прототип логики и управления — слой LLM подключается при развёртывании</span>
+  </div>
+</header>
+
+<!-- ══════════════ 1. КАК ТЕПЕРЬ РАБОТАЕТ ДЕПАРТАМЕНТ ══════════════ -->
+<section>
+  <h2><span class="n">01</span>Один день департамента</h2>
+  <p class="sub">Не абстракция — каждый пункт кликается на стенде и оставляет след в аудите.
+  Хронометраж «до → после» — из таблицы сценариев архитектуры допуска.</p>
+
+  <div class="day">
+    <div class="slot"><div class="slot-t">09:00</div><div class="slot-l"></div><div class="slot-b">
+      <h3>Вячеслав открывает готовый брифинг <small>Управление · KAM-DIRECTOR</small></h3>
+      <p>Двойник за ночь собрал воронку, статусы проектов и риски из CRM, Jira и финансовой системы.
+      Одна строка помечена красным: <b>прогноз завышен на 8,4 млн — дубль сделки в CRM</b>. Утвердить брифинг,
+      не разобравшись с ней, нельзя — гейт закрыт. Вячеслав правит, дубль уходит на слияние, исправление
+      запоминается агентом отчётности.</p>
+      <span class="was">60 мин → 15 мин</span><span class="gate-chip">гейт поймал дубль CRM</span>
+    </div></div>
+
+    <div class="slot"><div class="slot-t">09:05</div><div class="slot-l"></div><div class="slot-b">
+      <h3>Алерт план/факт приходит сам <small>агент отчётности · связь D1 ↔ все</small></h3>
+      <p>Отклонение по Продажам −17% (порог 15%) — push-алерт с причиной: две сделки сдвинуты на июль.
+      Раньше это находил ассистент руководителя за 2–3 часа ручного анализа в день. Формулировку «о людях»
+      двойник предложить не может — это вне его мандата, оценки людей делают люди.</p>
+      <span class="was">2–3 ч/день → real-time</span>
+    </div></div>
+
+    <div class="slot"><div class="slot-t">09:20</div><div class="slot-l"></div><div class="slot-b">
+      <h3>18 лидов с вебинара доезжают до продаж <small>агент лидогенерации · D8 → D5</small></h3>
+      <p>ML-скоринг, квалификация, распределение по загрузке менеджеров: 6 горячих — Виктору, Сергею и Денису
+      с готовым pre-call research, 8 тёплых — Елене с чек-листами. Один лид скоринг разметил неверно —
+      Полина видит это и доразмечает нишевый сегмент АванДата: <b>модель учится от человека</b>.</p>
+      <span class="was">реакция 2 дня → 15 минут · потери 20% → 0</span>
+    </div></div>
+
+    <div class="slot"><div class="slot-t">10:00</div><div class="slot-l"></div><div class="slot-b">
+      <h3>КП для банка — за 10 минут <small>Продажи · PLATFORM-SALES-AI</small></h3>
+      <p>Двойник собирает конфигурацию из продуктовой базы, цены из прайса, кейс Ростелекома — и приносит
+      черновик с двумя точками проверки: <b>скидка 25% выше политики</b> (взял прецедент прошлой сделки) и
+      неподтверждённый срок внедрения. Виктор правит. Кнопка «отправить клиенту» у двойника не работает
+      в принципе — <b>отправляет человек</b>, и это граница должностной инструкции, исполняемая кодом.</p>
+      <span class="was">45 мин → 10 мин</span><span class="gate-chip">отказ по границе ДИ — в аудите</span>
+    </div></div>
+
+    <div class="slot"><div class="slot-t">11:30</div><div class="slot-l"></div><div class="slot-b">
+      <h3>Тендер 44-ФЗ: демпинг пойман до подачи <small>Продажи · ENTERPRISE-SALES-GOV</small></h3>
+      <p>Двойник мониторит zakupki.gov.ru ежедневно, собрал чек-лист соответствия 14/14 и пакет документов.
+      Но цену взял «конкурентную» — ниже себестоимости по оценке трудозатрат. Сергей возвращает черновик
+      с комментарием, двойник пересчитывает по историческим данным аналогичных лотов. Подача — только
+      человеком с ЭЦП.</p>
+      <span class="was">16 ч → 8 ч</span>
+    </div></div>
+
+    <div class="slot"><div class="slot-t">14:00</div><div class="slot-l"></div><div class="slot-b">
+      <h3>Отчёт РЖД: 152-ФЗ срабатывает до отправки <small>Проекты РЖД · RAIL-PROJECT-DIRECTOR</small></h3>
+      <p>Статус вех, метрики отклонений, риски — собраны за час вместо четырёх. Агент-юрист в связке пометил
+      строку: в примере интеграционного теста <b>реальные данные пассажира</b> — во внешний документ нельзя.
+      Екатерина меняет на синтетический профиль. Инцидент-паттерн уходит в память двойника — второй раз
+      он эту ошибку не принесёт.</p>
+      <span class="was">4 ч → 1 ч</span><span class="gate-chip">ПДн не покинули контур</span>
+    </div></div>
+
+    <div class="slot"><div class="slot-t">15:30</div><div class="slot-l"></div><div class="slot-b">
+      <h3>Junior растёт, но в свои границы упирается <small>Продажи · JUNIOR-SALES · допуск B</small></h3>
+      <p>Перед звонком Елена прогоняет ролевую игру с двойником-наставником: 3 возражения, разбор ошибок,
+      чек-лист готовности. А вот запрос «покажи все сделки отдела» двойник отклоняет <b>до выполнения</b>:
+      допуск B видит только свои сделки. Отказ с предложением эскалации — в аудите, попытку видит владелец
+      платформы.</p>
+      <span class="was">обучение встроено в работу · допуск исполняется машиной</span>
+    </div></div>
+
+    <div class="slot"><div class="slot-t">17:00</div><div class="slot-l"></div><div class="slot-b">
+      <h3>HR закрывает день без рутины <small>HR · HR-BP-AI + агент HR-операций</small></h3>
+      <p>За день: 24 отклика отскринены (топ-5 к интервью), план онбординга нового ML-инженера собран за час —
+      с поправкой Ксении: доступ к ML-экспериментам не с первого дня, а после NDA, как велит регламент.
+      Один HR-BP спокойно держит департамент, который вырастет с 21 до 100+.</p>
+      <span class="was">онбординг 4 ч → 1 ч · скрининг ×20</span>
+    </div></div>
+
+    <div class="slot"><div class="slot-t">18:00</div><div class="slot-l"></div><div class="slot-b">
+      <h3>Аудит видел всё <small>Владелец платформы</small></h3>
+      <p>Каждая приёмка, каждая правка эксперта, каждый возврат, каждый отказ по границе и каждая попытка
+      доступа за пределами допуска — в одном журнале. Прозрачность — не квартальный отчёт,
+      а <b>свойство среды</b>.</p>
+    </div></div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><b>21 + 34</b><span>людей и цифровых сотрудников · 62% штата цифровые</span></div>
+    <div class="kpi"><b>5,5 ч/нед</b><span>экономия на сотрудника (по финмодели архитектуры)</span></div>
+    <div class="kpi"><b>215%</b><span>ROI за 12 месяцев · окупаемость на 5–6 месяце</span></div>
+    <div class="kpi"><b>0</b><span>необратимых действий без человека — по построению</span></div>
+  </div>
+</section>
+
+<!-- ══════════════ 2. КРИТИЧЕСКИЙ РАЗБОР ══════════════ -->
+<section>
+  <h2><span class="n">02</span>Критический разбор: три претензии</h2>
+  <p class="sub">Исходный вердикт — «удовлетворён на 10%». Разбираю каждую претензию без анестезии:
+  что именно было слабым, что построено, что честно осталось.</p>
+
+  <div class="claim">
+    <div class="claim-h"><span class="sev was-bad">БЫЛО</span><b>«Очень слабая проработка взаимодействий сотрудник ↔ цифровой сотрудник»</b></div>
+    <div class="claim-g">
+      <div class="claim-c done"><h4>Построено</h4><ul>
+        <li><b>Петля целиком:</b> шаги агентов по базам знаний → черновик с точками проверки → правка руками → приёмка. Задача больше не «выстрел в пустоту с тостом».</li>
+        <li><b>Возврат с комментарием</b> — обязателен текст, двойник перерабатывает на глазах; цикл виден в журнале.</li>
+        <li><b>Отказ как фича:</b> кнопка «отправить самому» существует — и двойник отказывает, цитируя ДИ. Границы исполняются кодом, не памяткой.</li>
+        <li><b>Гейт приёмки:</b> принять непроверенное нельзя — sev1/sev2-точки требуют эксперта.</li>
+        <li>Кросс-переход: MQL реально доезжают из канала маркетинга в канал продаж со следом в аудите.</li>
+      </ul></div>
+      <div class="claim-c rest"><h4>Хвосты — честно</h4><ul>
+        <li>Поле «своими словами» подбирает ближайший готовый сценарий: на неожиданный запрос черновик не совпадёт с вопросом. На показе — вести по сценариям-чипам.</li>
+        <li>Постановка задачи из панели «Команды» и вкладки «Управление» всё ещё заканчивается тостом — петля живёт во вкладке «Работа» профиля. Демо-путь это обходит.</li>
+      </ul></div>
+    </div>
+  </div>
+
+  <div class="claim">
+    <div class="claim-h"><span class="sev was-bad">БЫЛО</span><b>«Слабая проработка самих цифровых сотрудников»</b></div>
+    <div class="claim-g">
+      <div class="claim-c done"><h4>Построено</h4><ul>
+        <li><b>Состав:</b> каждый двойник — набор из 10 типов агентов документа, с покрытием штата («ассистент 21 из 21, HR 1 из 21»).</li>
+        <li><b>Базы знаний:</b> 15 RAG-баз с уровнями допуска; закрытая база кликается — и даёт живой отказ с эскалацией, попытка в аудите.</li>
+        <li><b>Журнал:</b> у двойника есть история — приёмки, правки, возвраты, отказы; пополняется каждым эпизодом.</li>
+        <li><b>Сценарии с хронометражем</b> «до → после» из главы 2.5 — у 13 героев демо-пути проработаны вручную под реальные классы ошибок (демпинг, 152-ФЗ, медицинская граница, last-click ловушка).</li>
+        <li><b>Допуски A/P/B в действии</b>, а не в легенде: junior получает отказ до выполнения.</li>
+      </ul></div>
+      <div class="claim-c rest"><h4>Хвосты — честно</h4><ul>
+        <li>Глубина неравномерна: у 13 героев ручные сценарии, у остальных 21 — автогенерация из ДИ. Петля работает у всех, но контент «хвоста» универсальнее.</li>
+        <li>Черновики детерминированы: пять прогонов подряд дадут один текст. Для прототипа логики это норма, для пилота — подключается реальный слой LLM.</li>
+      </ul></div>
+    </div>
+  </div>
+
+  <div class="claim">
+    <div class="claim-h"><span class="sev was-bad">БЫЛО</span><b>«Слабая вёрстка»</b></div>
+    <div class="claim-g">
+      <div class="claim-c done"><h4>Построено</h4><ul>
+        <li>Главный источник «дешевизны» закрыт: 5 из 9 направлений падали в непроработанную заглушку — теперь у каждого <b>рабочий стол с реальным KAM-артефактом и гейтом</b> (брифинг с дублем CRM, отчёт РЖД со 152-ФЗ, отчёт Зенита с медицинской границей).</li>
+        <li>Направления из 1–2 человек больше не «пустые экраны» — каркас «Экспертный центр»: модель масштабирования, двойники крупно, связи по матрице 9×9.</li>
+        <li>Чужие артефакты вымышленной компании (сделка «Гамма») вычищены из столов продаж и маркетинга.</li>
+        <li>Единый визуальный язык петли: точки проверки, гейты, отказы — один стиль во всех экранах, reduced-motion поддержан.</li>
+      </ul></div>
+      <div class="claim-c rest"><h4>Хвосты — честно</h4><ul>
+        <li>Столы 5 новых направлений — на общем чат-движке, не уникальные интерфейсы уровня IDE разработки. Осознанный размен в пользу глубины петли.</li>
+        <li>Аватары двойников — знаковые, не фотореалистичные. Для цифровых сотрудников это скорее честно, чем слабо, но фиксирую.</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ 3. ЗАЩИТА ══════════════ -->
+<section>
+  <h2><span class="n">03</span>Защита: вопросы, которые стоит задать — и ответы</h2>
+  <p class="sub">Я задал их себе за вас. Это те же вопросы, которые прозвучат на встрече.</p>
+  <div class="panel">
+    <div class="qa"><b class="q">Это красивая анимация или модель того, как реально будет работать департамент?</b>
+      <p>Модель. Каждый элемент петли — перенос из утверждённой архитектуры допуска: 10 типов агентов с покрытием,
+      15 RAG-баз с уровнями, границы ДИ, матрица связей 9×9, хронометраж сценариев. Прототип отвечает на главный
+      вопрос внедрения — <b>«как это контролируется»</b> — до того, как потрачен бюджет на LLM-слой.</p></div>
+    <div class="qa"><b class="q">Почему я должен верить черновикам ИИ, если он ошибается?</b>
+      <p>Не должны — <b>система спроектирована из недоверия</b>. Поэтому черновик обязан пройти эксперта (гейт),
+      источники подписываются (RAG), необратимые действия запрещены кодом (границы ДИ), а каждая ошибка,
+      пойманная человеком, уходит в память двойника. Демо намеренно показывает ошибки двойников — демпинг,
+      ПДн, медицинскую рекомендацию — и то, как петля их останавливает.</p></div>
+    <div class="qa"><b class="q">Что мешает сотруднику слить данные через двойника?</b>
+      <p>Допуск исполняется до выполнения запроса: junior-продажник не может увидеть чужие сделки, финансовая
+      сводка закрыта всем, кроме уровня A, данные РЖД и клубов АванДата изолированы отдельными контурами.
+      Каждая попытка — в аудите владельца платформы. On-premise: данные не покидают периметр.</p></div>
+    <div class="qa"><b class="q">Люди не потеряют навык, если черновики делает ИИ?</b>
+      <p>Петля построена наоборот: человек делает <b>самую экспертную часть</b> — находит демпинг, ловушку
+      атрибуции, нарушение 152-ФЗ. Рутина уходит, суждение остаётся и становится виднее. Для junior-ролей
+      двойник — наставник: ролевые игры, чек-листы, проверка знаний перед звонком.</p></div>
+    <div class="qa"><b class="q">Сколько это стоит и что мы получим?</b>
+      <p>По финмодели архитектуры: инвестиции 5,7 млн ₽, окупаемость на 5–6 месяце, экономия 5,5 ч/нед
+      на сотрудника, ROI 215% за 12 месяцев. Метрики замеряются с первого дня пилота: MAU, экономия времени
+      по сценариям, доля приёмок без правок.</p></div>
+    <div class="qa"><b class="q">Что нужно, чтобы начать?</b>
+      <p>Решение об утверждении. Фаза 1 — 4 недели: 21 пилотный пользователь, первыми — агент отчётности
+      (разгружает ассистента руководителя) и агент лидогенерации (сквозная воронка). Go/No-Go гейты
+      на каждой фазе roadmap 21 → 100+.</p></div>
+  </div>
+</section>
+
+<!-- ══════════════ 4. ВЕРДИКТ ══════════════ -->
+<section>
+  <div class="verdict">
+    <h2>Вердикт самому себе</h2>
+    <p>Первая версия стенда была <b>оргструктурой в красивой оболочке</b> — критика «10%» справедлива:
+    взаимодействие заканчивалось тостом, двойники были карточками, пять направлений жили на заглушке.
+    Текущая версия — <b>работающая модель управления</b>: петля с гейтами, отказами и следом; двойники
+    с составом, допусками и журналом; столы с реальными рисками департамента. Оставшиеся хвосты
+    (свободный ввод, глубина «хвоста» из 21 двойника, уникальные интерфейсы столов) — это работа
+    следующей итерации, и она не блокирует ни показ, ни решение о развёртывании.</p>
+    <p style="margin-top:12px">Если мерить той же шкалой: <b>с 10% — на уровень, который можно утверждать
+    на одной встрече</b>. Что осталось — названо поимённо выше, а не спрятано.</p>
+    <a class="cta" href="/?org=kam">Открыть стенд → sreda-2-0.vercel.app/?org=kam</a>
+  </div>
+</section>
+
+<div class="foot">
+  <span>СРЕДА × KAM · разбор и защита · 6 июля 2026</span>
+  <span>сценарий показа — <code>DEMO-KAM.md</code> · проверка: 133/133 экранов, 74/74 регресс, 0 ошибок консоли</span>
+</div>
+
+</div>
+</body>
+</html>
