@@ -369,13 +369,14 @@ const SKILL_FROM_RUN = {
 
 /* --- ШТАТ КОМПАНИИ: ~150 человек, разработка крупнейшая (80% бюджета) ------ */
 const HEADCOUNT = { dev:52, sales:26, marketing:16, design:11, analytics:14, hr:9, finance:14, legal:8 };
-const COMPANY_SIZE = Object.values(HEADCOUNT).reduce((a,b)=>a+b,0);  // = 150
+/* let — производные штата пересчитываются оверлеем оргструктуры (org-kam.js) */
+let COMPANY_SIZE = Object.values(HEADCOUNT).reduce((a,b)=>a+b,0);  // = 150
 
 /* Цифровые сотрудники — полноценный штат: в каждом отделе их не меньше, чем людей */
 const DIGITAL_HEADCOUNT = { dev:56, sales:28, marketing:18, design:12, analytics:16, hr:10, finance:15, legal:9 };
-const DIGITAL_SIZE = Object.values(DIGITAL_HEADCOUNT).reduce((a,b)=>a+b,0); // = 164
-const TOTAL_STAFF = COMPANY_SIZE + DIGITAL_SIZE;                            // = 314
-const DIGITAL_SHARE = Math.round(DIGITAL_SIZE / TOTAL_STAFF * 100);         // = 52%
+let DIGITAL_SIZE = Object.values(DIGITAL_HEADCOUNT).reduce((a,b)=>a+b,0); // = 164
+let TOTAL_STAFF = COMPANY_SIZE + DIGITAL_SIZE;                            // = 314
+let DIGITAL_SHARE = Math.round(DIGITAL_SIZE / TOTAL_STAFF * 100);         // = 52%
 
 /* ============================================================================
    ЦИФРОВОЙ ШТАТ — именные цифровые сотрудники в командах отделов.

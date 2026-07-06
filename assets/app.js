@@ -96,13 +96,13 @@ function modelBadge(id){
 /* ========================================================================== */
 /*  НАВИГАЦИЯ                                                                  */
 /* ========================================================================== */
-const ROLE_IDS = ['dev','sales','marketing','design','analytics','hr','finance','legal'];
+const ROLE_IDS = (window.__ORG && window.__ORG.roleIds) || ['dev','sales','marketing','design','analytics','hr','finance','legal'];
 const ROLE_CAT = { dev:'dev', sales:'sales', marketing:'mkt', design:'design', analytics:'analytics', hr:'hr', finance:'fin', legal:'legal' };
 const WORKSPACES = ROLE_IDS.map(id => { const d = DEPARTMENTS.find(x=>x.id===id);
   return { id, kind:'role', icon:d.icon, label:d.label, persona:d.persona,
     nav:[ {id:'asst:'+id,label:'Мой ассистент',icon:'💬'}, {id:id,label:'Рабочий стол',icon:'🖥️'}, {id:'flow:'+id,label:'Передачи',icon:'🔄'}, {id:'channel:'+id,label:'Канал отдела',icon:'💬'}, {id:'dpulse:'+id,label:'Пульс отдела',icon:'🫀'}, {id:'lib:'+id,label:'Умения и цифровые сотрудники',icon:'🧩'}, {id:'team:'+id,label:'Команда',icon:'👥'} ] };
 }).concat([
-  { id:'exec', kind:'mgmt', icon:'📊', label:'Менеджмент', persona:'CEO · Кирилл',
+  { id:'exec', kind:'mgmt', icon:'📊', label:'Менеджмент', persona:(window.__ORG && window.__ORG.execPersona) || 'CEO · Кирилл',
     nav:[ {id:'pulse',label:'Пульс компании',icon:'🫀'}, {id:'exec',label:'Дашборд компании',icon:'📊'}, {id:'company',label:'Оргструктура',icon:'🏢'}, {id:'flowx',label:'Передачи компании',icon:'🔄'}, {id:'project',label:'Проекты на ревью',icon:'📁'},
       {sep:'Платформа Среды'},
       {id:'modules',label:'С чего начать',icon:'🪜'}, {id:'talent',label:'Цифровой найм',icon:'🌊'}, {id:'forge',label:'Цифровое производство',icon:'🏭'}, {id:'bills',label:'Счета Среды',icon:'🧾'} ] },
@@ -425,7 +425,7 @@ function renderTeam(root, id){ const cfg=COCKPITS[id]; const d=DEPARTMENTS.find(
 /* ========================================================================== */
 const CAT2ROLE = { dev:'dev', sales:'sales', mkt:'marketing', design:'design', analytics:'analytics', hr:'hr', fin:'finance', legal:'legal' };
 /* кто сидит в кабинете роли (имя + должность) — определяет рой ассистента под позицию */
-const ASST_WHO = {
+const ASST_WHO = (window.__ORG && window.__ORG.asstWho) || {
   dev:{name:'Игорь',role:'Тимлид'}, sales:{name:'Денис',role:'РОП'}, marketing:{name:'Аня',role:'Маркетолог (лид)'},
   design:{name:'Соня',role:'Арт-директор'}, analytics:{name:'Лена',role:'Продуктовый аналитик'},
   hr:{name:'Марина',role:'HRD'}, finance:{name:'Кост',role:'CFO'}, legal:{name:'Ден',role:'Юрдиректор'},
@@ -490,7 +490,7 @@ function asstChats(id, hi){ const S=(window.__ASSTCHATS||(window.__ASSTCHATS={})
   if(!S[id]) S[id]={ list:[{ title:'Текущий чат', msgs:[{who:'a',text:hi}] }], active:0 };
   return S[id]; }
 function renderAssistant(root, id){
-  const P = PERSONAL[id]; const d = DEPARTMENTS.find(x=>x.id===id);
+  const P = PERSONAL[id] || { hi:'На связи. Чем помочь?', skills:[], agents:[], tasks:[] }; const d = DEPARTMENTS.find(x=>x.id===id);
   const inst = installStore()[id];
   const who = ASST_WHO[id]; const mySw = who && ROLE_SWARM[who.role];
   let sen = 'spec';
@@ -646,7 +646,7 @@ function renderAssistant(root, id){
 /* ========================================================================== */
 /*  ПУЛЬС ОТДЕЛА — заземлённый живой поток задач у главы направления           */
 /* ========================================================================== */
-const DEPT_TASK = {
+const DEPT_TASK = (window.__ORG && window.__ORG.deptTask) || {
   dev:      { c:'#60a5fa', l:['PR #483','код-ревью','тест 143✓','деплой','миграция БД','фикс бага'] },
   sales:    { c:'#34d399', l:['КП','follow-up','лид','демо','скидка','реактивация'] },
   marketing:{ c:'#a78bfa', l:['лендинг','письмо','пост','SEO-аудит','креатив','UTM'] },
@@ -1125,7 +1125,7 @@ function renderDeptPulse(root, roleId){
   }, 820);
 }
 
-function flowState(){ return window.__FLOWST || (window.__FLOWST = { gamma:0, launch:2, hire:1 }); }
+function flowState(){ return window.__FLOWST || (window.__FLOWST = FLOWS.reduce((a,f)=>{ a[f.id] = (typeof f.init==='number') ? f.init : ({gamma:0,launch:2,hire:1}[f.id] || 0); return a; }, {})); }
 function flowRet(){ return window.__FLOWRET || (window.__FLOWRET = {}); }
 function roleLabel(rid){ const d=DEPARTMENTS.find(x=>x.id===rid); return d?d.label:rid; }
 /* гейт передачи: пока в рабочей среде роли открыт критичный риск (sev1) — передавать нельзя */
@@ -1151,7 +1151,8 @@ function flowStatusHTML(clickable){
 }
 /* След сделки «Гамма» — единый прослеживаемый объект (источник: flowState().gamma) */
 function dealTraceHTML(){
-  const f = FLOWS.find(x=>x.id==='gamma'); const cur = flowState().gamma;
+  /* дефолт — «Гамма»; в оверлейной оргструктуре — первый сквозной поток */
+  const f = FLOWS.find(x=>x.id==='gamma') || FLOWS[0]; const cur = flowState()[f.id] || 0;
   return `<div class="dt">${f.steps.map((s,i)=>{ const stt=i<cur?'done':i===cur?'active':'wait';
     return `<button class="dt-step ${stt}" data-go="flow:${s.role}"><span class="dt-ic">${s.av}</span>
       <div class="dt-b"><b>${s.who} · ${roleLabel(s.role)}</b><small>${i<cur?'✓ передал: '+s.out:i===cur?'● сейчас: '+s.act.toLowerCase():'ждёт'}</small></div>
@@ -1167,7 +1168,7 @@ function renderCompany(root){
   const totalFns = order.reduce((a,r)=>a+Object.keys(fnGroups(r)).length,0);
   let exp = null;
   function draw(){
-    root.innerHTML = workHead(d, `Оргструктура · ${TOTAL_STAFF} в штате: ${COMPANY_SIZE} людей + ${DIGITAL_SIZE} цифровых сотрудников в 8 отделах`) + `
+    root.innerHTML = workHead(d, `Оргструктура · ${TOTAL_STAFF} в штате: ${COMPANY_SIZE} людей + ${DIGITAL_SIZE} цифровых сотрудников в ${ROLE_IDS.length} отделах`) + `
     <div class="grid-kpi" style="margin-bottom:14px">
       <div class="kpi"><div class="l">Всего в штате</div><div class="v">${TOTAL_STAFF}</div><div class="d flat">● люди и цифровые вместе</div></div>
       <div class="kpi"><div class="l">Людей</div><div class="v">${COMPANY_SIZE}</div><div class="d flat">● решения и вкус — за ними</div></div>
@@ -1563,7 +1564,7 @@ function renderDashboard(root, d){
     </div>
 
     <div class="panel">
-      <h2>🔗 След сделки «Гамма» <span class="tag">один объект — через всю компанию · клик → этап</span></h2>
+      <h2>🔗 След: ${(FLOWS.find(x=>x.id==='gamma')||FLOWS[0]).title} <span class="tag">один объект — через всю компанию · клик → этап</span></h2>
       <div id="dealTrace">${dealTraceHTML()}</div>
     </div>
 
@@ -4003,10 +4004,11 @@ function personOf(dept, i){
   const p = Array.isArray(t) ? {name:t[0],role:t[1],task:t[2],emoji:t[3],fn:t[4]} : {...t};
   const h = strHash(p.name + dept + p.role);
   const female = (p.emoji||'').indexOf('👩') >= 0;
-  const surname = SURNAMES[h % SURNAMES.length] + (female ? 'а' : '');
+  /* явная фамилия из данных (реальная оргструктура) важнее генерируемой */
+  const surname = p.surname || (SURNAMES[h % SURNAMES.length] + (female ? 'а' : ''));
   const isLead = p.fn==='Руководство' || /лид|директор|роп|cfo|hrd|тимлид|арт-директор|глав/i.test(p.role);
   const grade = isLead ? 'Lead' : ['Senior','Middle+','Middle','Senior'][h % 4];
-  const lead = i===0 ? 'CEO · Кирилл' : (()=>{ const l=cfg.team[0]; const ln=Array.isArray(l)?l[0]:l.name; const lr=Array.isArray(l)?l[1]:l.role; return ln+' · '+lr; })();
+  const lead = p.lead || (i===0 ? ((window.__ORG && window.__ORG.execLead) || 'CEO · Кирилл') : (()=>{ const l=cfg.team[0]; const ln=Array.isArray(l)?l[0]:l.name; const lr=Array.isArray(l)?l[1]:l.role; return ln+' · '+lr; })());
   const tn = translit(p.name);
   return { ...p, dept, i, surname, female, grade, isLead, lead,
     tab: 'T-' + String(1000 + (h % 900)).slice(-4+1).padStart(4,'0'),
@@ -4368,7 +4370,7 @@ function portalHead(icon, label, sub, phase){
     <h2>${label} <span class="ph-tag">${phase}</span></h2><p>${sub}</p></div>
     <span class="badge out"><span class="dot"></span>Платформа Среды · внешний контур</span></div>`;
 }
-const tlColor = (a) => DEPT_TASK[TL_ROLES[a.role].dept].c;
+const tlColor = (a) => { const tr = TL_ROLES[a.role]; return ((tr && DEPT_TASK[tr.dept]) || {c:'#36c994'}).c; };
 /* внешний контур: клиент пользуется Наймом/Производством БЕЗ Inside */
 function isExtWS(){ return state.ws === 'platform'; }
 function insideUpsell(){
