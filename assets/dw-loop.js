@@ -224,6 +224,15 @@
   /* ══════════════════════════════════════════════════════════════════════ */
   if (!window.__ORG_KAM) return;
 
+  /* 0. Демо-гигиена стенда: платформенный маркетплейс и тур по вымышленной
+        компании прячем — руководству показываем только контур департамента */
+  const exWS = WORKSPACES.find(w=>w.id==='exec');
+  if (exWS){ const i = exWS.nav.findIndex(n=>n.sep==='Платформа Среды'); if (i>=0) exWS.nav.splice(i, exWS.nav.length-i); }
+  const pIdx = WORKSPACES.findIndex(w=>w.id==='platform'); if (pIdx>=0) WORKSPACES.splice(pIdx,1);
+  const hideCss = document.createElement('style');
+  hideCss.textContent = '#tourFab{display:none!important}';
+  document.head.appendChild(hideCss);
+
   /* 1. Рабочие столы новых направлений: чат + артефакт с гейтом (envCore) */
   ['mgmt','strategy','prod','rzd','avandata'].forEach(id=>{
     ENVS2[id] = (root,d)=>envCore(root,d,c=>chatEnvBuild(d,c));

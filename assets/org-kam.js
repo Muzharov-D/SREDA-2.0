@@ -1110,6 +1110,8 @@
     roleIds: KAM_ROLE_IDS,
     execPersona: 'Глава департамента · Вячеслав',
     execLead: 'Вячеслав · Глава департамента',
+    surgeLabel: '▶ Показать поток задач',
+    load: { mgmt:72, strategy:64, dev:88, prod:84, sales:76, rzd:79, hr:58, marketing:81, avandata:61 },
     deptTask: {
       mgmt:     { c:'#e8c468', l:['брифинг','апрув бюджета','протокол','решение','стратсессия','алерт >15%'] },
       strategy: { c:'#a78bfa', l:['TAM/SAM/SOM','PRD','конкурент-срез','roadmap','гипотеза','дайджест'] },

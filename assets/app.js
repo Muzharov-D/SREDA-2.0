@@ -97,6 +97,8 @@ function modelBadge(id){
 /*  НАВИГАЦИЯ                                                                  */
 /* ========================================================================== */
 const ROLE_IDS = (window.__ORG && window.__ORG.roleIds) || ['dev','sales','marketing','design','analytics','hr','finance','legal'];
+/* подпись «запуска роя»: для реальной оргструктуры — язык менеджмента, не жаргон */
+const SURGE_LBL = (window.__ORG && window.__ORG.surgeLabel) || '⚡ Запустить рой';
 const ROLE_CAT = { dev:'dev', sales:'sales', marketing:'mkt', design:'design', analytics:'analytics', hr:'hr', finance:'fin', legal:'legal' };
 const WORKSPACES = ROLE_IDS.map(id => { const d = DEPARTMENTS.find(x=>x.id===id);
   return { id, kind:'role', icon:d.icon, label:d.label, persona:d.persona,
@@ -688,7 +690,7 @@ function renderPulse(root, d){
         </div>
       </div>
       <aside class="pls-side">
-        <button class="btn go pls-surge" id="plsSurge" title="Открыть пусковую: очередь проектов, которые можно запустить роем по всей компании">⚡ Запустить рой</button>
+        <button class="btn go pls-surge" id="plsSurge" title="Открыть пусковую: очередь проектов, которые можно запустить по всей компании">${SURGE_LBL}</button>
         <button class="btn ghost pls-proj" id="plsProj">🚀 ${MEGA_PROJECT.title} · ${projProgress().pct}%</button>
         <div class="side-normal">
         <div class="of-live"><span class="of-dot"></span><b id="pls-inflight">—</b> задач в работе <i>прямо сейчас</i></div>
@@ -772,7 +774,7 @@ function renderPulse(root, d){
           + (t.state==='blocked'?`<button class="pj-fix" data-fix="${t.dept}">⛔ снять sev1-риск — рабочий стол «${roleLabel(t.dept)}» →</button>`:''); }).join('')}
         </div>`; }).join('')}`;
     }).join('<div style="height:10px"></div>')
-    + `<div class="od-gov">Трасса закрывает задачи «в работе» по всем активным проектам. ⛔ — реальный гейт. Новые проекты — кнопка «⚡ Запустить рой».</div>`;
+    + `<div class="od-gov">Трасса закрывает задачи «в работе» по всем активным проектам. ⛔ — реальный гейт. Новые проекты — кнопка «${SURGE_LBL}».</div>`;
   }
   function refreshProj(){
     const pp=$('#pjPanel',root); if(pp && projMode){ pp.innerHTML=projPanelHTML(); wireProj(); }
@@ -823,7 +825,7 @@ function renderPulse(root, d){
   function setProj(on){
     projMode=on; projGen++;
     const pb=$('#plsProj',root), pn=root.querySelector('.side-normal'), pp=$('#pjPanel',root);
-    const mp=$('#mpPanel',root); if(mp&&on){ mp.style.display='none'; const sb=$('#plsSurge',root); if(sb) sb.innerHTML='⚡ Запустить рой'; }
+    const mp=$('#mpPanel',root); if(mp&&on){ mp.style.display='none'; const sb=$('#plsSurge',root); if(sb) sb.innerHTML=SURGE_LBL; }
     if(pb){ pb.classList.toggle('on',on); pb.innerHTML = on ? '← Обычный пульс' : projBtnLbl(); }
     if(pn) pn.style.display=on?'none':'';
     if(pp){ pp.style.display=on?'':'none'; if(on){ pp.innerHTML=projPanelHTML(); wireProj(); } }
@@ -925,7 +927,7 @@ function renderPulse(root, d){
       ${queue.map(pr=>{ const n=pr.phases.reduce((a,ph)=>a+ph.tasks.length,0);
         const deps=[...new Set(pr.phases.flatMap(ph=>ph.tasks.map(t=>roleLabel(t.dept))))].join(' · ');
         return `<div class="mp-q"><div class="mp-qh"><i>${pr.icon}</i><div><b>${pr.title}</b><small>${pr.ask}</small><small class="pj-meta">${n} задач · ${deps} · ${pr.deadline}</small></div></div>
-          <button class="btn go" data-mplaunch="${pr.id}">⚡ Запустить рой</button></div>`; }).join('')}</div>`
+          <button class="btn go" data-mplaunch="${pr.id}">${SURGE_LBL}</button></div>`; }).join('')}</div>`
       :'<div class="od-gov empty-note">Очередь пуста — все запросы запущены.</div>'}
     <div class="od-gov">Уровни запуска: проекты компании — здесь · задачи отдела — «⚡» на пульсе отдела · обычная задача — ⌘K «Поставить задачу Среде».</div>`;
   }
@@ -934,7 +936,7 @@ function renderPulse(root, d){
     const pn=root.querySelector('.side-normal'), mp=$('#mpPanel',root), sb=$('#plsSurge',root);
     if(pn) pn.style.display=(on||projMode)?'none':'';
     if(mp){ mp.style.display=on?'':'none'; if(on){ mp.innerHTML=launchPanelHTML(); wireLaunch(); } }
-    if(sb) sb.innerHTML = on?'← Закрыть пусковую':'⚡ Запустить рой';
+    if(sb) sb.innerHTML = on?'← Закрыть пусковую':SURGE_LBL;
   }
   function wireLaunch(){
     root.querySelectorAll('[data-mpgo]').forEach(b=>b.onclick=()=>{ setLaunch(false); setProj(true); });
@@ -1035,7 +1037,7 @@ function renderDeptPulse(root, roleId){
     <div class="dp-wrap">
       <div class="dp-stage nm-stage" id="dpStage" role="group" aria-label="Карта-пульс отдела «${cfg.role}»: функции и сотрудники как нейроны"><div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Пульс отдела «${cfg.role}»: ${hc} людей и ${dhc} цифровых сотрудников по функциям — ${fns.map((f,fi)=>`${f}: ${hAlloc[fi]} людей и ${dAlloc[fi]} цифровых`).join('; ')}. Клик по нейрону — профиль сотрудника.</div></div>
       <aside class="dp-side">
-        <button class="btn go pls-surge" id="dpSurge" title="Открыть пусковую отдела: очередь задач бэклога, которые можно запустить роем">⚡ Запустить рой</button>
+        <button class="btn go pls-surge" id="dpSurge" title="Открыть пусковую отдела: очередь задач бэклога, которые можно запустить">${SURGE_LBL}</button>
         <div class="side-proj" id="dpQueue" style="display:none"></div>
         <div class="of-live"><span class="of-dot"></span><b id="dp-inflight">—</b> задач в работе <i>в отделе</i></div>
         <div class="of-live"><span class="lg-mark d"></span><b id="dp-inf-d">—</b> делают цифровые сотрудники</div>
@@ -1068,7 +1070,7 @@ function renderDeptPulse(root, roleId){
   }
   function setDQ(on){ dq=on; const q=$('#dpQueue',root), sb=$('#dpSurge',root);
     if(q){ q.style.display=on?'':'none'; if(on){ q.innerHTML=dpQueueHTML(); wireDQ(); } }
-    if(sb) sb.innerHTML=on?'← Закрыть очередь':'⚡ Запустить рой'; }
+    if(sb) sb.innerHTML=on?'← Закрыть очередь':SURGE_LBL; }
   function wireDQ(){
     root.querySelectorAll('[data-dql]').forEach(b=>b.onclick=()=>{
       const it=cfg.board.backlog[+b.dataset.dql]; if(!it) return;
@@ -1170,13 +1172,13 @@ function renderCompany(root){
   function draw(){
     root.innerHTML = workHead(d, `Оргструктура · ${TOTAL_STAFF} в штате: ${COMPANY_SIZE} людей + ${DIGITAL_SIZE} цифровых сотрудников в ${ROLE_IDS.length} отделах`) + `
     <div class="grid-kpi" style="margin-bottom:14px">
-      <div class="kpi"><div class="l">Всего в штате</div><div class="v">${TOTAL_STAFF}</div><div class="d flat">● люди и цифровые вместе</div></div>
-      <div class="kpi"><div class="l">Людей</div><div class="v">${COMPANY_SIZE}</div><div class="d flat">● решения и вкус — за ними</div></div>
-      <div class="kpi"><div class="l">Цифровых сотрудников</div><div class="v">${DIGITAL_SIZE}</div><div class="d up">▲ ${DIGITAL_SHARE}% штата · у каждого ДИ</div></div>
-      <div class="kpi"><div class="l">Функций / дисциплин</div><div class="v">${totalFns}</div><div class="d up">▲ детально по ролям</div></div>
+      <div class="kpi" data-kgo="pulse" style="cursor:pointer" title="Открыть пульс компании" role="button" tabindex="0"><div class="l">Всего в штате</div><div class="v">${TOTAL_STAFF}</div><div class="d flat">● люди и цифровые вместе → пульс</div></div>
+      <div class="kpi" data-kexp style="cursor:pointer" title="${exp==='*'?'Свернуть отделы':'Раскрыть всех людей по отделам'}" role="button" tabindex="0"><div class="l">Людей</div><div class="v">${COMPANY_SIZE}</div><div class="d flat">● решения и вкус — за ними → ${exp==='*'?'свернуть':'раскрыть'}</div></div>
+      <div class="kpi" data-kgo="workers" style="cursor:pointer" title="Открыть штат цифровых сотрудников" role="button" tabindex="0"><div class="l">Цифровых сотрудников</div><div class="v">${DIGITAL_SIZE}</div><div class="d up">▲ ${DIGITAL_SHARE}% штата · у каждого ДИ → реестр</div></div>
+      <div class="kpi" data-kexp style="cursor:pointer" title="${exp==='*'?'Свернуть отделы':'Раскрыть все функции'}" role="button" tabindex="0"><div class="l">Функций / дисциплин</div><div class="v">${totalFns}</div><div class="d up">▲ детально по ролям → ${exp==='*'?'свернуть':'раскрыть'}</div></div>
     </div>
     <div class="oc-grid">${order.map(r=>{
-      const dep=DEPARTMENTS.find(x=>x.id===r), hc=HEADCOUNT[r], dhc=DIGITAL_HEADCOUNT[r], groups=fnGroups(r), fns=Object.keys(groups), lead=teamOf(r)[0], open=exp===r;
+      const dep=DEPARTMENTS.find(x=>x.id===r), hc=HEADCOUNT[r], dhc=DIGITAL_HEADCOUNT[r], groups=fnGroups(r), fns=Object.keys(groups), lead=teamOf(r)[0], open=exp==='*'||exp===r;
       return `<div class="oc-dep ${open?'open':''}">
         <button class="oc-head" data-exp="${r}"><span class="oc-ic">${dep.icon}</span><div class="oc-id"><b>${dep.label}</b><small>лид: ${lead.name} · ${lead.role}</small></div><span class="oc-hc">${hc}<i>👤</i> ${dhc}<i>🤖</i></span><span class="oc-caret">${open?'▾':'▸'}</span></button>
         <div class="oc-bar oc-split"><i style="width:${Math.round(hc/max*100)}%"></i><u style="width:${Math.round(dhc/max*100)}%"></u></div>
@@ -1189,6 +1191,8 @@ function renderCompany(root){
       </div>`; }).join('')}</div>
     <div class="od-gov" style="margin-top:13px">Одна Среда = одна компания. ${COMPANY_SIZE} людей и ${DIGITAL_SIZE} цифровых сотрудников в одном штатном расписании: у людей — рои под должность, у цифровых — должностные инструкции и руководители-люди. Всё связано библиотекой, данными с правами, передачами и governance.</div>`;
     root.querySelectorAll('[data-exp]').forEach(b=>b.onclick=()=>{ exp = exp===b.dataset.exp?null:b.dataset.exp; draw(); });
+    root.querySelectorAll('[data-kgo]').forEach(k=>{ const go=()=>navTo(k.dataset.kgo); k.onclick=go; k.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); go(); } }; });
+    root.querySelectorAll('[data-kexp]').forEach(k=>{ const tg=()=>{ exp = exp==='*'?null:'*'; draw(); }; k.onclick=tg; k.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); tg(); } }; });
     root.querySelectorAll('.oc-open[data-go]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); navTo('team:'+b.dataset.go); });
     root.querySelectorAll('.oc-p[data-wgo]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); navTo('worker:'+b.dataset.wgo); });
     root.querySelectorAll('.oc-p[data-pgo]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); navTo('person:'+b.dataset.pgo); });
@@ -1587,7 +1591,10 @@ function renderDashboard(root, d){
   const bars = $('#bars', root);
   ROLE_IDS.forEach(r => {
     const dep = DEPARTMENTS.find(x=>x.id===r);
-    const load = ({dev:88, sales:76, marketing:81, design:64, analytics:72, hr:58, finance:69, legal:61})[r];
+    /* загрузка: из оверлея оргструктуры → дефолтная карта → детерминированный фолбэк (не бывает undefined) */
+    const load = (window.__ORG && window.__ORG.load && window.__ORG.load[r])
+      || ({dev:88, sales:76, marketing:81, design:64, analytics:72, hr:58, finance:69, legal:61})[r]
+      || (55 + strHash(r) % 35);
     const row = el(`<div class="bar-row" style="cursor:pointer" title="Открыть отдел"><div class="nm">${dep.icon} ${dep.label} <small style="color:var(--muted)">· 👤${HEADCOUNT[r]}+🤖${DIGITAL_HEADCOUNT[r]}</small></div>
        <div class="track"><div class="fill" style="background:${DEPT_TASK[r].c}"></div></div><div class="pct">${load}%</div></div>`);
     row.onclick = () => navTo('team:'+r);
