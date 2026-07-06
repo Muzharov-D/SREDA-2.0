@@ -1204,47 +1204,159 @@
   };
   const AG2KEY = { }; Object.keys(AG).forEach(k=>AG2KEY[AG[k][1]] = k);
 
-  function buildSpec(w, L, deptLabel){
-    const ji = w.ji;
-    const agents = L.crew.map(k=>{
-      const meta = AG[k], sp = AGSPEC[k]; if (!meta || !sp) return null;
-      const rags = L.rags.filter(r=>!r.denied).map(r=>r.id+' «'+r.name+'»');
-      const prompt =
-`Ты — ${meta[1].toLowerCase()} в составе цифрового сотрудника ${w.name} (${w.title}, направление «${deptLabel}»).
+  /* ---- MCP-каталог: коннекторы платформы, через которые агенты получают   */
+  /* знания и руки. Scopes — жёсткие: что агенту можно, задаёт платформа.    */
+  const MCP = {
+    crm:      ['mcp-crm','CRM (amoCRM/Bitrix)','сделки, контакты, история касаний','чтение по допуску · черновики карточек'],
+    zakupki:  ['mcp-zakupki','Госзакупки (zakupki.gov.ru)','извещения, протоколы, НМЦК по профилю','только чтение · мониторинг по ключам'],
+    spark:    ['mcp-spark','СПАРК / Контур.Фокус','профили компаний, риски, аффилированность','только чтение'],
+    jira:     ['mcp-jira','Jira / трекер','бэклог, спринты, вехи, velocity','чтение · черновики задач'],
+    git:      ['mcp-git','Git-репозитории','код, PR, история изменений','чтение · комментарии ревью'],
+    ci:       ['mcp-ci','CI/CD','статусы сборок, тестовые прогоны, деплой-конвейер','чтение · запуск тестовых прогонов'],
+    fin1c:    ['mcp-1c','1С (финконтур)','счета, акты, план/факт бюджета','только чтение по допуску'],
+    kedo:     ['mcp-kedo','КЭДО / кадровый контур','штатное расписание, отпуска, документы','только чтение по допуску HR'],
+    cal:      ['mcp-calendar','Календари','встречи, загрузка, слоты команды','чтение · черновики приглашений'],
+    mail:     ['mcp-email','Почта / рассылки','треды, сегменты, шаблоны','ТОЛЬКО черновики — отправка человеком'],
+    bi:       ['mcp-bi','BI-витрины','метрики продуктов, воронки, когорты','только чтение'],
+    ats:      ['mcp-ats','ATS (подбор)','вакансии, отклики, этапы воронки найма','чтение · черновики'],
+    calls:    ['mcp-calls','Телефония / встречи','транскрипты звонков и встреч (с согласия)','чтение агрегатов'],
+    ecm:      ['mcp-ecm','Авандок ECM','корпоративные документы, версии, согласования','чтение по правам роли'],
+    sport:    ['mcp-sport','Спортивные датасеты','видеоаналитика, биометрия, статистика игроков','чтение в контуре NDA клуба'],
+    rzd:      ['mcp-rzd','Шлюз РЖД','проектные данные CDP/EDP/Events заказчика','изолированный контур · 152-ФЗ'],
+    web:      ['mcp-web','Веб-поиск','открытые источники, новости, сайты','чтение · обязательная ссылка на источник'],
+    ml:       ['mcp-ml','ML-платформа','эксперименты, датасеты, метрики моделей, drift','чтение · запуск валидаций'],
+  };
+  /* направление → доступные коннекторы (периметр отдела) */
+  const DEPT_MCP2 = {
+    mgmt:['crm','jira','fin1c','cal','mail','bi','ecm'], strategy:['bi','spark','web','ecm','crm'],
+    dev:['git','ci','jira','ml','ecm','rzd'], prod:['jira','ecm','crm','cal','mail','fin1c'],
+    sales:['crm','zakupki','spark','mail','cal','ecm','calls'], rzd:['rzd','jira','ecm','cal','mail'],
+    hr:['ats','kedo','cal','mail','calls'], marketing:['mail','bi','web','crm','ecm'], avandata:['sport','crm','web','ecm'],
+  };
+  /* тип агента → какие коннекторы ему релевантны из периметра отдела */
+  const TYPE_MCP = {
+    asst:['cal','mail','jira'], writer:['ecm','mail'], analyst:['bi','fin1c','crm','ml'],
+    research:['web','spark','zakupki'], pm:['jira','cal','ecm'], sales:['crm','zakupki','calls','mail'],
+    mkt:['mail','bi','web','crm'], devag:['git','ci','ml','jira','rzd'], legal:['ecm','zakupki','rzd'], hr:['ats','kedo','cal','calls'],
+  };
+
+  /* ---- пакеты знаний проектов: чем платформа кормит агентов направления.  */
+  /* Пополняются НЕ ручными правками, а артефактами принятых итераций петли. */
+  const KNOW = {
+    mgmt:     [['Портфель и решения департамента','протоколы, приоритеты, история решений','пополняется: каждый утверждённый брифинг и протокол']],
+    strategy: [['Рыночная модель KAM','TAM/SAM/SOM, конкурентные срезы, гипотезы','пополняется: принятые исследования и вердикты по гипотезам']],
+    dev:      [['Архитектура CDP/EDP/Events','ADR, контракты интеграций, история инцидентов','пополняется: каждый принятый ревью и пост-мортем'],
+               ['Реестр моделей и бенчмарков','карточки моделей, результаты A/B, security-прогоны','пополняется: каждая валидация']],
+    prod:     [['Методология внедрений','типовые планы, грабли (air-gap, доступы), SLA-история','пополняется: ретро каждого внедрения']],
+    sales:    [['Кейсы и прайс-политика','референсы (Ростелеком/ФСС), лимиты скидок, выигранные КП','пополняется: каждое принятое КП и итог сделки'],
+               ['Тендерная история','наши участия, цены победителей, «заточки»','пополняется: каждый разбор итогов лота']],
+    rzd:      [['Регламенты и контекст РЖД','стандарты ИБ, процедуры согласований, контакты смежников','пополняется: каждый принятый отчёт и протокол']],
+    hr:       [['Профили ролей и грабли найма','критерии, запрещённые признаки, история адаптаций','пополняется: каждый закрытый найм и ретро онбординга']],
+    marketing:[['Голос бренда и эффективность каналов','бренд-бук, CPL/ROAS-история, работающие форматы','пополняется: разбор каждой кампании']],
+    avandata: [['Методология профилирования','модели, пороги риск-индексов, NDA-правила клубов','пополняется: каждый принятый клубом отчёт']],
+  };
+
+  /* ---- атрибуция выученного правила агенту по домену риска ---------------- */
+  function ruleAgent(crew, text){
+    const t = (text||'').toLowerCase();
+    const pick = (k)=>crew.indexOf(k)>=0 ? k : null;
+    if (/152-фз|44-фз|223-фз|38-фз|nda|пдн|договор|тайн|юрисдикц|демпинг/.test(t)) return pick('legal')||pick('sales')||pick('writer')||crew[1]||crew[0];
+    if (/скидк|кп|тендер|прайс|сделк|клиент|лид/.test(t)) return pick('sales')||pick('writer')||crew[1]||crew[0];
+    if (/датасет|модел|деплой|миграц|ci|код|drift|контракт api|шина/.test(t)) return pick('devag')||pick('analyst')||crew[1]||crew[0];
+    if (/метрик|прогноз|ltv|cac|дубл|атрибуц|воронк|unit|план\/факт/.test(t)) return pick('analyst')||crew[1]||crew[0];
+    if (/кандидат|скрининг|онбординг|вакансия|дискрим/.test(t)) return pick('hr')||crew[1]||crew[0];
+    if (/бренд|пост|рассылк|контент|согласи|кампан/.test(t)) return pick('mkt')||pick('writer')||crew[1]||crew[0];
+    if (/веха|срок|план|доступ|смежник|блокир/.test(t)) return pick('pm')||crew[1]||crew[0];
+    return pick('writer')||crew[1]||crew[0];
+  }
+
+  function agentPrompt(w, L, deptLabel, k, learned, mcp, packs){
+    const ji = w.ji, meta = AG[k], sp = AGSPEC[k];
+    const rags = L.rags.filter(r=>!r.denied).map(r=>r.id+' «'+r.name+'»');
+    return `Ты — ${meta[1].toLowerCase()} в составе цифрового сотрудника ${w.name} (${w.title}, направление «${deptLabel}»).
 Руководитель-человек: ${w.lead}. Допуск носителя: ${L.acc} (${L.acc==='A'?'администратор':L.acc==='P'?'продвинутый':'базовый'}).
 
 МИССИЯ НОСИТЕЛЯ: ${ji.mission}
 ТВОЯ ФУНКЦИЯ: ${sp.role(w)}.
 
-ИСТОЧНИКИ: только подключённые базы знаний — ${rags.join('; ')}. Каждый факт подписывай источником. Не выдумывай: нет данных — так и скажи.
+ИСТОЧНИКИ ЗНАНИЙ (даёт платформа, обновляются без ручных правок):
+— RAG-базы: ${rags.join('; ')} — каждый факт подписывай источником; нет данных — так и скажи.
+— Знания проектов: ${packs.map(p=>'«'+p[0]+'»').join(', ')||'—'}.
+— MCP-инструменты: ${mcp.map(m=>m[1]+' ('+m[3]+')').join('; ')||'без внешних инструментов'}.
 
 ФОРМАТ РЕЗУЛЬТАТА: черновик с явными точками проверки (что требует эксперта — помечай). Решение и любое внешнее действие — всегда за человеком.
 
 ГРАНИЦЫ (нарушать нельзя, при конфликте — откажись и эскалируй):
 ${ji.limits.map(x=>'— '+x).join('\n')}
 ${sp.guard.map(x=>'— '+x).join('\n')}
-
+${learned.length?`
+ВЫУЧЕННЫЕ ПРАВИЛА (из одобренных итераций — пополняет платформа, не человек-редактор):
+${learned.map(r=>'— ['+r.v+'] '+r.rule).join('\n')}
+`:''}
 ЭСКАЛАЦИЯ: ${ji.esc}`;
-      return { type:k, name:meta[1], icon:meta[0], coverage:meta[3], model_tier:sp.tier,
-        prompt, tools:sp.tools, triggers:sp.trig, outputs:sp.out,
+  }
+
+  function buildSpec(w, L, deptLabel, deptId){
+    const ji = w.ji;
+    /* сид выученных правил: точки проверки одобренных сценариев петли,
+       атрибуция агенту по домену риска — это и есть «удачные итерации» */
+    const seed = {};
+    L.scenarios.forEach(sc=>sc.draft.lines.forEach(l=>{ if(!l.risk) return;
+      const ak = ruleAgent(L.crew, l.risk.note+' '+l.risk.fix);
+      (seed[ak]=seed[ak]||[]).push({ rule:'Не допускать: '+l.risk.note.split('—')[0].trim()+'. Правило: '+l.risk.fix, source:'✓ приёмка · «'+sc.q+'»' });
+    }));
+    const deptMcp = DEPT_MCP2[deptId]||[];
+    const packs = KNOW[deptId]||[];
+    const agents = L.crew.map(k=>{
+      const meta = AG[k], sp = AGSPEC[k]; if (!meta || !sp) return null;
+      const mcp = (TYPE_MCP[k]||[]).filter(m=>deptMcp.includes(m)).map(m=>MCP[m]);
+      const learned = (seed[k]||[]).map((r,i)=>({ v:'1.'+(i+1), ...r }));
+      return { id:w.id+'.'+k, type:k, name:meta[1], icon:meta[0], coverage:meta[3], model_tier:sp.tier,
+        version:'1.'+learned.length,
+        prompt: agentPrompt(w, L, deptLabel, k, learned, mcp, packs),
+        mcp: mcp.map(m=>({ id:m[0], name:m[1], gives:m[2], scope:m[3] })),
+        learned,
+        tools:sp.tools, triggers:sp.trig, outputs:sp.out,
         guardrails:ji.limits.concat(sp.guard), rags:L.rags.filter(r=>!r.denied).map(r=>({id:r.id,name:r.name})) };
     }).filter(Boolean);
     return {
       version:'1.0', platform:'Авандок.ИИ / Среда', kind:'digital-employee',
-      id:w.id, codename:w.name, title:w.title, department:deptLabel, fn:w.fn,
+      id:w.id, codename:w.name, title:w.title, department:deptLabel, dept_id:deptId, fn:w.fn,
       lead_human:w.lead, access_level:L.acc,
       mission:ji.mission, duties:ji.duties, kpi:ji.kpi.map(x=>({metric:x[0], target:x[1]})),
       escalation:ji.esc,
       model_routing:{ default:w.model, note:'маршрутизатор выбирает по типу агента: deep — юрист/разработчик, balanced — аналитика/тексты, fast — ассистент' },
       limits:{ budget:'дневной лимит отдела / численность цифрового штата · авто-пауза при исчерпании', external_actions:'запрещены — только черновики человеку', data_perimeter:'on-premise, базы по допуску '+L.acc },
+      knowledge_packs: packs.map(p=>({ name:p[0], content:p[1], grows_by:p[2] })),
+      learning:{ sources:['знания проектов (пакеты направления)','MCP-коннекторы платформы','одобренные итерации петли: приёмка с правкой эксперта и возврат с комментарием становятся правилами в промпте, версия агента растёт'],
+        manual_edits:'не предусмотрены — качество растёт данными платформы' },
       rag_bases:L.rags.map(r=>({ id:r.id, name:r.name, volume:r.vol, access:r.denied?('⛔ закрыта: '+r.denied):'подключена' })),
       agents,
       orchestration:L.scenarios.map(sc=>({ task:sc.q, timing:sc.time?sc.time[0]+' → '+sc.time[1]:null,
         pipeline:sc.steps.map(s=>s[1]+' ['+s[2]+']'), gate:'приёмка человеком: sev1/sev2-точки блокируют, возврат с комментарием → переработка',
         refusal:sc.deny?sc.deny.why:null })),
-      audit_events:['постановка задачи','каждое обращение к базе знаний','выдача черновика','правка эксперта','приёмка / возврат','отказ по границе ДИ','попытка доступа за пределами допуска'],
+      audit_events:['постановка задачи','каждое обращение к базе знаний','выдача черновика','правка эксперта','приёмка / возврат','отказ по границе ДИ','попытка доступа за пределами допуска','выученное правило (версия агента +0.1)'],
     };
   }
+
+  /* живое обучение из петли: правка эксперта или возврат → правило агенту,
+     версия +0.1, всё в аудит. Вызывается движком dw-loop. */
+  window.__ORG_LEARN = function(w, riskText, humanText, source){
+    if (!w.loop || !w.loop.spec) return null;
+    const ak = ruleAgent(w.loop.crew, riskText+' '+humanText);
+    const a = w.loop.spec.agents.find(x=>x.type===ak) || w.loop.spec.agents[0];
+    if (!a) return null;
+    const v = '1.'+(a.learned.length+1);
+    const rule = { v, rule:'Правка эксперта: '+humanText, source };
+    a.learned.push(rule); a.version = v;
+    /* секция правил в промпте перестраивается целиком — без ручного редактирования */
+    const sec = '\nВЫУЧЕННЫЕ ПРАВИЛА (из одобренных итераций — пополняет платформа, не человек-редактор):\n'
+      + a.learned.map(r=>'— ['+r.v+'] '+r.rule).join('\n') + '\n';
+    a.prompt = a.prompt
+      .replace(/\nВЫУЧЕННЫЕ ПРАВИЛА[\s\S]*?(?=\nЭСКАЛАЦИЯ:)/, '')
+      .replace(/\nЭСКАЛАЦИЯ:/, sec + '\nЭСКАЛАЦИЯ:');
+    return { agent:a.name, version:v };
+  };
 
   /* авто-сценарий для двойников без ручной проработки: петля строится из ДИ */
   function autoLoop(w, crewKey, acc, ragKeys){
@@ -1387,7 +1499,7 @@ ${sp.guard.map(x=>'— '+x).join('\n')}
     if (SCEN[w.id]) L.scenarios = SCEN[w.id];   // ручные сценарии поверх авто-каркаса
     L.crewFull = L.crew.map(k2=>AG[k2]);
     const dLbl = (KAM_DEPTS.find(x=>x.id===k)||{}).label || k;
-    L.spec = buildSpec(w, L, dLbl);             // спецификация внедрения (промпты/инструменты/триггеры)
+    L.spec = buildSpec(w, L, dLbl, k);          // спецификация внедрения (индивидуальные агенты + обучение)
     L.journal = (JOURNAL_SEED[w.id]||[['пт 17:00','Недельные задачи закрыты · приняты руководителем','ok'],['ср 11:20','Черновик с правкой эксперта','fix'],['пн 09:40','Плановые задачи по ДИ','ok']]).map(j=>({t:j[0],act:j[1],kind:j[2]}));
     w.loop = L;
   }));

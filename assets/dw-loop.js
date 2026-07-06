@@ -109,7 +109,20 @@
       const acc=ep.querySelector('[data-acc]'); if(acc) acc.onclick=()=>{
         st.phase='done'; st.denied=!!sc.noEdit;
         if (sc.noEdit){ pushAudit({who:w.name, emoji:w.emoji, act:'⛔ '+sc.done.audit, dept:'допуск', verdict:'deny'}); dwLog(w, sc.done.audit, 'deny'); }
-        else { pushAudit({who:w.name+' + вы', emoji:w.emoji, act:sc.done.audit, dept:'петля'}); dwLog(w, sc.q+' — принято'+(st.returned?' после возврата':''), st.returned?'ret':'ok'); w.now='ждёт следующую задачу'; }
+        else {
+          /* ОБУЧЕНИЕ ПЛАТФОРМОЙ: ручная правка эксперта (не канонная подсказка)
+             становится правилом в промпте агента, версия растёт */
+          if (window.__ORG_LEARN){
+            risks.filter(i=>st.resolved.has(i)).forEach(i=>{
+              const v=(st.edited[i]||'').trim(), r=sc.draft.lines[i].risk;
+              if (v && v!==r.fix && v!==sc.draft.lines[i].t.trim()){
+                const got = window.__ORG_LEARN(w, r.note, v, '✓ приёмка с правкой · «'+sc.q+'»');
+                if (got){ pushAudit({who:'платформа', emoji:'🧠', act:'выучено правило из правки эксперта → '+got.agent+' v'+got.version, dept:'обучение'});
+                  toast('🧠 Платформа выучила правило: '+got.agent+' → v'+got.version); }
+              }
+            });
+          }
+          pushAudit({who:w.name+' + вы', emoji:w.emoji, act:sc.done.audit, dept:'петля'}); dwLog(w, sc.q+' — принято'+(st.returned?' после возврата':''), st.returned?'ret':'ok'); w.now='ждёт следующую задачу'; }
         draw(); };
       const ret=ep.querySelector('[data-ret]'); if(ret) ret.onclick=()=>{ const box=ep.querySelector('.dwl-retbox'); box.hidden=!box.hidden; if(!box.hidden) box.querySelector('input').focus(); };
       const ret2=ep.querySelector('.ret2'); if(ret2) ret2.onclick=()=>{
@@ -119,6 +132,9 @@
         const target = risks.find(i=>!st.resolved.has(i));
         dwLog(w, 'возврат: «'+v+'» → переработка', 'ret');
         pushAudit({who:'вы → '+w.name, emoji:'↩', act:'возврат черновика: '+v, dept:'петля'});
+        /* возврат с комментарием — тоже обучение: правило агенту, версия +0.1 */
+        if (window.__ORG_LEARN){ const got = window.__ORG_LEARN(w, sc.q, v, '↩ возврат · «'+sc.q+'»');
+          if (got) pushAudit({who:'платформа', emoji:'🧠', act:'выучено из возврата → '+got.agent+' v'+got.version, dept:'обучение'}); }
         toast(w.name+' перерабатывает черновик по комментарию…');
         chain(ep, [[900, ()=>{ if(target!==undefined){ st.edited[target]=sc.draft.lines[target].risk.fix; st.resolved.add(target); } draw(); toast('Готово: строка переработана — проверьте и решайте'); }]]);
       };
@@ -195,10 +211,21 @@
               <div class="dwl-orch-p">${o.pipeline.map(p=>`<span>${escHtml(p)}</span>`).join('<em>→</em>')}<em>→</em><span class="gate">гейт: человек</span></div>
               ${o.refusal?`<small class="dwl-orch-r">⛔ отказ: ${escHtml(o.refusal)}</small>`:''}</div>`).join('')}
           </div>
-          ${S.agents.map((a,ai)=>`<div class="panel gp-card dwl-agentspec">
-            <h2>${a.icon} ${escHtml(a.name)} <span class="tag">модель: ${a.model_tier} · покрытие штата: ${escHtml(a.coverage)}</span></h2>
-            <details class="dwl-prompt" ${ai===0?'open':''}><summary>Системный промпт — готов к использованию</summary><pre>${escHtml(a.prompt)}</pre></details>
+          <div class="panel gp-card"><h2>Знания платформы <span class="tag">качество растёт данными, не ручными правками</span></h2>
             <div class="dwl-spec-g">
+              <div><b class="dwl-spec-h">Пакеты знаний проектов</b>
+                ${(S.knowledge_packs||[]).map(p=>`<div class="dwl-spec-li">📦 <b>${escHtml(p.name)}</b> — ${escHtml(p.content)}<br/><small class="dwl-grow">↻ ${escHtml(p.grows_by)}</small></div>`).join('')||'<div class="dwl-spec-li">—</div>'}</div>
+              <div><b class="dwl-spec-h">Как двойник умнеет</b>
+                ${(S.learning?S.learning.sources:[]).map(s=>`<div class="dwl-spec-li">🧠 ${escHtml(s)}</div>`).join('')}
+                <div class="dwl-spec-li" style="color:var(--acc)">✎ ${escHtml(S.learning?S.learning.manual_edits:'')}</div></div>
+            </div>
+          </div>
+          ${S.agents.map((a,ai)=>`<div class="panel gp-card dwl-agentspec">
+            <h2>${a.icon} ${escHtml(a.name)} <span class="dwl-ver" data-ver="${a.id}">v${a.version}</span> <span class="tag">${escHtml(a.id)} · модель: ${a.model_tier} · покрытие: ${escHtml(a.coverage)}</span></h2>
+            <details class="dwl-prompt" ${ai===0?'open':''}><summary>Системный промпт — готов к использованию (обновляется платформой)</summary><pre>${escHtml(a.prompt)}</pre></details>
+            <div class="dwl-spec-g">
+              <div><b class="dwl-spec-h">MCP-подключения</b>${(a.mcp&&a.mcp.length)?a.mcp.map(m=>`<div class="dwl-spec-li">🔌 <b>${escHtml(m.name)}</b> — ${escHtml(m.gives)}<br/><small class="dwl-scope">права: ${escHtml(m.scope)}</small></div>`).join(''):'<div class="dwl-spec-li">без внешних инструментов</div>'}</div>
+              <div><b class="dwl-spec-h">Выучено платформой · ${a.learned.length} правил</b>${a.learned.length?a.learned.map(r=>`<div class="dwl-spec-li dwl-rule">🧠 <b>[${r.v}]</b> ${escHtml(r.rule)}<br/><small class="dwl-grow">${escHtml(r.source)}</small></div>`).join(''):'<div class="dwl-spec-li">пока пусто — первая же ваша правка или возврат станет правилом</div>'}</div>
               <div><b class="dwl-spec-h">Инструменты и права</b>${a.tools.map(t=>`<div class="dwl-spec-li">🔧 <b>${escHtml(t[0])}</b> — ${escHtml(t[1])}</div>`).join('')}</div>
               <div><b class="dwl-spec-h">Триггеры запуска</b>${a.triggers.map(t=>`<div class="dwl-spec-li">⚡ ${escHtml(t)}</div>`).join('')}</div>
               <div><b class="dwl-spec-h">Выходные артефакты</b>${a.outputs.map(t=>`<div class="dwl-spec-li">📄 ${escHtml(t)}</div>`).join('')}</div>
@@ -291,6 +318,59 @@
   const pIdx = WORKSPACES.findIndex(w=>w.id==='platform'); if (pIdx>=0) WORKSPACES.splice(pIdx,1);
   const ownWS = WORKSPACES.find(w=>w.id==='owner');
   if (ownWS){ const i = ownWS.nav.findIndex(n=>n.sep==='Видение'); if (i>=0) ownWS.nav.splice(i, ownWS.nav.length-i); }
+  if (ownWS) ownWS.nav.splice(1, 0, { id:'agents', label:'Реестр агентов', icon:'🧩' });
+
+  /* Реестр всех агентов составов: каждый — индивидуальная сущность с версией,
+     MCP-биндингами и выученными правилами. Роут 'agents'. */
+  function renderAgentRegistry(root){
+    const rows = [];
+    ALL_DIGITAL.forEach(w=>{ ((w.loop&&w.loop.spec)?w.loop.spec.agents:[]).forEach(a=>rows.push({w,a})); });
+    const rules = rows.reduce((s,r)=>s+r.a.learned.length,0);
+    const mcps = rows.reduce((s,r)=>s+(r.a.mcp?r.a.mcp.length:0),0);
+    root.innerHTML = workHead({icon:'🧩',label:'Реестр агентов'}, `${rows.length} агентов в составах ${ALL_DIGITAL.length} цифровых сотрудников · индивидуальные промпты, MCP и версии`) + `
+      <div class="grid-kpi" style="margin-bottom:13px">
+        <div class="kpi"><div class="l">Агентов в реестре</div><div class="v">${rows.length}</div><div class="d flat">● 10 типов × роли направлений</div></div>
+        <div class="kpi"><div class="l">Выучено правил</div><div class="v" id="agRulesTotal">${rules}</div><div class="d up">▲ из одобренных итераций — не ручными правками</div></div>
+        <div class="kpi"><div class="l">MCP-подключений</div><div class="v">${mcps}</div><div class="d flat">● права задаёт платформа</div></div>
+        <div class="kpi"><div class="l">Внешних действий без человека</div><div class="v">0</div><div class="d up">▲ по построению</div></div>
+      </div>
+      <div class="workforce-filters">
+        <input type="text" placeholder="Поиск: id, тип, носитель, правило…" class="workforce-search" id="agSearch"/>
+        <select class="workforce-filter" id="agDept"><option value="">Все направления</option>
+          ${ROLE_IDS.map(r=>`<option value="${r}">${(DEPARTMENTS.find(x=>x.id===r)||{}).label||r}</option>`).join('')}</select>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Агент (id)</th><th>Тип</th><th>Носитель</th><th>Направление</th><th>MCP</th><th>Версия</th><th>Правил выучено</th></tr></thead>
+        <tbody>${rows.map(({w,a})=>{ const dep=DEPARTMENTS.find(x=>x.id===w.dept)||{label:w.dept};
+          return `<tr class="workforce-row ag-row" data-wid="${w.id}" data-dept="${w.dept}" data-hay="${escAttr((a.id+' '+a.name+' '+w.name+' '+a.learned.map(r=>r.rule).join(' ')).toLowerCase())}">
+            <td><code style="font-size:11px">${escHtml(a.id)}</code></td>
+            <td>${a.icon} ${escHtml(a.name)}</td>
+            <td><b>${escHtml(w.name)}</b></td>
+            <td>${escHtml(dep.label)}</td>
+            <td>${(a.mcp||[]).map(m=>`<span title="${escAttr(m.name+' · '+m.scope)}">🔌</span>`).join('')||'—'}</td>
+            <td><span class="dwl-ver">v${a.version}</span></td>
+            <td>${a.learned.length?'🧠 '+a.learned.length:'—'}</td>
+          </tr>`; }).join('')}</tbody>
+      </table></div>
+      <div class="od-gov" style="margin-top:11px">Каждый агент — отдельная сущность платформы: собственный системный промпт (из ДИ носителя), MCP-биндинги с правами, журнал выученных правил. Клик по строке — профиль носителя со спецификацией. Правки промптов вручную не предусмотрены: агент умнеет от знаний проектов, MCP и каждой одобренной итерации.</div>`;
+    root.querySelectorAll('.ag-row').forEach(tr=>tr.onclick=()=>{ navTo('worker:'+tr.dataset.wid);
+      setTimeout(()=>{ const t=document.querySelector('.gp-tab[data-t="spec"]'); if(t) t.click(); }, 60); });
+    const se=root.querySelector('#agSearch'), df=root.querySelector('#agDept');
+    const filt=()=>{ const q=(se.value||'').toLowerCase(), d=df.value;
+      root.querySelectorAll('.ag-row').forEach(tr=>{ tr.style.display = ((!q||tr.dataset.hay.includes(q)) && (!d||tr.dataset.dept===d))?'':'none'; }); };
+    se.oninput=filt; df.onchange=filt;
+  }
+  const origStageFn = renderStage;
+  renderStage = function(id){
+    if (id === 'agents'){
+      const stage = document.getElementById('stage');
+      stage.classList.add('full');
+      stage.innerHTML = '<div class="work" id="work"></div>';
+      renderAgentRegistry(document.getElementById('work'));
+      return;
+    }
+    return origStageFn.apply(this, arguments);
+  };
   const hideCss = document.createElement('style');
   hideCss.textContent = '#tourFab{display:none!important}';
   document.head.appendChild(hideCss);
