@@ -43,7 +43,7 @@
     /* ОБУЧЕНИЕ ЗАМЫКАЕТСЯ НА ПОВЕДЕНИЕ: правила, выученные из ваших правок
        и возвратов, применяются к черновику ДО показа — ошибка не повторяется */
     const liveRules = (w.loop && w.loop.spec)
-      ? w.loop.spec.agents.flatMap(a=>a.learned.filter(r=>r.live && r.riskRef).map(r=>({ ...r, agent:a.name })))
+      ? w.loop.spec.agents.flatMap(a=>a.learned.filter(r=>r.live && r.riskRef && !r.superseded).map(r=>({ ...r, agent:a.name })))
       : [];
     risks.forEach(i=>{ const r = sc.draft.lines[i].risk;
       const lr = liveRules.find(x=>x.riskRef===r.note);
@@ -214,6 +214,7 @@
               <div class="dwl-spec-kv"><span>Допуск</span><b>${escHtml(S.access_level)}</b></div>
               <div class="dwl-spec-kv"><span>Маршрутизация моделей</span><b>${escHtml(S.model_routing.note)}</b></div>
               <div class="dwl-spec-kv"><span>Внешние действия</span><b>${escHtml(S.limits.external_actions)}</b></div>
+              <div class="dwl-spec-kv"><span>Контроль качества</span><b>${S.evals?S.evals.golden.length+' golden-задач · LLM-judge по рубрикам · релиз версии только без регресса':'—'}</b></div>
             </div>
             <div class="dwl-spec-actions">
               <button class="dwl-btn acc" data-specdl>⬇ Скачать JSON-спецификацию</button>
@@ -236,11 +237,11 @@
             </div>
           </div>
           ${S.agents.map((a,ai)=>`<div class="panel gp-card dwl-agentspec">
-            <h2>${a.icon} ${escHtml(a.name)} <span class="dwl-ver" data-ver="${a.id}">v${a.version}</span> <span class="tag">${escHtml(a.id)} · модель: ${a.model_tier} · покрытие: ${escHtml(a.coverage)}</span></h2>
-            <details class="dwl-prompt" ${ai===0?'open':''}><summary>Системный промпт — готов к использованию (обновляется платформой)</summary><pre>${escHtml(a.prompt)}</pre></details>
+            <h2>${a.icon} ${escHtml(a.name)} <span class="dwl-ver" data-ver="${a.id}">v${a.version}</span> <span class="tag">${escHtml(a.id)} · модель: ${a.model_tier} · тип есть у ${escHtml(a.coverage)} ролей департамента</span></h2>
+            <details class="dwl-prompt" ${ai===0?'open':''}><summary>Системный промпт — процедура · схема выхода · самопроверка · few-shot · правила (обновляется платформой)</summary><pre>${escHtml(a.prompt)}</pre></details>
             <div class="dwl-spec-g">
-              <div><b class="dwl-spec-h">MCP-подключения</b>${(a.mcp&&a.mcp.length)?a.mcp.map(m=>`<div class="dwl-spec-li">🔌 <b>${escHtml(m.name)}</b> — ${escHtml(m.gives)}<br/><small class="dwl-scope">права: ${escHtml(m.scope)}</small></div>`).join(''):'<div class="dwl-spec-li">без внешних инструментов</div>'}</div>
-              <div><b class="dwl-spec-h">Выучено платформой · ${a.learned.length} правил</b>${a.learned.length?a.learned.map(r=>`<div class="dwl-spec-li dwl-rule">🧠 <b>[${r.v}]</b> ${escHtml(r.rule)}<br/><small class="dwl-grow">${escHtml(r.source)}${r.why?' · атрибуция: '+escHtml(r.why):''}${r.live?' · применяется к новым черновикам':''}</small></div>`).join(''):'<div class="dwl-spec-li">пока пусто — первая же ваша правка или возврат станет правилом</div>'}</div>
+              <div><b class="dwl-spec-h">MCP-подключения · контракты</b>${(a.mcp&&a.mcp.length)?a.mcp.map(m=>`<div class="dwl-spec-li">🔌 <b>${escHtml(m.name)}</b> — ${escHtml(m.gives)}<br/><small class="dwl-scope">права: ${escHtml(m.scope)}</small>${(m.fns||[]).map(f=>`<div class="dwl-fn">ƒ ${escHtml(f)}</div>`).join('')}</div>`).join(''):'<div class="dwl-spec-li">без внешних инструментов</div>'}</div>
+              <div><b class="dwl-spec-h">Выучено платформой · ${a.learned.filter(r=>!r.superseded).length} активных правил</b>${a.learned.length?a.learned.map(r=>`<div class="dwl-spec-li dwl-rule ${r.superseded?'dwl-sup':''}">🧠 <b>[${r.v}]</b> ${escHtml(r.rule)}<br/><small class="dwl-grow">${escHtml(r.source)}${r.why?' · атрибуция: '+escHtml(r.why):''}${r.approved_by?' · подтвердил: '+escHtml(r.approved_by):''}${r.superseded?' · вытеснено более новым':r.live?' · применяется к новым черновикам':''}</small></div>`).join(''):'<div class="dwl-spec-li">пока пусто — первая же ваша правка или возврат станет правилом</div>'}</div>
               <div><b class="dwl-spec-h">Инструменты и права</b>${a.tools.map(t=>`<div class="dwl-spec-li">🔧 <b>${escHtml(t[0])}</b> — ${escHtml(t[1])}</div>`).join('')}</div>
               <div><b class="dwl-spec-h">Триггеры запуска</b>${a.triggers.map(t=>`<div class="dwl-spec-li">⚡ ${escHtml(t)}</div>`).join('')}</div>
               <div><b class="dwl-spec-h">Выходные артефакты</b>${a.outputs.map(t=>`<div class="dwl-spec-li">📄 ${escHtml(t)}</div>`).join('')}</div>
