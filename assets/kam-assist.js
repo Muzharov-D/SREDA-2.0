@@ -104,7 +104,10 @@
   const ONB_KEY = 'sreda_kam_onb';
 
   /* ── состояние и DOM панели ── */
+  const KA_KEY = 'sreda_kam_panel_open';
   const KA = { open:false, onb:-1, msgs:[] };
+  function kaLoadState(){ try{ return localStorage.getItem(KA_KEY)==='1'; }catch(e){ return false; } }
+  function kaSaveState(v){ try{ localStorage.setItem(KA_KEY, v?'1':'0'); }catch(e){} }
   const fab = document.createElement('button');
   fab.id = 'kaFab'; fab.title = 'Личный ассистент — всегда рядом';
   fab.innerHTML = '💬';
@@ -128,8 +131,9 @@
     </div>
     <div class="ka-input"><input id="kaIn" type="text" placeholder="Спросите про этот экран…"/><button id="kaSend">➤</button></div>`;
   document.addEventListener('DOMContentLoaded', ()=>{ document.body.appendChild(fab); document.body.appendChild(panel);
-    /* первый вход: предложить онбординг бейджем */
-    try{ if (localStorage.getItem(ONB_KEY)===null) fab.classList.add('pulse-badge'); }catch(e){}
+    const wasOpen = kaLoadState();
+    if (wasOpen){ openPanel(); }
+    else { try{ if (localStorage.getItem(ONB_KEY)===null) fab.classList.add('pulse-badge'); }catch(e){} }
   });
 
   const $id = (x)=>document.getElementById(x);
@@ -225,8 +229,8 @@
   }
 
   function openPanel(){
-    KA.open = true; panel.hidden = false; fab.classList.add('on'); fab.classList.remove('pulse-badge');
-    document.body.classList.add('ka-open');
+    KA.open = true; panel.hidden = false; panel.classList.remove('ka-closed'); fab.classList.add('on'); fab.classList.remove('pulse-badge');
+    document.body.classList.add('ka-open'); kaSaveState(true);
     refreshHead();
     if (!KA.msgs.length){
       const pp = persona();
@@ -234,16 +238,18 @@
       refreshCtx(false);
     } else refreshCtx(false);
   }
-  function closePanel(){ KA.open=false; panel.hidden=true; fab.classList.remove('on'); document.body.classList.remove('ka-open'); }
+  function closePanel(){ KA.open=false; panel.classList.add('ka-closed'); fab.classList.remove('on'); document.body.classList.remove('ka-open'); kaSaveState(false);
+    setTimeout(()=>{ if(!KA.open) panel.hidden=true; }, 280); }
 
   fab.onclick = ()=>{ KA.open ? closePanel() : openPanel(); };
   document.addEventListener('click', (e)=>{
-    if (e.target && e.target.id==='kaClose') closePanel();
-    if (e.target && e.target.id==='kaOnb') onbStart();
-    if (e.target && e.target.id==='kaOnbNext'){ onbGo(KA.onb+1); }
-    if (e.target && e.target.id==='kaOnbPrev'){ onbGo(Math.max(0, KA.onb-1)); }
-    if (e.target && e.target.id==='kaOnbStop'){ onbStop(false); say('Вышли из онбординга — продолжить можно кнопкой 🎓.'); }
-    if (e.target && e.target.id==='kaSend'){ const inp=$id('kaIn'); const v=(inp.value||'').trim(); if(!v) return; inp.value=''; sayUser(v); respond(v); }
+    const t = e.target;
+    if (t.closest('#kaClose')){ e.stopPropagation(); closePanel(); return; }
+    if (t.closest('#kaOnb')) onbStart();
+    if (t.closest('#kaOnbNext')){ onbGo(KA.onb+1); }
+    if (t.closest('#kaOnbPrev')){ onbGo(Math.max(0, KA.onb-1)); }
+    if (t.closest('#kaOnbStop')){ onbStop(false); say('Вышли из онбординга — продолжить можно кнопкой 🎓.'); }
+    if (t.closest('#kaSend')){ const inp=$id('kaIn'); const v=(inp.value||'').trim(); if(!v) return; inp.value=''; sayUser(v); respond(v); }
   });
   document.addEventListener('keydown', (e)=>{ if (e.key==='Enter' && document.activeElement && document.activeElement.id==='kaIn'){ const inp=$id('kaIn'); const v=(inp.value||'').trim(); if(!v) return; inp.value=''; sayUser(v); respond(v); } });
 
