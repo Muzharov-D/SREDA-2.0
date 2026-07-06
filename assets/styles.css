@@ -4610,6 +4610,9 @@ body.portal-mode .who,body.portal-mode .filial-sw{display:none}
 .dwl-hintrule b{ color:var(--acc); }
 .dwl-hintrule .dwl-btn{ padding:3px 10px; font-size:11px; }
 .dwl-chip.pack{ border-color:color-mix(in srgb, var(--acc) 55%, transparent); color:var(--acc); }
+.dwl-spez{ font-size:12px; line-height:1.5; border:1px solid color-mix(in srgb, var(--acc) 30%, transparent); background:color-mix(in srgb, var(--acc) 5%, transparent); border-radius:9px; padding:7px 11px; margin:7px 0; }
+.dwl-spez small{ color:var(--muted); font-size:10.5px; }
+.dwl-spez.muted{ border-style:dashed; color:var(--muted); background:transparent; }
 .dwl-sup{ opacity:.55; }
 .dwl-sup .dwl-rule, .dwl-sup b, .dwl-sup{ text-decoration:line-through; }
 .dwl-sup small{ text-decoration:none; }

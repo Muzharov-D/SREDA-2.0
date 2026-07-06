@@ -1348,8 +1348,18 @@
     const allow = TYPE_RAG[k];
     return (allow == null) ? open : open.filter(r=>allow.includes(r.id));
   }
-  function agentPrompt(w, L, deptLabel, k, learned, mcp, packs){
+  function agentPrompt(w, L, deptLabel, k, learned, mcp, packs, spez){
     const ji = w.ji, meta = AG[k], sp = AGSPEC[k];
+    const spezSec = spez && (spez.duties.length || spez.steps.length) ? `
+ТВОЯ СПЕЦИАЛИЗАЦИЯ У НОСИТЕЛЯ (конкретно ты, не тип вообще):${spez.duties.length?`
+Обязанности носителя, которые несёшь ты:
+${spez.duties.map(d=>'— '+d).join('\n')}`:''}${spez.steps.length?`
+Твои шаги в пайплайнах носителя:
+${spez.steps.map(s=>'— «'+s.task+'»: '+s.step+' [источник: '+s.src+']').join('\n')}`:''}${spez.kpi.length?`
+Твои KPI: ${spez.kpi.join(' · ')}`:''}
+` : `
+ТВОЯ СПЕЦИАЛИЗАЦИЯ У НОСИТЕЛЯ: поддерживающая роль — работаешь на входах и выходах других агентов состава, собственных обязанностей носителя за тобой не закреплено.
+`;
     const rags = agentRags(L, k).map(r=>r.id+' «'+r.name+'»');
     const ragLine = rags.length ? rags.join('; ')+'. Формат сноски: [RAG-ID · документ · дата]. Нет данных — так и скажи.'
       : 'прямого доступа к базам нет — работаешь с артефактами других агентов состава (least privilege).';
@@ -1368,7 +1378,7 @@ ${sc.draft.lines.map(l=>'— '+(l.risk ? l.risk.fix+'  ⚑ точка прове
 
 МИССИЯ НОСИТЕЛЯ: ${ji.mission}
 ТВОЯ ФУНКЦИЯ: ${sp.role(w)}.
-
+${spezSec}
 ПРОЦЕДУРА РАБОТЫ:
 ${sp.proc.map((p,i)=>(i+1)+') '+p).join('\n')}${ext?`
 ${ext}`:''}
@@ -1409,13 +1419,25 @@ ${learned.map(r=>'— ['+r.v+'] '+r.rule).join('\n')}
     /* скоуп MCP зависит от допуска носителя — механика, не слова */
     const scopeAcc = L.acc==='B' ? ' · периметр B: только собственные объекты носителя'
       : L.acc==='A' ? ' · полный периметр направления' : ' · периметр направления';
+    /* ПЕРСОНАЛЬНАЯ СПЕЦИАЛИЗАЦИЯ каждого агента: ручные обязанности, KPI и
+       шаги пайплайнов носителя распределяются по агентам по домену — у двух
+       «аналитиков» разных носителей получаются РАЗНЫЕ специализации */
+    const AGNAME2K = {}; Object.keys(AG).forEach(x=>AGNAME2K[AG[x][1]]=x);
+    const stepTypeOf = (label)=>{ const kk = Object.keys(AG).find(x=>label.indexOf(AG[x][1])>=0); return kk||null; };
+    const spezDuties = {}, spezKpi = {}, spezSteps = {};
+    ji.duties.forEach(d=>{ const ra = ruleAgent(L.crew, d); (spezDuties[ra.k]=spezDuties[ra.k]||[]).push(d); });
+    ji.kpi.forEach(kv=>{ const ra = ruleAgent(L.crew, kv[0]+' '+kv[1]); (spezKpi[ra.k]=spezKpi[ra.k]||[]).push(kv[0]+': '+kv[1]); });
+    L.scenarios.forEach(sc=>sc.steps.forEach(s=>{ const t = stepTypeOf(s[1]); if (!t) return;
+      (spezSteps[t]=spezSteps[t]||[]).push({ task:sc.q, step:(s[1].split('·')[1]||s[1]).trim(), src:s[2] }); }));
     const agents = L.crew.map(k=>{
       const meta = AG[k], sp = AGSPEC[k]; if (!meta || !sp) return null;
       const mcp = (TYPE_MCP[k]||[]).filter(m=>deptMcp.includes(m)).map(m=>MCP[m]).map(m=>[m[0],m[1],m[2],m[3]+scopeAcc,m[4]||[]]);
       const learned = (seed[k]||[]).map((r,i)=>({ v:'1.'+(i+1), ...r }));
+      const spez = { duties: spezDuties[k]||[], kpi: spezKpi[k]||[], steps: spezSteps[k]||[] };
       return { id:w.id+'.'+k, type:k, name:meta[1], icon:meta[0], coverage:meta[3], model_tier:sp.tier,
         version:'1.'+learned.length,
-        prompt: agentPrompt(w, L, deptLabel, k, learned, mcp, packs),
+        specialization: spez,
+        prompt: agentPrompt(w, L, deptLabel, k, learned, mcp, packs, spez),
         mcp: mcp.map(m=>({ id:m[0], name:m[1], gives:m[2], scope:m[3], fns:m[4] })),
         learned,
         procedure:sp.proc, output_schema:sp.outfmt, self_check:sp.check,
@@ -1591,6 +1613,19 @@ ${ji.esc}
       return { name: w.name+' · '+w.title, model: 'gpt-4o',
         description: 'Цифровой сотрудник платформы «Среда» · направление «'+S.department+'» · допуск '+S.access_level,
         instructions: this.prompt(w), tools: fns, metadata:{ platform:'Авандок.ИИ / Среда', spec_id:w.id } };
+    },
+    /* standalone-запуск ОДНОГО агента состава: его полный промпт + рантайм-обвязка */
+    agent(w, a){
+      const sz = a.specialization||{duties:[],steps:[],kpi:[]};
+      return `# АГЕНТ «${a.name}» (${a.id}) — standalone-запуск вне платформы
+# Часть состава цифрового сотрудника ${w.name}. Вставь целиком system-промптом в любой LLM-чат.
+
+${a.prompt}
+
+## РЕЖИМ ВНЕ ПЛАТФОРМЫ (обязательно)
+— Живых систем (${(a.mcp||[]).map(m=>m.name).join(', ')||'MCP'}) здесь НЕТ: не выдумывай факты, цифры и цены — спроси у пользователя или поставь плейсхолдер {уточнить: …} / пометку [нужны данные: ${(a.mcp&&a.mcp[0]&&a.mcp[0].fns&&a.mcp[0].fns[0])?a.mcp[0].fns[0].split(' →')[0]:'запрос к системе'}].
+— Формат каждого ответа: 📄 ЧЕРНОВИК по твоей схеме → ⚑ ТОЧКИ ПРОВЕРКИ → 📎 допущения → ✅ РЕШЕНИЕ ЗА ВАМИ: [Принять] · [Вернуть с комментарием].
+— Первое сообщение: представься одной строкой и предложи 2–3 задачи по своей специализации${sz.duties.length?' ('+sz.duties[0].toLowerCase()+' …)':''}.`;
     },
   };
 

@@ -263,8 +263,9 @@
             </div>
           </div>
           ${S.agents.map((a,ai)=>`<div class="panel gp-card dwl-agentspec">
-            <h2>${a.icon} ${escHtml(a.name)} <span class="dwl-ver" data-ver="${a.id}">v${a.version}</span> <span class="tag">${escHtml(a.id)} · модель: ${a.model_tier} · тип есть у ${escHtml(a.coverage)} ролей департамента</span></h2>
-            <details class="dwl-prompt" ${ai===0?'open':''}><summary>Системный промпт — процедура · схема выхода · самопроверка · few-shot · правила (обновляется платформой)</summary><pre>${escHtml(a.prompt)}</pre></details>
+            <h2>${a.icon} ${escHtml(a.name)} <span class="dwl-ver" data-ver="${a.id}">v${a.version}</span> <button class="dwl-btn ghost" data-alaunch="${ai}" title="Скопировать standalone-промпт этого агента — запуск в любом чате">🚀 отдельно</button> <span class="tag">${escHtml(a.id)} · модель: ${a.model_tier} · тип есть у ${escHtml(a.coverage)} ролей департамента</span></h2>
+            ${(a.specialization && (a.specialization.duties.length||a.specialization.steps.length))?`<div class="dwl-spez">🎯 <b>Специализация у носителя:</b> ${a.specialization.duties.map(d=>escHtml(d)).join(' · ')||'—'}${a.specialization.steps.length?`<br/><small>шаги в пайплайнах: ${a.specialization.steps.map(s=>escHtml(s.step)).join(' · ')}</small>`:''}${a.specialization.kpi.length?`<br/><small>KPI: ${a.specialization.kpi.map(x=>escHtml(x)).join(' · ')}</small>`:''}</div>`:`<div class="dwl-spez muted">🎯 поддерживающая роль — работает на входах/выходах других агентов состава</div>`}
+            <details class="dwl-prompt" ${ai===0?'open':''}><summary>Системный промпт — специализация · процедура · схема выхода · самопроверка · few-shot · правила (обновляется платформой)</summary><pre>${escHtml(a.prompt)}</pre></details>
             <div class="dwl-spec-g">
               <div><b class="dwl-spec-h">MCP-подключения · контракты</b>${(a.mcp&&a.mcp.length)?a.mcp.map(m=>`<div class="dwl-spec-li">🔌 <b>${escHtml(m.name)}</b> — ${escHtml(m.gives)}<br/><small class="dwl-scope">права: ${escHtml(m.scope)}</small>${(m.fns||[]).map(f=>`<div class="dwl-fn">ƒ ${escHtml(f)}</div>`).join('')}</div>`).join(''):'<div class="dwl-spec-li">без внешних инструментов</div>'}</div>
               <div><b class="dwl-spec-h">Выучено платформой · ${a.learned.filter(r=>!r.superseded).length} активных правил</b>${a.learned.length?a.learned.map(r=>`<div class="dwl-spec-li dwl-rule ${r.superseded?'dwl-sup':''}">🧠 <b>[${r.v}]</b> ${escHtml(r.rule)}<br/><small class="dwl-grow">${escHtml(r.source)}${r.why?' · атрибуция: '+escHtml(r.why):''}${r.approved_by?' · подтвердил: '+escHtml(r.approved_by):''}${r.superseded?' · вытеснено более новым':r.live?' · применяется к новым черновикам':''}</small></div>`).join(''):'<div class="dwl-spec-li">пока пусто — первая же ваша правка или возврат станет правилом</div>'}</div>
@@ -344,6 +345,13 @@
           ()=>toast('Пусковой промпт в буфере — вставьте в чат и поставьте задачу'),
           ()=>toast('Буфер недоступен — используйте «Пусковой пакет»'));
       };
+      root.querySelectorAll('[data-alaunch]').forEach(b=>b.onclick=()=>{
+        const a = L.spec.agents[+b.dataset.alaunch];
+        (navigator.clipboard ? navigator.clipboard.writeText(window.__ORG_LAUNCH.agent(w, a)) : Promise.reject()).then(
+          ()=>toast('Standalone-промпт «'+a.name+'» в буфере — вставьте в чат'),
+          ()=>toast('Буфер недоступен — используйте пусковой пакет носителя'));
+        pushAudit({who:'вы', emoji:'🚀', act:'выгружен standalone-агент '+a.id, dept:'платформа'});
+      });
       const od=root.querySelector('[data-openaidl]'); if (od) od.onclick=()=>{
         dlFile(JSON.stringify(window.__ORG_LAUNCH.openai(w), null, 2), 'sreda-dw-'+w.id+'-assistant.json', 'application/json');
         toast('assistant.json скачан — импорт в OpenAI Assistants / основа для GPTs');
