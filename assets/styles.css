@@ -4603,6 +4603,8 @@ body.portal-mode .who,body.portal-mode .filial-sw{display:none}
 .dwl-grow{ color:var(--acc); font-size:10.5px; }
 .dwl-scope{ color:var(--muted); font-size:10.5px; }
 .dwl-rule{ border-left:2px solid color-mix(in srgb, var(--acc) 45%, transparent); padding-left:8px; margin:4px 0; }
+.dwl-risk-b.ap{ background:var(--acc); color:var(--on-acc); }
+.dwl-chip.ap{ border-color:var(--acc); color:var(--acc); font-weight:700; }
 
 /* ============================================================================
    Конец дополнительных стилей

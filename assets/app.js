@@ -857,7 +857,7 @@ function renderPulse(root, d){
     storyBusy=false;
   }
 
-  const FEED=[
+  const FEED=(window.__ORG && window.__ORG.pulseFeed)||[
     ['d','Алгоритм','собрал черновик PR #'+(480+(Date.now()%40)),'dev'],
     ['d','Скоринг','квалифицировал 9 лидов','sales'],
     ['h','Оля','поправила скидку и приняла КП «Гамма»','sales'],
@@ -874,7 +874,8 @@ function renderPulse(root, d){
     ['d','Модель','пересчёт сценария кэш-флоу','finance'],
     ['h','Рома','подтвердил сверку июня','finance'],
     ['x','Оля → Ира','КП «Гамма» передано в Юр','sales']];
-  let done = 12480 + Math.floor(Math.random()*200), tick=0;
+  /* «выполнено сегодня» масштабируется под реальный штат оргструктуры */
+  let done = ((window.__ORG && window.__ORG.doneBase) || 12480) + Math.floor(Math.random()*(window.__ORG?40:200)), tick=0;
   const baseInf = Math.round(DIGITAL_SIZE*1.6);
   clearInterval(window.__pulseTimer);
   window.__pulseTimer=setInterval(()=>{
@@ -902,7 +903,7 @@ function renderPulse(root, d){
     /* сюжетная цепочка сделки и волна-дыхание */
     if(!projMode && tick%12===5) runStory();
     if(tick%9===2) cx.surgeWave();
-    done += 3+Math.floor(Math.random()*4);
+    done += window.__ORG ? (Math.random()<0.55?1:2) : 3+Math.floor(Math.random()*4);
     const infV=Math.max(1,baseInf+Math.round((Math.random()-0.5)*60));
     const infD=Math.round(infV*0.62), infH=infV-infD;
     const inf=$('#pls-inflight',root); if(inf) inf.textContent=infV.toLocaleString('ru');
@@ -911,7 +912,7 @@ function renderPulse(root, d){
     const dn=$('#pls-done',root); if(dn) dn.textContent=done.toLocaleString('ru');
     const FS=flowState(); const fl=$('#pls-flows',root); if(fl) fl.textContent=FLOWS.filter(f=>FS[f.id]<f.steps.length).length;
     if(tick%3===1){ const f=FEED[Math.floor(Math.random()*FEED.length)];
-      feed(f[0]==='d'?'d':f[0]==='x'?'x':DEPT_TASK[f[3]].c, f[1], f[2], f[0]==='d'); }
+      feed(f[0]==='d'?'d':f[0]==='x'?'x':(DEPT_TASK[f[3]]||{c:'#34d399'}).c, f[1], f[2], f[0]==='d'); }
   }, 760);
 
   /* ── «Запустить рой» = пусковая установка: очередь сформированных запросов ── */
@@ -1089,7 +1090,7 @@ function renderDeptPulse(root, roleId){
 
   const FEEDV=[['собрал черновик:',dt.l[0]],['закрыл',dt.l[1]||dt.l[0]],['проверил',dt.l[2]||dt.l[0]],['передал дальше','результат']];
   const baseInf=Math.round((hc+dhc)*0.6);
-  let done=Math.round(hc*7 + Math.random()*40), tick=0;
+  let done=Math.round((window.__ORG ? hc*6 + dhc*12 : hc*7) + Math.random()*(window.__ORG?12:40)), tick=0;
   clearInterval(window.__pulseTimer);
   window.__pulseTimer=setInterval(()=>{
     if(!document.body.contains(stage)){ clearInterval(window.__pulseTimer); map.destroy(); return; }

@@ -39,7 +39,16 @@
     ep.className = 'dwl-ep';
     mount.prepend(ep);
     const risks = sc.draft.lines.map((l,i)=>l.risk?i:-1).filter(i=>i>=0);
-    const st = { resolved:new Set(), edited:{}, phase:'steps', returned:false };
+    const st = { resolved:new Set(), edited:{}, applied:{}, phase:'steps', returned:false };
+    /* ОБУЧЕНИЕ ЗАМЫКАЕТСЯ НА ПОВЕДЕНИЕ: правила, выученные из ваших правок
+       и возвратов, применяются к черновику ДО показа — ошибка не повторяется */
+    const liveRules = (w.loop && w.loop.spec)
+      ? w.loop.spec.agents.flatMap(a=>a.learned.filter(r=>r.live && r.riskRef).map(r=>({ ...r, agent:a.name })))
+      : [];
+    risks.forEach(i=>{ const r = sc.draft.lines[i].risk;
+      const lr = liveRules.find(x=>x.riskRef===r.note);
+      if (lr){ st.resolved.add(i); st.edited[i]=lr.applied; st.applied[i]=lr; }
+    });
 
     function stepRow(s,i,state){
       return `<div class="dwl-step ${state}" data-si="${i}">
@@ -52,11 +61,12 @@
       const r = l.risk, res = st.resolved.has(i);
       const txt = st.edited[i]!==undefined ? st.edited[i] : l.t;
       if (!r) return `<div class="dwl-line">${escHtml(txt)}</div>`;
+      const ap = st.applied[i];
       return `<div class="dwl-line risk sev${r.sev} ${res?'res':''}">
         <div class="dwl-line-t ${res?'':'ed'}" ${res?'':'contenteditable="true" spellcheck="false"'} data-li="${i}">${escHtml(txt)}</div>
         <div class="dwl-risk">
-          <span class="dwl-risk-b s${r.sev}">${res?'✓ снято':'sev'+r.sev}</span>
-          <span class="dwl-risk-n">${res?'проверено вами — правка в силе':escHtml(r.note)}</span>
+          <span class="dwl-risk-b ${ap?'ap':'s'+r.sev}">${ap?'⚙ правило '+ap.v:res?'✓ снято':'sev'+r.sev}</span>
+          <span class="dwl-risk-n">${ap?('двойник применил выученное правило ('+escHtml(ap.agent)+') — эта ошибка больше не воспроизводится'):res?'проверено вами — правка в силе':escHtml(r.note)}</span>
           ${res?'':`<button class="dwl-hint" data-hint="${i}" title="Подставить исправление двойника">💡</button>
           <button class="dwl-ok" data-okline="${i}" title="Принять свою правку строки">✓</button>`}
         </div>
@@ -94,7 +104,7 @@
         ${st.phase==='done' ? `
         <div class="dwl-done">
           <div class="dwl-done-h">${st.denied?'⛔ Отказ зафиксирован':'✓ Принято вами'} <span class="dwl-tag">${escHtml(sc.done.artifact)}</span></div>
-          <div class="dwl-done-r">${st.returned?'<span class="dwl-chip ret">↩ был возврат — двойник переработал</span>':''}${sc.time?`<span class="dwl-chip save">⏱ ${escHtml(sc.time[0])} → ${escHtml(sc.time[1])}</span>`:''}<span class="dwl-chip">📝 аудит: ${escHtml(sc.done.audit)}</span></div>
+          <div class="dwl-done-r">${Object.keys(st.applied).length?`<span class="dwl-chip ap">⚙ применено выученных правил: ${Object.keys(st.applied).length}</span>`:''}${st.returned?'<span class="dwl-chip ret">↩ был возврат — двойник переработал</span>':''}${sc.time?`<span class="dwl-chip save">⏱ ${escHtml(sc.time[0])} → ${escHtml(sc.time[1])}</span>`:''}<span class="dwl-chip">📝 аудит: ${escHtml(sc.done.audit)}</span></div>
           <div class="dwl-done-c">→ ${escHtml(sc.done.chain)}</div>
           <div class="dwl-done-a"><button class="dwl-btn ghost" data-goaudit>Открыть аудит →</button><button class="dwl-btn ghost" data-gojournal>Журнал двойника →</button></div>
         </div>`:''}`;
@@ -114,9 +124,10 @@
              становится правилом в промпте агента, версия растёт */
           if (window.__ORG_LEARN){
             risks.filter(i=>st.resolved.has(i)).forEach(i=>{
+              if (st.applied[i]) return; // применённое правило не переучиваем
               const v=(st.edited[i]||'').trim(), r=sc.draft.lines[i].risk;
               if (v && v!==r.fix && v!==sc.draft.lines[i].t.trim()){
-                const got = window.__ORG_LEARN(w, r.note, v, '✓ приёмка с правкой · «'+sc.q+'»');
+                const got = window.__ORG_LEARN(w, r.note, v, '✓ приёмка с правкой · «'+sc.q+'»', {riskRef:r.note, applied:v});
                 if (got){ pushAudit({who:'платформа', emoji:'🧠', act:'выучено правило из правки эксперта → '+got.agent+' v'+got.version, dept:'обучение'});
                   toast('🧠 Платформа выучила правило: '+got.agent+' → v'+got.version); }
               }
@@ -132,8 +143,11 @@
         const target = risks.find(i=>!st.resolved.has(i));
         dwLog(w, 'возврат: «'+v+'» → переработка', 'ret');
         pushAudit({who:'вы → '+w.name, emoji:'↩', act:'возврат черновика: '+v, dept:'петля'});
-        /* возврат с комментарием — тоже обучение: правило агенту, версия +0.1 */
-        if (window.__ORG_LEARN){ const got = window.__ORG_LEARN(w, sc.q, v, '↩ возврат · «'+sc.q+'»');
+        /* возврат с комментарием — тоже обучение: правило агенту, версия +0.1,
+           и при повторе задачи эта строка придёт уже исправленной */
+        if (window.__ORG_LEARN){
+          const tr = target!==undefined ? sc.draft.lines[target].risk : null;
+          const got = window.__ORG_LEARN(w, (tr?tr.note+' ':'')+v, v, '↩ возврат · «'+sc.q+'»', tr?{riskRef:tr.note, applied:tr.fix}:undefined);
           if (got) pushAudit({who:'платформа', emoji:'🧠', act:'выучено из возврата → '+got.agent+' v'+got.version, dept:'обучение'}); }
         toast(w.name+' перерабатывает черновик по комментарию…');
         chain(ep, [[900, ()=>{ if(target!==undefined){ st.edited[target]=sc.draft.lines[target].risk.fix; st.resolved.add(target); } draw(); toast('Готово: строка переработана — проверьте и решайте'); }]]);
@@ -225,7 +239,7 @@
             <details class="dwl-prompt" ${ai===0?'open':''}><summary>Системный промпт — готов к использованию (обновляется платформой)</summary><pre>${escHtml(a.prompt)}</pre></details>
             <div class="dwl-spec-g">
               <div><b class="dwl-spec-h">MCP-подключения</b>${(a.mcp&&a.mcp.length)?a.mcp.map(m=>`<div class="dwl-spec-li">🔌 <b>${escHtml(m.name)}</b> — ${escHtml(m.gives)}<br/><small class="dwl-scope">права: ${escHtml(m.scope)}</small></div>`).join(''):'<div class="dwl-spec-li">без внешних инструментов</div>'}</div>
-              <div><b class="dwl-spec-h">Выучено платформой · ${a.learned.length} правил</b>${a.learned.length?a.learned.map(r=>`<div class="dwl-spec-li dwl-rule">🧠 <b>[${r.v}]</b> ${escHtml(r.rule)}<br/><small class="dwl-grow">${escHtml(r.source)}</small></div>`).join(''):'<div class="dwl-spec-li">пока пусто — первая же ваша правка или возврат станет правилом</div>'}</div>
+              <div><b class="dwl-spec-h">Выучено платформой · ${a.learned.length} правил</b>${a.learned.length?a.learned.map(r=>`<div class="dwl-spec-li dwl-rule">🧠 <b>[${r.v}]</b> ${escHtml(r.rule)}<br/><small class="dwl-grow">${escHtml(r.source)}${r.why?' · атрибуция: '+escHtml(r.why):''}${r.live?' · применяется к новым черновикам':''}</small></div>`).join(''):'<div class="dwl-spec-li">пока пусто — первая же ваша правка или возврат станет правилом</div>'}</div>
               <div><b class="dwl-spec-h">Инструменты и права</b>${a.tools.map(t=>`<div class="dwl-spec-li">🔧 <b>${escHtml(t[0])}</b> — ${escHtml(t[1])}</div>`).join('')}</div>
               <div><b class="dwl-spec-h">Триггеры запуска</b>${a.triggers.map(t=>`<div class="dwl-spec-li">⚡ ${escHtml(t)}</div>`).join('')}</div>
               <div><b class="dwl-spec-h">Выходные артефакты</b>${a.outputs.map(t=>`<div class="dwl-spec-li">📄 ${escHtml(t)}</div>`).join('')}</div>
@@ -274,11 +288,20 @@
         if (typeof rpgPhraseCheck==='function' && rpgPhraseCheck(v)){ ask.value=''; return; }
         ask.value='';
         /* свободный ввод → ближайший сценарий по пересечению слов, иначе первый */
-        const score=s=>v.toLowerCase().split(/\s+/).filter(t=>t.length>3 && s.q.toLowerCase().includes(t)).length;
+        const score=s=>v.toLowerCase().split(/\s+/).filter(t=>t.length>3 && (s.q+' '+s.steps.map(x=>x[1]).join(' ')).toLowerCase().includes(t)).length;
         const best=[...L.scenarios].sort((a,b)=>score(b)-score(a))[0];
         const empty = mount.querySelector('.dwl-empty'); if (empty) empty.remove();
-        const sc = score(best)>0 ? best : {...L.scenarios[0], q:v};
-        dwEpisode(mount, w, sc);
+        if (score(best)>0){ dwEpisode(mount, w, best); return; }
+        /* честность вместо театра: незнакомую задачу не подменяем чужим контентом */
+        const note = document.createElement('div');
+        note.className = 'dwl-ep';
+        note.innerHTML = `<div class="dwl-task"><span class="dwl-task-ic">${w.emoji}</span>
+          <div class="dwl-task-b"><b>${escHtml(v)}</b><small>${escHtml(w.name)}</small></div></div>
+          <div class="dwl-refuse" style="border-color:color-mix(in srgb, var(--acc) 40%, transparent); background:color-mix(in srgb, var(--acc) 6%, transparent)">
+          <b style="color:var(--acc)">Принял в работу по ДИ:</b> ${escHtml((w.ji&&w.ji.duties&&w.ji.duties[0])||'задача направления')}.
+          На демо-стенде вживую проигрываются подготовленные сценарии — выберите слева; в развёрнутой платформе эту задачу выполнил бы состав агентов по той же петле.</div>`;
+        mount.prepend(note);
+        pushAudit({who:w.name, emoji:w.emoji, act:'принял задачу: '+v.slice(0,60), dept:'петля'});
       }; go.onclick=send; ask.onkeydown=e=>{ if(e.key==='Enter') send(); }; }
       const dl=root.querySelector('[data-specdl]'); if (dl) dl.onclick=()=>{
         const blob = new Blob([JSON.stringify(L.spec, null, 2)], {type:'application/json'});
@@ -375,24 +398,33 @@
   hideCss.textContent = '#tourFab{display:none!important}';
   document.head.appendChild(hideCss);
 
-  /* 1. Рабочие столы новых направлений: чат + артефакт с гейтом (envCore) */
-  ['mgmt','strategy','prod','rzd','avandata'].forEach(id=>{
+  /* 1. Рабочие столы направлений: чат + артефакт с гейтом (envCore).
+     dev тоже переводим: KAM D3 живёт в домене CDP/EDP, а не в чужой платёжке */
+  ['mgmt','strategy','prod','rzd','avandata','dev'].forEach(id=>{
     ENVS2[id] = (root,d)=>envCore(root,d,c=>chatEnvBuild(d,c));
   });
-  Object.assign(ACCEPT_LABEL, { mgmt:'Утвердить', strategy:'Принять в стратегию', prod:'Утвердить план', rzd:'Готово к отправке в РЖД', avandata:'Передать на отправку клубу', sales:'Отправить КП', marketing:'Утвердить GTM' });
+  Object.assign(ACCEPT_LABEL, { mgmt:'Утвердить', strategy:'Принять в стратегию', prod:'Утвердить план', rzd:'Готово к отправке в РЖД', avandata:'Передать на отправку клубу', sales:'Отправить КП', marketing:'Утвердить GTM', dev:'Принять ревью' });
 
   /* 2. Канал маркетинга: живая передача MQL в продажи (связь D8 → D5) */
   const origChannel = renderDeptChannel;
   renderDeptChannel = function(root, deptId){
     origChannel(root, deptId);
-    if (deptId!=='marketing' || window.__MQL_SENT) return;
+    if (deptId!=='marketing') return;
     const main = root.querySelector('.channel-main'); if (!main) return;
     const card = document.createElement('div');
     card.className = 'dwl-mql';
+    /* после передачи карточка не исчезает, а показывает done-состояние */
+    if (window.__MQL_SENT){
+      card.innerHTML = `<div class="dwl-mql-b"><b>✓ 18 MQL переданы в Продажи${window.__MQL_TIME?' · '+window.__MQL_TIME:''}</b><small>0 потеряно · реакция 15 минут · конверсия каналов вернётся сегодня</small></div><button class="dwl-btn ghost" data-mqlgo>Открыть канал Продаж →</button>`;
+      main.insertBefore(card, main.querySelector('.channel-composer'));
+      card.querySelector('[data-mqlgo]').onclick = ()=>navTo('channel:sales');
+      return;
+    }
     card.innerHTML = `<div class="dwl-mql-b"><b>🧲 18 MQL с вебинара готовы к передаче</b><small>агент лидогенерации: скоринг завершён · 6 горячих · распределение по загрузке менеджеров</small></div><button class="dwl-btn acc" data-mql>Передать в Продажи →</button>`;
     main.insertBefore(card, main.querySelector('.channel-composer'));
     card.querySelector('[data-mql]').onclick = ()=>{
       window.__MQL_SENT = true;
+      { const t=new Date(); window.__MQL_TIME = String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0'); }
       const CH = window.__CHMSG, msgs = CH.marketing;
       const hh = ()=>{ const t=new Date(); return String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0'); };
       card.querySelector('[data-mql]').disabled = true;

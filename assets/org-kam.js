@@ -192,19 +192,19 @@
           esc:'SEV-1 обращение или срыв SLA → дежурному и Василию.' }),
     ],
     sales: [
-      DW('platform-sales-ai','PLATFORM-SALES-AI','💼','Цифровой двойник продажника платформ','Платформенные продажи','Виктор В. · Продажи платформ','sonnet','КП по Авандок.ИИ · 10 мин',
+      DW('platform-sales-ai','PLATFORM-SALES-AI','💼','Цифровой двойник менеджера платформенных продаж','Платформенные продажи','Виктор В. · Продажи платформ','sonnet','КП по Авандок.ИИ · 10 мин',
         { mission:'КП за 10 минут вместо 45: человек правит и отправляет, а не пишет с нуля.',
           duties:['Генерация КП по описанию потребности','Pre-call research: профиль компании за 3 минуты','Follow-up письма и материалы по продуктам','Анализ воронки собственных сделок'],
           limits:[ACC.P,'Не отправляет КП сам — отправляет человек','Цены и скидки — только из утверждённого прайса','Не обещает функциональности вне roadmap'],
           kpi:[['КП','45 → 10 мин'],['Pre-call research','20 → 3 мин'],['Конверсия','+20%']],
           esc:'Запрос нестандартных условий → Виктору В. и главе департамента.' }),
-      DW('enterprise-sales-gov','ENTERPRISE-SALES-GOV','🏛️','Цифровой двойник продажника госсектора','Госсектор / тендеры','Сергей Л. · Госзаказчики','sonnet','тендерный ответ · 44-ФЗ',
+      DW('enterprise-sales-gov','ENTERPRISE-SALES-GOV','🏛️','Цифровой двойник менеджера по госсектору','Госсектор / тендеры','Сергей Л. · Госзаказчики','sonnet','тендерный ответ · 44-ФЗ',
         { mission:'Ни один профильный тендер не пропущен, ни одна заявка не падает на формальностях.',
           duties:['Мониторинг zakupki.gov.ru по профилю','Подготовка тендерных предложений по 44-ФЗ/223-ФЗ','Юридическая проверка тендерной документации (агент-юрист)','Чек-лист соответствия требованиям'],
           limits:[ACC.P,'Не подаёт заявки — подаёт человек','Не подписывает документы','Цены — из утверждённого прайса'],
           kpi:[['Тендерный ответ','16 → 8 ч'],['Формальных ошибок','0'],['Мониторинг','ежедневно']],
           esc:'Нестандартные требования или риск демпинга → Сергею Л. и юристам.' }),
-      DW('infra-data-sales','INFRA-DATA-SALES-LEAD','🛰️','Цифровой двойник продажника инфраструктуры','Инфраструктура / АванДата','Денис · Инфраструктурные продажи','sonnet','ответ на RFP · стадионы',
+      DW('infra-data-sales','INFRA-DATA-SALES-LEAD','🛰️','Цифровой двойник менеджера инфраструктурных продаж','Инфраструктура / АванДата','Денис · Инфраструктурные продажи','sonnet','ответ на RFP · стадионы',
         { mission:'RFP и презентации для федераций готовятся из базы кейсов, а не с чистого листа.',
           duties:['Ответы на RFP по инфраструктурным проектам','Презентации для спортивных федераций','Анализ стадионов и спортивной инфраструктуры','КП по АванДата'],
           limits:[ACC.P,'Отправка — через человека','Спортивные данные клиентов — только с допуском','Не смешивает данные АванДата с другими линейками'],
@@ -1256,23 +1256,43 @@
     avandata: [['Методология профилирования','модели, пороги риск-индексов, NDA-правила клубов','пополняется: каждый принятый клубом отчёт']],
   };
 
-  /* ---- атрибуция выученного правила агенту по домену риска ---------------- */
+  /* ---- атрибуция выученного правила агенту по домену риска ----------------
+     возвращает {k: тип агента, why: почему правило легло ему} — прозрачность
+     атрибуции видна в спецификации и реестре */
   function ruleAgent(crew, text){
     const t = (text||'').toLowerCase();
     const pick = (k)=>crew.indexOf(k)>=0 ? k : null;
-    if (/152-фз|44-фз|223-фз|38-фз|nda|пдн|договор|тайн|юрисдикц|демпинг/.test(t)) return pick('legal')||pick('sales')||pick('writer')||crew[1]||crew[0];
-    if (/скидк|кп|тендер|прайс|сделк|клиент|лид/.test(t)) return pick('sales')||pick('writer')||crew[1]||crew[0];
-    if (/датасет|модел|деплой|миграц|ci|код|drift|контракт api|шина/.test(t)) return pick('devag')||pick('analyst')||crew[1]||crew[0];
-    if (/метрик|прогноз|ltv|cac|дубл|атрибуц|воронк|unit|план\/факт/.test(t)) return pick('analyst')||crew[1]||crew[0];
-    if (/кандидат|скрининг|онбординг|вакансия|дискрим/.test(t)) return pick('hr')||crew[1]||crew[0];
-    if (/бренд|пост|рассылк|контент|согласи|кампан/.test(t)) return pick('mkt')||pick('writer')||crew[1]||crew[0];
-    if (/веха|срок|план|доступ|смежник|блокир/.test(t)) return pick('pm')||crew[1]||crew[0];
-    return pick('writer')||crew[1]||crew[0];
+    const R = (k, why)=>({ k, why });
+    if (/152-фз|44-фз|223-фз|38-фз|nda|пдн|договор|тайн|юрисдикц|демпинг/.test(t)) return R(pick('legal')||pick('sales')||pick('writer')||crew[1]||crew[0], 'домен: право и комплаенс');
+    if (/скидк|кп\b|тендер|прайс|сделк|клиент|лид/.test(t)) return R(pick('sales')||pick('writer')||crew[1]||crew[0], 'домен: коммерция и цены');
+    if (/датасет|модел|деплой|миграц|\bci\b|код|drift|контракт api|шина/.test(t)) return R(pick('devag')||pick('analyst')||crew[1]||crew[0], 'домен: инженерия и ML');
+    if (/метрик|прогноз|ltv|cac|дубл|атрибуц|воронк|unit|план\/факт/.test(t)) return R(pick('analyst')||crew[1]||crew[0], 'домен: данные и метрики');
+    if (/кандидат|скрининг|онбординг|вакансия|дискрим/.test(t)) return R(pick('hr')||crew[1]||crew[0], 'домен: люди и найм');
+    if (/бренд|пост|рассылк|контент|согласи|кампан/.test(t)) return R(pick('mkt')||pick('writer')||crew[1]||crew[0], 'домен: контент и каналы');
+    if (/веха|срок|план|доступ|смежник|блокир/.test(t)) return R(pick('pm')||crew[1]||crew[0], 'домен: сроки и зависимости');
+    return R(pick('writer')||crew[1]||crew[0], 'домен не распознан — агенту-исполнителю черновика');
   }
 
+  /* ---- least privilege: тип агента видит только релевантные ему базы ------ */
+  const TYPE_RAG = {
+    asst:['RAG-006'], writer:null /* писатель собирает из всех баз носителя */,
+    analyst:['RAG-003','RAG-004','RAG-005','RAG-103','RAG-106','RAG-107','RAG-108'],
+    research:['RAG-007','RAG-101','RAG-104','RAG-105'],
+    pm:['RAG-004','RAG-006','RAG-101'], sales:['RAG-001','RAG-002','RAG-003','RAG-005','RAG-007','RAG-101','RAG-105'],
+    mkt:['RAG-001','RAG-103','RAG-107'], devag:['RAG-002','RAG-004','RAG-104','RAG-108'],
+    legal:['RAG-004','RAG-006','RAG-101'], hr:['RAG-102','RAG-006'],
+  };
+
+  function agentRags(L, k){
+    const open = L.rags.filter(r=>!r.denied);
+    const allow = TYPE_RAG[k];
+    return (allow == null) ? open : open.filter(r=>allow.includes(r.id));
+  }
   function agentPrompt(w, L, deptLabel, k, learned, mcp, packs){
     const ji = w.ji, meta = AG[k], sp = AGSPEC[k];
-    const rags = L.rags.filter(r=>!r.denied).map(r=>r.id+' «'+r.name+'»');
+    const rags = agentRags(L, k).map(r=>r.id+' «'+r.name+'»');
+    const ragLine = rags.length ? rags.join('; ')+' — каждый факт подписывай источником; нет данных — так и скажи.'
+      : 'прямого доступа к базам нет — работаешь с артефактами других агентов состава (least privilege).';
     return `Ты — ${meta[1].toLowerCase()} в составе цифрового сотрудника ${w.name} (${w.title}, направление «${deptLabel}»).
 Руководитель-человек: ${w.lead}. Допуск носителя: ${L.acc} (${L.acc==='A'?'администратор':L.acc==='P'?'продвинутый':'базовый'}).
 
@@ -1280,7 +1300,7 @@
 ТВОЯ ФУНКЦИЯ: ${sp.role(w)}.
 
 ИСТОЧНИКИ ЗНАНИЙ (даёт платформа, обновляются без ручных правок):
-— RAG-базы: ${rags.join('; ')} — каждый факт подписывай источником; нет данных — так и скажи.
+— RAG-базы (по принципу least privilege): ${ragLine}
 — Знания проектов: ${packs.map(p=>'«'+p[0]+'»').join(', ')||'—'}.
 — MCP-инструменты: ${mcp.map(m=>m[1]+' ('+m[3]+')').join('; ')||'без внешних инструментов'}.
 
@@ -1302,8 +1322,8 @@ ${learned.map(r=>'— ['+r.v+'] '+r.rule).join('\n')}
        атрибуция агенту по домену риска — это и есть «удачные итерации» */
     const seed = {};
     L.scenarios.forEach(sc=>sc.draft.lines.forEach(l=>{ if(!l.risk) return;
-      const ak = ruleAgent(L.crew, l.risk.note+' '+l.risk.fix);
-      (seed[ak]=seed[ak]||[]).push({ rule:'Не допускать: '+l.risk.note.split('—')[0].trim()+'. Правило: '+l.risk.fix, source:'✓ приёмка · «'+sc.q+'»' });
+      const ra = ruleAgent(L.crew, l.risk.note+' '+l.risk.fix);
+      (seed[ra.k]=seed[ra.k]||[]).push({ rule:'Не допускать: '+l.risk.note.split('—')[0].trim()+'. Правило: '+l.risk.fix, source:'✓ приёмка · «'+sc.q+'»', why:ra.why });
     }));
     const deptMcp = DEPT_MCP2[deptId]||[];
     const packs = KNOW[deptId]||[];
@@ -1317,7 +1337,7 @@ ${learned.map(r=>'— ['+r.v+'] '+r.rule).join('\n')}
         mcp: mcp.map(m=>({ id:m[0], name:m[1], gives:m[2], scope:m[3] })),
         learned,
         tools:sp.tools, triggers:sp.trig, outputs:sp.out,
-        guardrails:ji.limits.concat(sp.guard), rags:L.rags.filter(r=>!r.denied).map(r=>({id:r.id,name:r.name})) };
+        guardrails:ji.limits.concat(sp.guard), rags:agentRags(L, k).map(r=>({id:r.id,name:r.name})) };
     }).filter(Boolean);
     return {
       version:'1.0', platform:'Авандок.ИИ / Среда', kind:'digital-employee',
@@ -1340,15 +1360,19 @@ ${learned.map(r=>'— ['+r.v+'] '+r.rule).join('\n')}
   }
 
   /* живое обучение из петли: правка эксперта или возврат → правило агенту,
-     версия +0.1, всё в аудит. Вызывается движком dw-loop. */
-  window.__ORG_LEARN = function(w, riskText, humanText, source){
+     версия +0.1, всё в аудит и в localStorage (переживает F5). */
+  const LEARN_KEY = 'sreda_kam_learn';
+  function persistLearn(e){ try{ const arr=JSON.parse(localStorage.getItem(LEARN_KEY)||'[]'); arr.push(e); localStorage.setItem(LEARN_KEY, JSON.stringify(arr.slice(-100))); }catch(err){} }
+  window.__ORG_LEARN = function(w, riskText, humanText, source, opts, silent){
     if (!w.loop || !w.loop.spec) return null;
-    const ak = ruleAgent(w.loop.crew, riskText+' '+humanText);
-    const a = w.loop.spec.agents.find(x=>x.type===ak) || w.loop.spec.agents[0];
+    const ra = ruleAgent(w.loop.crew, riskText+' '+humanText);
+    const a = w.loop.spec.agents.find(x=>x.type===ra.k) || w.loop.spec.agents[0];
     if (!a) return null;
     const v = '1.'+(a.learned.length+1);
-    const rule = { v, rule:'Правка эксперта: '+humanText, source };
+    const rule = { v, rule:'Правка эксперта: '+humanText, source, why:ra.why, live:true,
+      riskRef:opts&&opts.riskRef, applied:(opts&&opts.applied)||humanText };
     a.learned.push(rule); a.version = v;
+    if (!silent) persistLearn({ wid:w.id, riskText, humanText, source, riskRef:rule.riskRef, applied:rule.applied });
     /* секция правил в промпте перестраивается целиком — без ручного редактирования */
     const sec = '\nВЫУЧЕННЫЕ ПРАВИЛА (из одобренных итераций — пополняет платформа, не человек-редактор):\n'
       + a.learned.map(r=>'— ['+r.v+'] '+r.rule).join('\n') + '\n';
@@ -1438,6 +1462,13 @@ ${learned.map(r=>'— ['+r.v+'] '+r.rule).join('\n')}
       {t:'Стоимость: 18,4 млн ₽/год со скидкой 25%.', issue:{sev:1,note:'скидка 25% выше политики (макс 15%) — двойник взял прецедент прошлой сделки',fix:'15% · выше — эскалация Вячеславу'}},
       {t:'Внедрение: 6 недель.', issue:{sev:2,note:'срок не подтверждён Производством',fix:'срок — после оценки D4 (заявка создана)'}},
       {t:'Референсы: Ростелеком 120K · ФСС 28K · on-premise.'} ]};
+  /* стол D3 — домен CDP/EDP, а не чужая платёжка */
+  KAM_WB.dev = { kind:'Code review', title:'Ревью · интеграционная шина CDP v2', who:'двойник: DEV-TEAM-LEAD',
+    draft:[
+      {t:'Контракты событий: обратная совместимость сохранена, версии схем корректны.'},
+      {t:'Ретраи при недоставке: экспоненциальный backoff.', issue:{sev:1,note:'без джиттера ретраи синхронизируются и бьют пиком — паттерн мартовского инцидента на профиле РЖД',fix:'backoff с full jitter + лимит очереди'}},
+      {t:'Обработка дублей: идемпотентность по event_id — корректно.'},
+      {t:'Метрики: p99 замерен на тестовом стенде.', issue:{sev:2,note:'нагрузочный профиль РЖД не прогнан — p99 не подтверждён',fix:'прогон на профиле пассажиропотока до merge'}} ]};
   KAM_WB.marketing = { kind:'GTM-план', title:'Запуск «ИИ Ассистент» · GTM', who:'двойник: PRODUCT-MARKETING-MANAGER',
     draft:[
       {t:'Сегменты: enterprise с SharePoint EOL · госсектор on-premise · текущие клиенты Авандок.'},
@@ -1467,6 +1498,10 @@ ${learned.map(r=>'— ['+r.v+'] '+r.rule).join('\n')}
         {t:'Кейс: приложены скриншоты профилей игроков Зенита.', issue:{sev:1,note:'данные клуба под NDA — в чужое КП нельзя',fix:'обезличенный демо-профиль + письмо-согласие на референс'}},
         {t:'Цена пилота: по утверждённому прайсу направления.'} ]} ],
   };
+  KAM_WBQ.dev = [ { kind:'Релиз · чеклист', title:'Релиз 2.4.1 → производство', who:'агент DevOps', draft:[
+      {t:'CI зелёный: 1 412 тестов, staging прогнан.'},
+      {t:'Миграция БД: добавление индексов профилей.', issue:{sev:1,note:'нет плана отката — на объёме Ростелекома восстановление займёт часы',fix:'обратимая миграция + репетиция отката на staging-копии'}},
+      {t:'Release notes собраны.', issue:{sev:2,note:'breaking change API уведомлений не упомянут',fix:'breaking change первой строкой + гайд миграции'}} ]} ];
 
   /* ======================================================================== */
   /*  ПРИМЕНЕНИЕ: мутируем существующие структуры на месте                    */
@@ -1507,6 +1542,13 @@ ${learned.map(r=>'— ['+r.v+'] '+r.rule).join('\n')}
   ALL_DIGITAL.length = 0;
   Object.keys(DIGITAL_STAFF).forEach(k=>DIGITAL_STAFF[k].forEach(w=>ALL_DIGITAL.push({...w, dept:k})));
 
+  /* восстановить выученное из прошлых сессий (переживает F5); ?reset — очистка */
+  if (/[?&#]reset\b/.test(q)){ try{ localStorage.removeItem('sreda_kam_learn'); }catch(e){} }
+  try{ JSON.parse(localStorage.getItem('sreda_kam_learn')||'[]').forEach(e=>{
+    const w = ALL_DIGITAL.find(x=>x.id===e.wid);
+    if (w && window.__ORG_LEARN) window.__ORG_LEARN(w, e.riskText, e.humanText, e.source+' · прошлая сессия', {riskRef:e.riskRef, applied:e.applied}, true);
+  }); }catch(e){}
+
   /* рабочие столы: KAM-артефакты с гейтами (правка руками) */
   if (typeof WORKBENCH !== 'undefined'){ Object.assign(WORKBENCH, KAM_WB); }
   if (typeof WB_QUEUE !== 'undefined'){ Object.assign(WB_QUEUE, KAM_WBQ); }
@@ -1539,6 +1581,28 @@ ${learned.map(r=>'— ['+r.v+'] '+r.rule).join('\n')}
     execLead: 'Вячеслав · Глава департамента',
     surgeLabel: '▶ Показать поток задач',
     load: { mgmt:72, strategy:64, dev:88, prod:84, sales:76, rzd:79, hr:58, marketing:81, avandata:61 },
+    /* счётчики пульса откалиброваны под 21+34, не под вымышленные 314 */
+    doneBase: 2140,
+    pulseFeed: [
+      ['d','KAM-DIRECTOR','брифинг собран — на проверку Вячеславу','mgmt'],
+      ['h','Вячеслав','утвердил брифинг · дубль CRM на слияние','mgmt'],
+      ['d','PLATFORM-SALES-AI','КП для банка готово за 10 минут','sales'],
+      ['h','Виктор В.','вернул скидку в политику и отправил КП','sales'],
+      ['d','Агент лидогенерации','18 MQL проскорены · 6 горячих','marketing'],
+      ['h','Полина','доразметила сегмент АванДата в скоринге','marketing'],
+      ['d','RAIL-PROJECT-DIRECTOR','отчёт РЖД собран за час','rzd'],
+      ['h','Екатерина','сняла ПДн из примера — 152-ФЗ','rzd'],
+      ['d','DEV-TEAM-LEAD','ревью шины CDP · 2 замечания','dev'],
+      ['h','Владимир','принял ревью · джиттер в ретраи','dev'],
+      ['d','Агент HR-операций','24 отклика · топ-5 к интервью','hr'],
+      ['h','Ксения','вернула 3 кандидатов — фильтр по вузу снят','hr'],
+      ['d','AVANDATA-DIRECTOR','6 профилей Зенита обновлены','avandata'],
+      ['h','Дмитрий','сигнал медштабу — риск-индекс 0.71','avandata'],
+      ['d','PRODUCT-STRATEGIST','срез рынка ECM+GenAI готов','strategy'],
+      ['h','Василий','переклассифицировал инцидент в major','prod'],
+      ['x','Маркетинг → Продажи','18 MQL переданы · 0 потеряно','marketing'],
+      ['x','Продажи → Проекты РЖД','тендер: оценка 14+6 чел-мес','sales'],
+    ],
     deptTask: {
       mgmt:     { c:'#e8c468', l:['брифинг','апрув бюджета','протокол','решение','стратсессия','алерт >15%'] },
       strategy: { c:'#a78bfa', l:['TAM/SAM/SOM','PRD','конкурент-срез','roadmap','гипотеза','дайджест'] },
