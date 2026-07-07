@@ -11,7 +11,10 @@ const Organism = (() => {
   const TAU = Math.PI * 2;
 
   /* --- Структура компании ------------------------------------------------- */
-  const DEPTS = [
+  /* отделы карты: реальная оргструктура из оверлея (org-kam), иначе — дефолт */
+  const DEPTS = (typeof window!=='undefined' && window.__ORG && Array.isArray(window.__ORG.orgMap) && window.__ORG.orgMap.length)
+    ? window.__ORG.orgMap.slice()
+    : [
     { id:'analytics', label:'Аналитика',  w:0.12 },
     { id:'marketing', label:'Маркетинг',  w:0.16 },
     { id:'design',    label:'Дизайн',     w:0.08 },

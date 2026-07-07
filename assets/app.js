@@ -6,6 +6,8 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const el = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
 function escHtml(s){ return String(s).replace(/[&<>]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch])); }
+/* русское склонение «человек»: 1 человек, 2–4 человека, 5+ человек */
+function plCh(n){ n=Math.abs(+n)||0; const d=n%10, dd=n%100; const w=(d===1&&dd!==11)?'человек':(d>=2&&d<=4&&(dd<10||dd>=20))?'человека':'человек'; return n+' '+w; }
 
 /* --- Загрузка данных из API (fallback на in-memory) --- */
 /* экраны, которые читают данные из API и должны перерисоваться, когда живые данные доедут */
@@ -395,11 +397,11 @@ function renderTeam(root, id){ const cfg=COCKPITS[id]; const d=DEPARTMENTS.find(
         </div>`;
     }
 
-    root.innerHTML=workHead(d, `Штат «${cfg.role}»: ${hc} человек + ${dhc} цифровых сотрудников (${share}%)`) + `
+    root.innerHTML=workHead(d, `Штат «${cfg.role}»: ${plCh(hc)} + ${dhc} цифровых сотрудников (${share}%)`) + `
     <div class="dev-metrics" style="grid-template-columns:repeat(${Math.min(M.length,6)},1fr)">${M.map(m=>`<div class="dm"><span>${m.k}</span><div class="dm-v"><s>${m.b}</s><b>${m.a}</b></div></div>`).join('')}</div>
     <div class="two-col" style="align-items:start">
-      <div class="panel"><h2>👥 Штат отдела <span class="tag">${hc} человек · ${dhc} цифровых${grouped?' · '+Object.keys(groups).length+' функций':''}</span></h2>${teamHtml}
-        <div class="team-more">показаны ключевые: <b>${TEAM.length}</b> человек и <b>${DS.length}</b> цифровых · ещё <b>${hc-TEAM.length}</b> специалистов и <b>${dhc-DS.length}</b> типовых цифровых позиций</div></div>
+      <div class="panel"><h2>👥 Штат отдела <span class="tag">${plCh(hc)} · ${dhc} цифровых${grouped?' · '+Object.keys(groups).length+' функций':''}</span></h2>${teamHtml}
+        <div class="team-more">показаны ключевые: <b>${TEAM.length}</b> ${TEAM.length>=2&&TEAM.length<=4?'человека':'человек'} и <b>${DS.length}</b> цифровых · ещё <b>${hc-TEAM.length}</b> специалистов и <b>${dhc-DS.length}</b> типовых цифровых позиций</div></div>
       <div class="panel team-side">${side}</div>
     </div>`;
     root.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{ sel={kind:'h', i:+b.dataset.p}; draw(); });
@@ -681,7 +683,7 @@ function renderPulse(root, d){
   root.innerHTML = workHead(d, `Нервная система компании · ${TOTAL_STAFF} нейронов: ${COMPANY_SIZE} человек + ${DIGITAL_SIZE} цифровых (${DIGITAL_SHARE}% штата)`) + `
     <div class="pls-wrap">
       <div class="pls-stage cx-stage" id="cxStage" role="group" aria-label="Карта-пульс компании: отделы как кластеры нейронов">
-        <div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Пульс компании по отделам: ${ROLE_IDS.map(r=>{ const dep=DEPARTMENTS.find(x=>x.id===r); const hc=(typeof HEADCOUNT!=='undefined'&&HEADCOUNT[r])||0; const dhc=(typeof DIGITAL_HEADCOUNT!=='undefined'&&DIGITAL_HEADCOUNT[r])||0; return `${dep?dep.label:r} — ${hc} человек и ${dhc} цифровых сотрудников`; }).join('; ')}. Клик по отделу — переход в его пульс, наведение на нейрон — имя и задача сотрудника.</div>
+        <div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Пульс компании по отделам: ${ROLE_IDS.map(r=>{ const dep=DEPARTMENTS.find(x=>x.id===r); const hc=(typeof HEADCOUNT!=='undefined'&&HEADCOUNT[r])||0; const dhc=(typeof DIGITAL_HEADCOUNT!=='undefined'&&DIGITAL_HEADCOUNT[r])||0; return `${dep?dep.label:r} — ${plCh(hc)} и ${dhc} цифровых сотрудников`; }).join('; ')}. Клик по отделу — переход в его пульс, наведение на нейрон — имя и задача сотрудника.</div>
         <div class="pls-bgglow"></div>
         <div class="pls-core" id="plsCore" title="Запустить рой">
           <span class="pls-ring r1"></span><span class="pls-ring r2"></span>
@@ -1031,12 +1033,12 @@ function renderDeptPulse(root, roleId){
   genH.forEach(x=>links.push({ a:x.id, b:'#'+x.f, w:1.3, color:dt.c, op:.10 }));
   genD.forEach(x=>links.push({ a:x.id, b:'#'+x.f, w:1.3, color:'#36c994', op:.12 }));
 
-  root.innerHTML = workHead(d, `Пульс отдела «${cfg.role}» · ${hc} человек + ${dhc} цифровых · каждый нейрон — живой сотрудник`) + `
+  root.innerHTML = workHead(d, `Пульс отдела «${cfg.role}» · ${plCh(hc)} + ${dhc} цифровых · каждый нейрон — живой сотрудник`) + `
     ${PJ.length?`<div class="pj-strip"><b>🚀 ${MEGA_PROJECT.title} в отделе · ${PJ.length}</b>
       ${PJ.map(t=>{ const s=PROJ_STATE[t.state];
         return `<button class="pj-chip" data-pjp="${t.who}" style="--c:${s[2]}"><i>${s[0]}</i><b>${t.who}${t.dw?' + 🤖 '+t.dw:''}</b><small>${t.t}</small></button>`; }).join('')}</div>`:''}
     <div class="dp-wrap">
-      <div class="dp-stage nm-stage" id="dpStage" role="group" aria-label="Карта-пульс отдела «${cfg.role}»: функции и сотрудники как нейроны"><div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Пульс отдела «${cfg.role}»: ${hc} человек и ${dhc} цифровых сотрудников по функциям — ${fns.map((f,fi)=>`${f}: ${hAlloc[fi]} человек и ${dAlloc[fi]} цифровых`).join('; ')}. Клик по нейрону — профиль сотрудника.</div></div>
+      <div class="dp-stage nm-stage" id="dpStage" role="group" aria-label="Карта-пульс отдела «${cfg.role}»: функции и сотрудники как нейроны"><div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Пульс отдела «${cfg.role}»: ${plCh(hc)} и ${dhc} цифровых сотрудников по функциям — ${fns.map((f,fi)=>`${f}: ${plCh(hAlloc[fi])} и ${dAlloc[fi]} цифровых`).join('; ')}. Клик по нейрону — профиль сотрудника.</div></div>
       <aside class="dp-side">
         <button class="btn go pls-surge" id="dpSurge" title="Открыть пусковую отдела: очередь задач бэклога, которые можно запустить">${SURGE_LBL}</button>
         <div class="side-proj" id="dpQueue" style="display:none"></div>
@@ -1189,7 +1191,7 @@ function renderCompany(root){
           ? `<div class="oc-tree">${fns.map(f=>`<div class="oc-fn"><div class="oc-fn-h">${f}<span>${groups[f].length}</span></div><div class="oc-people">${groups[f].map(p=> p.digital
               ?`<span class="oc-p dgt" data-wgo="${p.id}">🤖 ${p.name} · ${p.role}</span>`
               :`<span class="oc-p hmn" data-pgo="${r}:${p.i}" title="Открыть профиль">${p.name} · ${p.role}</span>`).join('')}</div></div>`).join('')}
-              <div class="oc-tree-foot"><span>ключевые позиции · всего ${hc} человек и ${dhc} цифровых</span><button class="btn go oc-open" data-go="${r}">Открыть штат →</button></div></div>`
+              <div class="oc-tree-foot"><span>ключевые позиции · всего ${plCh(hc)} и ${dhc} цифровых</span><button class="btn go oc-open" data-go="${r}">Открыть штат →</button></div></div>`
           : `<div class="oc-fns">${fns.slice(0,6).map(f=>`<span>${f}</span>`).join('')}${fns.length>6?`<span class="oc-more">+${fns.length-6}</span>`:''}</div><div class="oc-meta">${fns.length} функций · нажмите, чтобы раскрыть</div>`}
       </div>`; }).join('')}</div>
     <div class="od-gov" style="margin-top:13px">Одна Среда = одна компания. ${COMPANY_SIZE} человек и ${DIGITAL_SIZE} цифровых сотрудников в одном штатном расписании: у людей — рои под должность, у цифровых — должностные инструкции и руководители-люди. Всё связано библиотекой, данными с правами, передачами и governance.</div>`;
@@ -1376,7 +1378,7 @@ function renderOrganism(stage, d){
   stage.innerHTML = `
     <div class="org">
       <canvas id="orgCanvas" role="img" aria-label="Интерактивная карта оргструктуры компании: отделы и их численность. Клик по отделу — переход в его пульс."></canvas>
-      <div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Оргструктура компании по отделам: ${ROLE_IDS.map(r=>{ const dep=DEPARTMENTS.find(x=>x.id===r); const hc=(typeof HEADCOUNT!=='undefined'&&HEADCOUNT[r])||0; const dhc=(typeof DIGITAL_HEADCOUNT!=='undefined'&&DIGITAL_HEADCOUNT[r])||0; return `${dep?dep.label:r} — ${hc} человек и ${dhc} цифровых`; }).join('; ')}. Клик по отделу открывает его пульс.</div>
+      <div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Оргструктура компании по отделам: ${ROLE_IDS.map(r=>{ const dep=DEPARTMENTS.find(x=>x.id===r); const hc=(typeof HEADCOUNT!=='undefined'&&HEADCOUNT[r])||0; const dhc=(typeof DIGITAL_HEADCOUNT!=='undefined'&&DIGITAL_HEADCOUNT[r])||0; return `${dep?dep.label:r} — ${plCh(hc)} и ${dhc} цифровых`; }).join('; ')}. Клик по отделу открывает его пульс.</div>
 
       <div class="org-top">
         <div class="org-title">
@@ -1548,7 +1550,7 @@ function renderDashboard(root, d){
   const db = DASHBOARD;
   const FS = flowState();
   const flowsActive = FLOWS.filter(f=>FS[f.id]<f.steps.length).length;
-  const APPR_DEPT = { 'Маркетинг':'marketing','Инженерия':'dev','Продажи':'sales','Люди':'hr' };
+  const APPR_DEPT = {}; DEPARTMENTS.forEach(x=>{ APPR_DEPT[x.label]=x.id; });
   root.innerHTML = workHead(d, `Кокпит руководителя: ${COMPANY_SIZE} человек + ${DIGITAL_SIZE} цифровых сотрудников работают как один организм`) + `
     <div class="grid-kpi">
       <div class="kpi fade-in"><div class="l">Задач выполнено за неделю</div><div class="v">1 284</div><div class="d up">▲ +22%</div></div>
@@ -1618,7 +1620,7 @@ function renderDashboard(root, d){
     </div>`);
     $('.ghost', row).onclick = () => navTo((APPR_DEPT[a.dept]||'dev'));
     $('.go', row).onclick = () => { $('.go', row).textContent = 'Одобрено ✓'; $('.go', row).disabled = true; $('.go', row).style.opacity = .7;
-      pushAudit({ who:'CEO · Кирилл', what:`Одобрено: ${a.task}`, verdict:'allow' }); toast('Решение записано в аудит'); };
+      pushAudit({ who:(window.__ORG&&window.__ORG.execLead)||'CEO · Кирилл', what:`Одобрено: ${a.task}`, verdict:'allow' }); toast('Решение записано в аудит'); };
     appr.appendChild(row);
   });
 }
@@ -2237,7 +2239,7 @@ function renderCockpit(root, d){
     <div class="dev-metrics" id="ckMetrics" style="grid-template-columns:repeat(${Math.min(M.length,6)},1fr)"></div>
     <div class="dev-cols-wrap"><div class="dev-cols" id="ckCols" style="grid-template-columns:repeat(${cols.length},minmax(178px,1fr))"></div></div>
     <div class="two-col" style="align-items:start;margin-top:22px">
-      <div class="panel"><h2>👥 Команда и их рои <span class="tag">${TEAM.length} человек · у каждого свой рой</span></h2><div class="dev-team" id="ckTeam"></div></div>
+      <div class="panel"><h2>👥 Команда и их рои <span class="tag">${plCh(TEAM.length)} · у каждого свой рой</span></h2><div class="dev-team" id="ckTeam"></div></div>
       <details class="panel" open><summary style="cursor:pointer;list-style:none"><h2 style="display:inline">🤝 Общие цифровые сотрудники команды</h2></summary><div class="dev-shared" id="ckShared" style="margin-top:10px"></div>
         <div class="od-gov" style="margin-top:11px">ИИ — не «волшебная кнопка»: рой даёт <b>черновик</b>, эксперт его правит. Чем выше экспертиза — тем больше пойманных ошибок и правок. <b>Гейт открывает рабочую среду, а не телепортирует в «готово».</b></div>
         <button class="btn go" id="ckRun" style="width:100%;margin-top:12px">▶ Открыть задачу в рабочей среде (черновик → правки)</button></details>
@@ -3159,7 +3161,7 @@ function renderFilials(root){
   const totalP = FILIALS.reduce((s,f)=>s+f.people,0);
   const totalA = FILIALS.reduce((s,f)=>s+f.agents,0);
   function draw(){
-    root.innerHTML = workHead(d, `Мульти-филиальность · ${FILIALS.length} локаций · ${totalP} человек · ${totalA} цифровых сотрудников`) + `
+    root.innerHTML = workHead(d, `Мульти-филиальность · ${FILIALS.length} локаций · ${plCh(totalP)} · ${totalA} цифровых сотрудников`) + `
     <div class="grid-kpi" style="margin-bottom:14px">
       <div class="kpi"><div class="l">Локаций</div><div class="v">${FILIALS.length}</div><div class="d flat">● ${FILIALS.filter(f=>f.status==='active').length} активны</div></div>
       <div class="kpi"><div class="l">Сотрудников</div><div class="v">${totalP}</div><div class="d up">▲ по всем филиалам</div></div>
@@ -3266,7 +3268,7 @@ function renderFederation(work){
     const contracts = INTER_DOMAIN_CONTRACTS.filter(c => c.from === dom.id || c.to === dom.id);
     const card = el(`<div class="fed-domain" style="--dom-color:${dom.color}">
       <div class="fed-d-head"><span class="fed-d-ic" style="background:${dom.color}20;color:${dom.color}">${dom.icon}</span>
-        <div><b>${dom.name}</b><small>${dom.lead} · ${dom.agents} цифровых сотрудников · ${dom.humans} человек</small></div>
+        <div><b>${dom.name}</b><small>${dom.lead} · ${dom.agents} цифровых сотрудников · ${plCh(dom.humans)}</small></div>
       </div>
       <div class="fed-d-stats">
         <div class="fed-d-st"><b>${dom.budget}</b><small>бюджет</small></div>

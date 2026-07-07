@@ -85,7 +85,7 @@
       ['Любой человек и цифровой в дереве — кликается в профиль'],
       [['Пульс компании','mypulse-co'],['Личный ассистент','mypulse']]);
     if (p==='team'){ const d=deptOf(arg);
-      return C(`Команда «${d.label}»: ${HEADCOUNT[arg]||'—'} человек + ${DIGITAL_HEADCOUNT[arg]||'—'} цифровых.`,
+      return C(`Команда «${d.label}»: ${typeof plCh==='function'?plCh(HEADCOUNT[arg]||0):(HEADCOUNT[arg]||'—')+' человек'} + ${DIGITAL_HEADCOUNT[arg]||'—'} цифровых.`,
         ['Клик по цифровому — его должностная инструкция и петля работы'],
         [['Пульс направления','dpulse:'+arg],['Личный ассистент','mypulse']]); }
     if (p==='worker'){ const w=(typeof ALL_DIGITAL!=='undefined')&&ALL_DIGITAL.find(x=>x.id===arg);
