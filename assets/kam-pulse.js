@@ -126,8 +126,8 @@
   function waitingItems(){
     const items = [];
     if (staffById('agent-reporting')) items.push({ sev:'red', tag:'приёмка', text:'Недельный дашборд собран агентом отчётности — принять', open:'agent-reporting' });
-    if (staffById('kam-director'))    items.push({ sev:'red', tag:'приёмка', text:'Ежедневный брифинг KAM-DIRECTOR готов — проверить', open:'kam-director' });
-    if (staffById('exec-assistant'))  items.push({ sev:'amber', tag:'уточнение', text:'EXECUTIVE-ASSISTANT: подтвердить встречу 14:00 от вашего имени?', open:'exec-assistant' });
+    if (staffById('kam-director'))    items.push({ sev:'red', tag:'приёмка', text:'Ежедневный брифинг от двойника главы департамента готов — проверить', open:'kam-director' });
+    if (staffById('exec-assistant'))  items.push({ sev:'amber', tag:'уточнение', text:'Двойник ассистента: подтвердить встречу 14:00 от вашего имени?', open:'exec-assistant' });
     items.push({ sev:'red', tag:'санкция', text:'Отправка КП банку-контрагенту — подтвердите (необратимо)' });
     return items;
   }
@@ -140,7 +140,7 @@
     wait.forEach(w=>cnt[w.tag]=(cnt[w.tag]||0)+1);
     const wtext = order.filter(t=>cnt[t]).map(t=>cnt[t]+' '+map[t]).join(', ');
     const n = wait.length;
-    return `Доброе утро, ${HERO.first}. Пока вы отдыхали, ваши цифровые сотрудники собрали день. Коротко: ${n} ${n===1?'решение ждёт':'решения ждут'} вас (${wtext}); 2 встречи — брифинг в 09:00 и стратегическая в 14:00. Готовы недельный дашборд и утренний брифинг KAM-DIRECTOR. Из вчерашнего звонка «Гамма» я выделил 4 задачи — подскажу по ходу дня.`;
+    return `Доброе утро, ${HERO.first}. Пока вы отдыхали, ваши цифровые сотрудники собрали день. Коротко: ${n} ${n===1?'решение ждёт':'решения ждут'} вас (${wtext}); 2 встречи — брифинг в 09:00 и стратегическая в 14:00. Готовы недельный дашборд и утренний брифинг от двойника главы департамента. Из вчерашнего звонка «Гамма» я выделил 4 задачи — подскажу по ходу дня.`;
   }
 
   /* ── экран: Личный ассистент (высота «Я») ── */
@@ -149,7 +149,7 @@
     const wait = waitingItems();
     const greet = greetingText();
     const meetings = [
-      { t:'09:00', text:'Ежедневный брифинг', by:'KAM-DIRECTOR', brief:false },
+      { t:'09:00', text:'Ежедневный брифинг', by:'Двойник главы департамента', brief:false },
       { t:'14:00', text:'Стратегическая встреча', by:'подготовлена ассистентом', brief:true },
     ];
     root.innerHTML = `
@@ -221,7 +221,7 @@
       toast('Готово — точка закрыта'); });
     const zb=root.querySelector('[data-zoom]'); if(zb) zb.onclick=()=>navTo('mypulse-zoom');
     const cn=root.querySelector('[data-constructor]'); if(cn) cn.onclick=()=>navTo('mypulse-constructor');
-    const br=root.querySelector('[data-brief]'); if(br) br.onclick=()=>toast('Бриф к встрече готовит EXECUTIVE-ASSISTANT');
+    const br=root.querySelector('[data-brief]'); if(br) br.onclick=()=>toast('Бриф к встрече готовит Двойник ассистента');
     const as=root.querySelector('[data-asst]'); if(as) as.onclick=()=>{ const ov=$('#overlay'); if(ov && ov._open) ov._open(); };
     wireSeg(root);
     /* первый вход — ассистент печатает приветствие вживую, дальше показываем статично */
@@ -239,7 +239,7 @@
 
   /* ── экран: разбор Zoom → кандидаты в задачи (§6, ничего молча) ── */
   const CANDS = [
-    { on:true,  text:'Подготовить КП по расширенному тарифу', who:'🤖 ЦС «PLATFORM-SALES-AI»', due:'до пт', src:'10:12 — «пришлём коммерческое до конца недели»' },
+    { on:true,  text:'Подготовить КП по расширенному тарифу', who:'🤖 ЦС «Двойник менеджера продаж»', due:'до пт', src:'10:12 — «пришлём коммерческое до конца недели»' },
     { on:true,  text:'Проверить договор на санкционные риски', who:'🤖 ЦС «Юрист»', due:'до ср', src:'10:21 — «нужно свериться по контрагенту»' },
     { on:true,  text:'Уточнить объём поставки на Q1', who:'👤 Виктор В.', due:'завтра', src:'10:28 — «сколько берёте в первом квартале?»' },
     { on:false, text:'Отправить презентацию (уже отправляли ранее)', who:'снято', due:'', src:'10:31 — «скиньте ещё раз слайды»' },

@@ -177,12 +177,17 @@ const Organism = (() => {
   function draw(now){
     const t=PREFERS_REDUCED?0:(now-t0)/1000; ctx.clearRect(0,0,W,H);
     const cx=W/2, cy=H/2;
+    /* темочувствительные «чернила»: тёмные подписи на светлой теме, светлые — на тёмной */
+    const _lt=document.documentElement.getAttribute('data-theme')==='light';
+    const INK=_lt
+      ?{label:'#4a3f6b',label2:'#6a5f8c',faint:'#8a80a8',glyph:'#2a2140',nodeOff:'rgba(150,130,200,0.30)',stroke:'rgba(70,50,130,0.20)'}
+      :{label:'#cfd6e4',label2:'#aeb6c6',faint:'#8a93a6',glyph:'#ffffff',nodeOff:'rgba(20,24,34,0.9)',stroke:'rgba(255,255,255,0.10)'};
     const g=ctx.createRadialGradient(cx,cy,0,cx,cy,Math.min(W,H)*0.5);
     g.addColorStop(0,'rgba(52,211,153,0.05)'); g.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
 
     edges.forEach(e=>{ const base=e.kind==='handoff'?0.06:0.05, a=base+e.glow*0.5;
-      ctx.strokeStyle=e.kind==='handoff'?rgba('#34d399',a):rgba('#8a93a6',a*0.9);
+      ctx.strokeStyle=e.kind==='handoff'?rgba('#34d399',a):rgba(INK.faint,a*0.9);
       ctx.lineWidth=e.kind==='handoff'?1.6+e.glow*2:1+e.glow*1.4; ctx.beginPath();
       if(e.kind==='handoff'){ const mx=(e.a.x+e.b.x)/2,my=(e.a.y+e.b.y)/2,ox=(cx-mx)*0.28,oy=(cy-my)*0.28;
         ctx.moveTo(e.a.x,e.a.y); ctx.quadraticCurveTo(mx+ox,my+oy,e.b.x,e.b.y); }
@@ -194,25 +199,25 @@ const Organism = (() => {
       if(p.label){ const al=0.9*(1-Math.abs(p.t-0.5)*1.5); if(al>0.05){ ctx.fillStyle=rgba(toHex(p.label.c),al); ctx.font='600 9px Inter, system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(p.label.t,x,y-8); } } });
 
     nodes.forEach(n=>{
-      if(n.type==='more'){ ctx.fillStyle=rgba('#8a93a6',0.5); ctx.font='600 11px Inter'; ctx.textAlign='center'; ctx.fillText(n.label,n.x,n.y); return; }
+      if(n.type==='more'){ ctx.fillStyle=rgba(INK.faint,0.5); ctx.font='600 11px Inter'; ctx.textAlign='center'; ctx.fillText(n.label,n.x,n.y); return; }
       const breathe=n.type==='core'?(Math.sin(t*1.4)*0.5+0.5):0; const act=n.active; n.pulse*=0.93;
       const rr=(n.r||9)+breathe*3+n.pulse*6;
       if((act>0.02||n.pulse>0.02)&&n.type!=='modeldot'){ ctx.beginPath(); ctx.arc(n.x,n.y,rr+10,0,TAU); ctx.fillStyle=rgba(toHex(n.color),0.10*Math.max(act,n.pulse)); ctx.fill(); }
       ctx.beginPath(); ctx.arc(n.x,n.y,rr,0,TAU);
       if(n.type==='modeldot') ctx.fillStyle=n.active>0.1?rgba(toHex(n.color),0.9):'rgba(90,100,120,0.45)';
       else if(n.type==='core') ctx.fillStyle=rgba('#34d399',0.18);
-      else ctx.fillStyle=act>0.05?rgba(toHex(n.color),0.22+0.2*act):'rgba(20,24,34,0.9)';
+      else ctx.fillStyle=act>0.05?rgba(toHex(n.color),0.22+0.2*act):INK.nodeOff;
       ctx.fill();
       ctx.lineWidth=(hover===n||selected===n)?2.4:1.4;
-      ctx.strokeStyle=(act>0.05||hover===n||selected===n)?n.color:rgba('#ffffff',0.10);
+      ctx.strokeStyle=(act>0.05||hover===n||selected===n)?n.color:INK.stroke;
       ctx.shadowColor=n.color; ctx.shadowBlur=(act>0.05||hover===n)?14:0; ctx.stroke(); ctx.shadowBlur=0;
 
-      if(n.type==='core'){ glyph(n.x,n.y,'◆',15,C.acc); label(n,n.label,11,C.acc,40); if(n.sub) label(n,n.sub,10,'#8a93a6',55); }
-      else if(n.type==='dept'){ ctx.fillStyle=act>0.05?C.acc:'#cfd6e4'; ctx.beginPath(); ctx.arc(n.x,n.y,2.4,0,TAU); ctx.fill(); label(n,n.label,12.5,act>0.05?C.acc:'#aeb6c6'); if(hover===n) label(n,n.sub,10,'#8a93a6',n.r+26); }
-      else if(n.type==='team'){ glyph(n.x,n.y,'👥',11,'#cfd6e4'); if(hover===n||selected===n) label(n,n.label,10.5,'#cfd6e4'); }
-      else if(n.type==='person'){ glyph(n.x,n.y,'•',13,act>.05?'#fff':'#aeb6c6'); if(hover===n||selected===n) label(n,n.label,10,'#cfd6e4'); }
-      else if(n.type==='agent'&&(hover===n||selected===n||act>0.4)){ glyph(n.x,n.y,n.emoji,11,'#fff'); label(n,n.label,10.5,'#cfd6e4'); }
-      else if(n.type==='model'){ label(n,n.label,10.5,hover===n?n.color:'#8390a3'); }
+      if(n.type==='core'){ glyph(n.x,n.y,'◆',15,C.acc); label(n,n.label,11,C.acc,40); if(n.sub) label(n,n.sub,10,INK.faint,55); }
+      else if(n.type==='dept'){ ctx.fillStyle=act>0.05?C.acc:INK.label; ctx.beginPath(); ctx.arc(n.x,n.y,2.4,0,TAU); ctx.fill(); label(n,n.label,12.5,act>0.05?C.acc:INK.label2); if(hover===n) label(n,n.sub,10,INK.faint,n.r+26); }
+      else if(n.type==='team'){ glyph(n.x,n.y,'👥',11,INK.label); if(hover===n||selected===n) label(n,n.label,10.5,INK.label); }
+      else if(n.type==='person'){ glyph(n.x,n.y,'•',13,act>.05?INK.glyph:INK.label2); if(hover===n||selected===n) label(n,n.label,10,INK.label); }
+      else if(n.type==='agent'&&(hover===n||selected===n||act>0.4)){ glyph(n.x,n.y,n.emoji,11,INK.glyph); label(n,n.label,10.5,INK.label); }
+      else if(n.type==='model'){ label(n,n.label,10.5,hover===n?n.color:INK.faint); }
     });
     raf=requestAnimationFrame(draw);
   }
