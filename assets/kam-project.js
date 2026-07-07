@@ -1,7 +1,7 @@
 /* ========================================================================== */
 /*  KAM-PROJECT — проектная деятельность как в реальном бизнесе               */
 /*  Проект создаётся мастером-опросником: Вячеслав ведёт сам или назначает    */
-/*  руководителя проекта; РП собирает кросс-отдельную команду из людей и      */
+/*  руководителя проекта; РП собирает кросс-функциональную команду из людей и      */
 /*  цифровых. Проект живёт: этапы, задачи с парой «человек + цифровой»,       */
 /*  приёмка через петлю, всё в аудите. Только при ?org=kam.                    */
 /* ========================================================================== */
@@ -115,7 +115,7 @@
             ${peopleOf(d).map(p=>{ const k=d+':'+p.name; const bz=busyCount(k,false); return `<label class="kp-pick ${W.people.has(k)?'on':''}"><input type="checkbox" data-pp="${escAttr(k)}" ${W.people.has(k)?'checked':''}/>👤 ${escHtml(p.name)} <small>${escHtml(p.role)}</small>${bz?`<i class="kp-busy" title="уже занят в ${bz} проект(ах)">в ${bz} пр.</i>`:''}</label>`; }).join('')}
             ${(DIGITAL_STAFF[d]||[]).map(w=>{ const bz=busyCount(w.id,true); return `<label class="kp-pick dgt ${W.digital.has(w.id)?'on':''}"><input type="checkbox" data-pd="${escAttr(w.id)}" ${W.digital.has(w.id)?'checked':''}/>${w.emoji} ${escHtml(w.name)} <small>цифровой</small>${bz?`<i class="kp-busy" title="уже занят в ${bz} проект(ах)">в ${bz} пр.</i>`:''}</label>`; }).join('')}
           </div>`).join('')}</div>
-        <div class="kp-count">Выбрано: 👤 ${W.people.size} людей · 🤖 ${W.digital.size} цифровых · направлений: ${new Set([...W.people].map(k=>k.split(':')[0]).concat([...W.digital].map(id=>{const w=ALL_DIGITAL.find(x=>x.id===id); return w?w.dept:'';}))).size}</div>`;
+        <div class="kp-count">Выбрано: 👤 ${W.people.size} человек · 🤖 ${W.digital.size} цифровых · направлений: ${new Set([...W.people].map(k=>k.split(':')[0]).concat([...W.digital].map(id=>{const w=ALL_DIGITAL.find(x=>x.id===id); return w?w.dept:'';}))).size}</div>`;
       }
       const depts = new Set([...W.people].map(k=>k.split(':')[0]).concat([...W.digital].map(id=>{const w=ALL_DIGITAL.find(x=>x.id===id); return w?w.dept:'';})));
       return `
@@ -188,7 +188,7 @@
   /* ── СПИСОК проектов ── */
   function renderList(root){
     const P = window.__KAM_PROJ;
-    root.innerHTML = workHead({icon:'📁', label:'Проекты департамента'}, 'кросс-отдельная работа: под проект собираются люди и цифровые из разных направлений') + `
+    root.innerHTML = workHead({icon:'📁', label:'Проекты департамента'}, 'кросс-функциональная работа: под проект собираются люди и цифровые из разных направлений') + `
       <div class="kp-toolbar"><button class="btn go" id="kpNew">＋ Новый проект (опросник)</button>
         <span class="tag">${P.length?P.length+' активных':'проектов пока нет — создайте первый'}</span></div>
       <div class="kp-grid">${P.map(p=>{
@@ -229,7 +229,7 @@
       <div class="grid-kpi" style="margin-bottom:12px">
         <div class="kpi"><div class="l">Прогресс</div><div class="v">${all.length?Math.round(dn/all.length*100):0}%</div><div class="d flat">● ${dn}/${all.length} задач</div></div>
         <div class="kpi"><div class="l">Состав</div><div class="v">${p.people.length}+${p.digital.length}</div><div class="d flat">● люди + цифровые</div></div>
-        <div class="kpi"><div class="l">Направлений</div><div class="v">${depts.length}</div><div class="d up">▲ кросс-отдельная работа</div></div>
+        <div class="kpi"><div class="l">Направлений</div><div class="v">${depts.length}</div><div class="d up">▲ кросс-функциональная работа</div></div>
         <div class="kpi"><div class="l">Создан</div><div class="v" style="font-size:16px">${p.created}</div><div class="d flat">● сегодня</div></div>
       </div>
       <div class="two-col" style="align-items:start">

@@ -395,11 +395,11 @@ function renderTeam(root, id){ const cfg=COCKPITS[id]; const d=DEPARTMENTS.find(
         </div>`;
     }
 
-    root.innerHTML=workHead(d, `Штат «${cfg.role}»: ${hc} людей + ${dhc} цифровых сотрудников (${share}%)`) + `
+    root.innerHTML=workHead(d, `Штат «${cfg.role}»: ${hc} человек + ${dhc} цифровых сотрудников (${share}%)`) + `
     <div class="dev-metrics" style="grid-template-columns:repeat(${Math.min(M.length,6)},1fr)">${M.map(m=>`<div class="dm"><span>${m.k}</span><div class="dm-v"><s>${m.b}</s><b>${m.a}</b></div></div>`).join('')}</div>
     <div class="two-col" style="align-items:start">
-      <div class="panel"><h2>👥 Штат отдела <span class="tag">${hc} людей · ${dhc} цифровых${grouped?' · '+Object.keys(groups).length+' функций':''}</span></h2>${teamHtml}
-        <div class="team-more">показаны ключевые: <b>${TEAM.length}</b> людей и <b>${DS.length}</b> цифровых · ещё <b>${hc-TEAM.length}</b> специалистов и <b>${dhc-DS.length}</b> типовых цифровых позиций</div></div>
+      <div class="panel"><h2>👥 Штат отдела <span class="tag">${hc} человек · ${dhc} цифровых${grouped?' · '+Object.keys(groups).length+' функций':''}</span></h2>${teamHtml}
+        <div class="team-more">показаны ключевые: <b>${TEAM.length}</b> человек и <b>${DS.length}</b> цифровых · ещё <b>${hc-TEAM.length}</b> специалистов и <b>${dhc-DS.length}</b> типовых цифровых позиций</div></div>
       <div class="panel team-side">${side}</div>
     </div>`;
     root.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{ sel={kind:'h', i:+b.dataset.p}; draw(); });
@@ -678,10 +678,10 @@ const PULSE_LOGO = `
 </svg>`;
 
 function renderPulse(root, d){
-  root.innerHTML = workHead(d, `Нервная система компании · ${TOTAL_STAFF} нейронов: ${COMPANY_SIZE} людей + ${DIGITAL_SIZE} цифровых (${DIGITAL_SHARE}% штата)`) + `
+  root.innerHTML = workHead(d, `Нервная система компании · ${TOTAL_STAFF} нейронов: ${COMPANY_SIZE} человек + ${DIGITAL_SIZE} цифровых (${DIGITAL_SHARE}% штата)`) + `
     <div class="pls-wrap">
       <div class="pls-stage cx-stage" id="cxStage" role="group" aria-label="Карта-пульс компании: отделы как кластеры нейронов">
-        <div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Пульс компании по отделам: ${ROLE_IDS.map(r=>{ const dep=DEPARTMENTS.find(x=>x.id===r); const hc=(typeof HEADCOUNT!=='undefined'&&HEADCOUNT[r])||0; const dhc=(typeof DIGITAL_HEADCOUNT!=='undefined'&&DIGITAL_HEADCOUNT[r])||0; return `${dep?dep.label:r} — ${hc} людей и ${dhc} цифровых сотрудников`; }).join('; ')}. Клик по отделу — переход в его пульс, наведение на нейрон — имя и задача сотрудника.</div>
+        <div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Пульс компании по отделам: ${ROLE_IDS.map(r=>{ const dep=DEPARTMENTS.find(x=>x.id===r); const hc=(typeof HEADCOUNT!=='undefined'&&HEADCOUNT[r])||0; const dhc=(typeof DIGITAL_HEADCOUNT!=='undefined'&&DIGITAL_HEADCOUNT[r])||0; return `${dep?dep.label:r} — ${hc} человек и ${dhc} цифровых сотрудников`; }).join('; ')}. Клик по отделу — переход в его пульс, наведение на нейрон — имя и задача сотрудника.</div>
         <div class="pls-bgglow"></div>
         <div class="pls-core" id="plsCore" title="Запустить рой">
           <span class="pls-ring r1"></span><span class="pls-ring r2"></span>
@@ -1031,12 +1031,12 @@ function renderDeptPulse(root, roleId){
   genH.forEach(x=>links.push({ a:x.id, b:'#'+x.f, w:1.3, color:dt.c, op:.10 }));
   genD.forEach(x=>links.push({ a:x.id, b:'#'+x.f, w:1.3, color:'#36c994', op:.12 }));
 
-  root.innerHTML = workHead(d, `Пульс отдела «${cfg.role}» · ${hc} людей + ${dhc} цифровых · каждый нейрон — живой сотрудник`) + `
+  root.innerHTML = workHead(d, `Пульс отдела «${cfg.role}» · ${hc} человек + ${dhc} цифровых · каждый нейрон — живой сотрудник`) + `
     ${PJ.length?`<div class="pj-strip"><b>🚀 ${MEGA_PROJECT.title} в отделе · ${PJ.length}</b>
       ${PJ.map(t=>{ const s=PROJ_STATE[t.state];
         return `<button class="pj-chip" data-pjp="${t.who}" style="--c:${s[2]}"><i>${s[0]}</i><b>${t.who}${t.dw?' + 🤖 '+t.dw:''}</b><small>${t.t}</small></button>`; }).join('')}</div>`:''}
     <div class="dp-wrap">
-      <div class="dp-stage nm-stage" id="dpStage" role="group" aria-label="Карта-пульс отдела «${cfg.role}»: функции и сотрудники как нейроны"><div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Пульс отдела «${cfg.role}»: ${hc} людей и ${dhc} цифровых сотрудников по функциям — ${fns.map((f,fi)=>`${f}: ${hAlloc[fi]} людей и ${dAlloc[fi]} цифровых`).join('; ')}. Клик по нейрону — профиль сотрудника.</div></div>
+      <div class="dp-stage nm-stage" id="dpStage" role="group" aria-label="Карта-пульс отдела «${cfg.role}»: функции и сотрудники как нейроны"><div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Пульс отдела «${cfg.role}»: ${hc} человек и ${dhc} цифровых сотрудников по функциям — ${fns.map((f,fi)=>`${f}: ${hAlloc[fi]} человек и ${dAlloc[fi]} цифровых`).join('; ')}. Клик по нейрону — профиль сотрудника.</div></div>
       <aside class="dp-side">
         <button class="btn go pls-surge" id="dpSurge" title="Открыть пусковую отдела: очередь задач бэклога, которые можно запустить">${SURGE_LBL}</button>
         <div class="side-proj" id="dpQueue" style="display:none"></div>
@@ -1173,7 +1173,7 @@ function renderCompany(root){
   const totalFns = order.reduce((a,r)=>a+Object.keys(fnGroups(r)).length,0);
   let exp = null;
   function draw(){
-    root.innerHTML = workHead(d, `Оргструктура · ${TOTAL_STAFF} в штате: ${COMPANY_SIZE} людей + ${DIGITAL_SIZE} цифровых сотрудников в ${ROLE_IDS.length} отделах`) + `
+    root.innerHTML = workHead(d, `Оргструктура · ${TOTAL_STAFF} в штате: ${COMPANY_SIZE} человек + ${DIGITAL_SIZE} цифровых сотрудников в ${ROLE_IDS.length} отделах`) + `
     <div class="grid-kpi" style="margin-bottom:14px">
       <div class="kpi" data-kgo="pulse" style="cursor:pointer" title="Открыть пульс компании" role="button" tabindex="0"><div class="l">Всего в штате</div><div class="v">${TOTAL_STAFF}</div><div class="d flat">● люди и цифровые вместе → пульс</div></div>
       <div class="kpi" data-kexp style="cursor:pointer" title="${exp==='*'?'Свернуть отделы':'Раскрыть всех людей по отделам'}" role="button" tabindex="0"><div class="l">Людей</div><div class="v">${COMPANY_SIZE}</div><div class="d flat">● решения и вкус — за ними → ${exp==='*'?'свернуть':'раскрыть'}</div></div>
@@ -1189,10 +1189,10 @@ function renderCompany(root){
           ? `<div class="oc-tree">${fns.map(f=>`<div class="oc-fn"><div class="oc-fn-h">${f}<span>${groups[f].length}</span></div><div class="oc-people">${groups[f].map(p=> p.digital
               ?`<span class="oc-p dgt" data-wgo="${p.id}">🤖 ${p.name} · ${p.role}</span>`
               :`<span class="oc-p hmn" data-pgo="${r}:${p.i}" title="Открыть профиль">${p.name} · ${p.role}</span>`).join('')}</div></div>`).join('')}
-              <div class="oc-tree-foot"><span>ключевые позиции · всего ${hc} людей и ${dhc} цифровых</span><button class="btn go oc-open" data-go="${r}">Открыть штат →</button></div></div>`
+              <div class="oc-tree-foot"><span>ключевые позиции · всего ${hc} человек и ${dhc} цифровых</span><button class="btn go oc-open" data-go="${r}">Открыть штат →</button></div></div>`
           : `<div class="oc-fns">${fns.slice(0,6).map(f=>`<span>${f}</span>`).join('')}${fns.length>6?`<span class="oc-more">+${fns.length-6}</span>`:''}</div><div class="oc-meta">${fns.length} функций · нажмите, чтобы раскрыть</div>`}
       </div>`; }).join('')}</div>
-    <div class="od-gov" style="margin-top:13px">Одна Среда = одна компания. ${COMPANY_SIZE} людей и ${DIGITAL_SIZE} цифровых сотрудников в одном штатном расписании: у людей — рои под должность, у цифровых — должностные инструкции и руководители-люди. Всё связано библиотекой, данными с правами, передачами и governance.</div>`;
+    <div class="od-gov" style="margin-top:13px">Одна Среда = одна компания. ${COMPANY_SIZE} человек и ${DIGITAL_SIZE} цифровых сотрудников в одном штатном расписании: у людей — рои под должность, у цифровых — должностные инструкции и руководители-люди. Всё связано библиотекой, данными с правами, передачами и governance.</div>`;
     root.querySelectorAll('[data-exp]').forEach(b=>b.onclick=()=>{ exp = exp===b.dataset.exp?null:b.dataset.exp; draw(); });
     root.querySelectorAll('[data-kgo]').forEach(k=>{ const go=()=>navTo(k.dataset.kgo); k.onclick=go; k.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); go(); } }; });
     root.querySelectorAll('[data-kexp]').forEach(k=>{ const tg=()=>{ exp = exp==='*'?null:'*'; draw(); }; k.onclick=tg; k.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); tg(); } }; });
@@ -1209,7 +1209,7 @@ function renderFlowExec(root){
   root.innerHTML = workHead(d, `Вся работа компании как поток: выход одного отдела = вход другого — это и делает ${COMPANY_SIZE} личных чатов одной Средой`) + `
     <div class="flow-intro">CEO не управляет задачами — он видит, как работа <b style="color:var(--acc)">течёт между людьми</b> и где затык. Каждая передача — в аудите, ничего не теряется в личных переписках.</div>
     <div class="grid-kpi" style="margin-bottom:13px">
-      <div class="kpi"><div class="l">В штате</div><div class="v">${TOTAL_STAFF}</div><div class="d flat">● ${COMPANY_SIZE} людей + ${DIGITAL_SIZE} цифровых</div></div>
+      <div class="kpi"><div class="l">В штате</div><div class="v">${TOTAL_STAFF}</div><div class="d flat">● ${COMPANY_SIZE} человек + ${DIGITAL_SIZE} цифровых</div></div>
       <div class="kpi"><div class="l">Потоков активно</div><div class="v">${active}</div><div class="d up">live</div></div>
       <div class="kpi"><div class="l">Передач в аудите</div><div class="v">${auditLog().length}</div><div class="d up">▲ прозрачно</div></div>
       <div class="kpi"><div class="l">Потеряно в переписках</div><div class="v">0</div><div class="d up">▲ всё в потоке</div></div>
@@ -1376,7 +1376,7 @@ function renderOrganism(stage, d){
   stage.innerHTML = `
     <div class="org">
       <canvas id="orgCanvas" role="img" aria-label="Интерактивная карта оргструктуры компании: отделы и их численность. Клик по отделу — переход в его пульс."></canvas>
-      <div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Оргструктура компании по отделам: ${ROLE_IDS.map(r=>{ const dep=DEPARTMENTS.find(x=>x.id===r); const hc=(typeof HEADCOUNT!=='undefined'&&HEADCOUNT[r])||0; const dhc=(typeof DIGITAL_HEADCOUNT!=='undefined'&&DIGITAL_HEADCOUNT[r])||0; return `${dep?dep.label:r} — ${hc} людей и ${dhc} цифровых`; }).join('; ')}. Клик по отделу открывает его пульс.</div>
+      <div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Оргструктура компании по отделам: ${ROLE_IDS.map(r=>{ const dep=DEPARTMENTS.find(x=>x.id===r); const hc=(typeof HEADCOUNT!=='undefined'&&HEADCOUNT[r])||0; const dhc=(typeof DIGITAL_HEADCOUNT!=='undefined'&&DIGITAL_HEADCOUNT[r])||0; return `${dep?dep.label:r} — ${hc} человек и ${dhc} цифровых`; }).join('; ')}. Клик по отделу открывает его пульс.</div>
 
       <div class="org-top">
         <div class="org-title">
@@ -1549,12 +1549,12 @@ function renderDashboard(root, d){
   const FS = flowState();
   const flowsActive = FLOWS.filter(f=>FS[f.id]<f.steps.length).length;
   const APPR_DEPT = { 'Маркетинг':'marketing','Инженерия':'dev','Продажи':'sales','Люди':'hr' };
-  root.innerHTML = workHead(d, `CEO · бизнес-кокпит: ${COMPANY_SIZE} людей + ${DIGITAL_SIZE} цифровых сотрудников работают как один организм`) + `
+  root.innerHTML = workHead(d, `Кокпит руководителя: ${COMPANY_SIZE} человек + ${DIGITAL_SIZE} цифровых сотрудников работают как один организм`) + `
     <div class="grid-kpi">
       <div class="kpi fade-in"><div class="l">Задач выполнено за неделю</div><div class="v">1 284</div><div class="d up">▲ +22%</div></div>
       <div class="kpi fade-in"><div class="l">Сэкономлено часов команды</div><div class="v">3 910</div><div class="d up">▲ +31%</div></div>
       <div class="kpi fade-in"><div class="l">Стоимость ИИ за неделю</div><div class="v">₽184k</div><div class="d up">▲ −8% к пред.</div></div>
-      <div class="kpi fade-in"><div class="l">Штат компании</div><div class="v">${TOTAL_STAFF}</div><div class="d flat">● ${COMPANY_SIZE} людей + ${DIGITAL_SIZE} цифровых</div></div>
+      <div class="kpi fade-in"><div class="l">Штат компании</div><div class="v">${TOTAL_STAFF}</div><div class="d flat">● ${COMPANY_SIZE} человек + ${DIGITAL_SIZE} цифровых</div></div>
       <div class="kpi fade-in"><div class="l">Доля цифровых в штате</div><div class="v">${DIGITAL_SHARE}%</div><div class="d up">▲ у каждого ДИ и руководитель</div></div>
       <div class="kpi fade-in"><div class="l">Сквозных потоков активно</div><div class="v">${flowsActive}</div><div class="d up">● ничего не потеряно</div></div>
     </div>
@@ -3266,7 +3266,7 @@ function renderFederation(work){
     const contracts = INTER_DOMAIN_CONTRACTS.filter(c => c.from === dom.id || c.to === dom.id);
     const card = el(`<div class="fed-domain" style="--dom-color:${dom.color}">
       <div class="fed-d-head"><span class="fed-d-ic" style="background:${dom.color}20;color:${dom.color}">${dom.icon}</span>
-        <div><b>${dom.name}</b><small>${dom.lead} · ${dom.agents} цифровых сотрудников · ${dom.humans} людей</small></div>
+        <div><b>${dom.name}</b><small>${dom.lead} · ${dom.agents} цифровых сотрудников · ${dom.humans} человек</small></div>
       </div>
       <div class="fed-d-stats">
         <div class="fed-d-st"><b>${dom.budget}</b><small>бюджет</small></div>
@@ -3289,7 +3289,7 @@ function renderFederation(work){
     <h3>📊 Метрики федерации</h3>
     <div class="fed-metric"><b>${DOMAINS.length}</b><small>суверенных доменов</small></div>
     <div class="fed-metric"><b>${totalAgents}</b><small>цифровых сотрудников в доменах</small></div>
-    <div class="fed-metric"><b>${totalHumans}</b><small>людей в доменах</small></div>
+    <div class="fed-metric"><b>${totalHumans}</b><small>человек в доменах</small></div>
     <div class="fed-metric"><b>${totalContracts}</b><small>междоменных контрактов</small></div>
     <div class="fed-metric"><b>${WORKER_DIPLOMATS.length}</b><small>цифровых сотрудников-послов</small></div>
     <div class="fed-metric"><b>${activeArb}</b><small>открытых арбитражей</small></div>
