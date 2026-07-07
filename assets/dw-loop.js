@@ -120,7 +120,7 @@
           <div class="dwl-done-h">${st.denied?'⛔ Отказ зафиксирован':'✓ Принято вами'} <span class="dwl-tag">${escHtml(sc.done.artifact)}</span></div>
           <div class="dwl-done-r">${Object.keys(st.applied).length?`<span class="dwl-chip ap">⚙ применено выученных правил: ${Object.keys(st.applied).length}</span>`:''}${st.genUsed?`<span class="dwl-chip ap">🧠 обобщено на эту задачу: ${st.genUsed}</span>`:''}${st.packName?`<span class="dwl-chip pack">📦 артефакт → пакет «${escHtml(st.packName)}»</span>`:''}${st.returned?'<span class="dwl-chip ret">↩ был возврат — двойник переработал</span>':''}${sc.time?`<span class="dwl-chip save">⏱ ${escHtml(sc.time[0])} → ${escHtml(sc.time[1])}</span>`:''}<span class="dwl-chip">📝 аудит: ${escHtml(sc.done.audit)}</span></div>
           <div class="dwl-done-c">→ ${escHtml(sc.done.chain)}</div>
-          <div class="dwl-done-a"><button class="dwl-btn ghost" data-goaudit>Открыть аудит →</button><button class="dwl-btn ghost" data-gojournal>Журнал двойника →</button></div>
+          <div class="dwl-done-a">${st.projClosed?`<button class="dwl-btn acc" data-goproj="${st.projClosed.id}">← Вернуться в проект «${escHtml(st.projClosed.name)}»</button>`:''}<button class="dwl-btn ghost" data-goaudit>Открыть аудит →</button><button class="dwl-btn ghost" data-gojournal>Журнал двойника →</button></div>
         </div>`:''}`;
       wire();
     }
@@ -155,7 +155,11 @@
           pushAudit({who:w.name+' + вы', emoji:w.emoji, act:sc.done.audit, dept:'петля'}); dwLog(w, sc.q+' — принято'+(st.returned?' после возврата':''), st.returned?'ret':'ok'); w.now='ждёт следующую задачу';
           /* принятый артефакт пополняет пакет знаний направления — второй источник качества виден живьём */
           if (window.__ORG_PACK_ADD){ const pk = window.__ORG_PACK_ADD(w, sc);
-            if (pk){ st.packName = pk.pack; pushAudit({who:'платформа', emoji:'📦', act:'артефакт «'+sc.done.artifact+'» добавлен в пакет знаний «'+pk.pack+'»', dept:'обучение'}); } } }
+            if (pk){ st.packName = pk.pack; pushAudit({who:'платформа', emoji:'📦', act:'артефакт «'+sc.done.artifact+'» добавлен в пакет знаний «'+pk.pack+'»', dept:'обучение'}); } }
+          /* задача пришла из проекта → закрываем её в проекте */
+          if (sc.__projTask && window.__KAM_PROJ_DONE){
+            st.projClosed = window.__KAM_PROJ_DONE(sc.__projTask.projId, sc.__projTask.si, sc.__projTask.ti, sc.__projTask.who);
+            if (st.projClosed) toast('📁 Задача проекта закрыта — «'+st.projClosed.name+'» обновлён'); } }
         draw(); };
       const ret=ep.querySelector('[data-ret]'); if(ret) ret.onclick=()=>{ const box=ep.querySelector('.dwl-retbox'); box.hidden=!box.hidden; if(!box.hidden) box.querySelector('input').focus(); };
       const ret2=ep.querySelector('.ret2'); if(ret2) ret2.onclick=()=>{
@@ -183,6 +187,7 @@
         toast('Отказ записан в аудит — границы ДИ исполняются машиной');
       };
       const ga=ep.querySelector('[data-goaudit]'); if(ga) ga.onclick=()=>navTo('audit');
+      const gp=ep.querySelector('[data-goproj]'); if(gp) gp.onclick=()=>navTo('kproj:'+gp.dataset.goproj);
       const gj=ep.querySelector('[data-gojournal]'); if(gj) gj.onclick=()=>{ const t=document.querySelector('.gp-tab[data-t="log"]'); if(t) t.click(); };
     }
 
@@ -308,6 +313,21 @@
     wire(root, w){
       const L = w.loop;
       const mount = root.querySelector('[data-dwlmount]');
+      /* задача пришла ИЗ ПРОЕКТА: баннер + автозапуск петли с формулировкой задачи */
+      if (mount && window.__DW_TASK && window.__DW_TASK.wid===w.id){
+        const T = window.__DW_TASK; window.__DW_TASK = null;
+        const empty = mount.querySelector('.dwl-empty'); if (empty) empty.remove();
+        const score=s=>T.q.toLowerCase().split(/\s+/).filter(x=>x.length>3 && (s.q+' '+s.steps.map(y=>y[1]).join(' ')).toLowerCase().includes(x)).length;
+        const base=[...L.scenarios].sort((a,b)=>score(b)-score(a))[0];
+        const sc = { ...(score(base)>0?base:L.scenarios[0]), q:T.q };
+        sc.done = { ...sc.done, artifact:'Задача проекта: '+T.q, chain:'результат вернулся в проект — задача закрыта, лента и аудит обновлены' };
+        sc.__projTask = T;
+        const bn = document.createElement('div');
+        bn.className = 'dwl-projbn';
+        bn.innerHTML = '📁 Задача из проекта · исполнитель: 👤 '+escHtml(T.who||'—')+' + 🤖 '+escHtml(w.name)+' — черновик готовит двойник, принимает человек';
+        mount.prepend(bn);
+        dwEpisode(mount, w, sc);
+      }
       root.querySelectorAll('[data-sc]').forEach(b=>b.onclick=()=>{
         const empty = mount.querySelector('.dwl-empty'); if (empty) empty.remove();
         dwEpisode(mount, w, L.scenarios[+b.dataset.sc]);

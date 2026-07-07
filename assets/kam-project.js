@@ -146,7 +146,17 @@
       }));
       window.__KAM_PROJ.unshift(proj); save(window.__KAM_PROJ);
       pushAudit({who:'Вячеслав', emoji:'📁', act:'создан проект «'+proj.name+'» · РП: '+(W.pm||'').split(':')[1]+' · состав 👤'+proj.people.length+'+🤖'+proj.digital.length, dept:'проекты'});
-      toast('Проект создан — РП и состав назначены');
+      /* НЕ вакуум: назначения уходят уведомлениями в каналы задействованных направлений */
+      const pDepts = [...new Set(proj.people.map(k=>k.split(':')[0]).concat(proj.digital.map(wid=>{const w0=ALL_DIGITAL.find(x=>x.id===wid); return w0?w0.dept:'';})))].filter(Boolean);
+      const CH = (window.__CHMSG = window.__CHMSG || {});
+      pDepts.forEach(d=>{
+        const box = (CH[d] = CH[d] || [...(DEPT_CHANNELS[d]||[])]);
+        const names = proj.people.filter(k=>k.split(':')[0]===d).map(k=>k.split(':')[1])
+          .concat(proj.digital.map(wid=>ALL_DIGITAL.find(x=>x.id===wid)).filter(w0=>w0&&w0.dept===d).map(w0=>w0.name));
+        box.push({ id:'kp-'+proj.id+'-'+d, type:'system', text:'📁 Проект «'+proj.name+'»: в состав включены '+names.join(', ')+' · РП: '+((W.pm||'').split(':')[1]||'')+(proj.due?' · дедлайн '+proj.due:''), time:proj.created });
+      });
+      proj.feed.unshift({t:proj.created, e:'Назначения отправлены в каналы '+pDepts.length+' направлений'});
+      toast('Проект создан — назначения ушли в каналы направлений');
       window.__KPW = null;
       navTo('kproj:'+proj.id);
     }
@@ -194,7 +204,7 @@
               <label class="kp-chk"><input type="checkbox" data-done="${si}:${ti}" ${tk.done?'checked':''}/></label>
               <div class="kp-task-b"><b>${escHtml(tk.t)}</b>
                 <small>${dIcon(tk.dept)} ${escHtml(dLabel(tk.dept))} · 👤 ${escHtml(tk.who||'не назначен')}${tk.dw?(' + '+escHtml((ALL_DIGITAL.find(x=>x.id===tk.dw)||{}).name||'')):''}</small></div>
-              ${tk.dw?`<button class="dwl-btn ghost" data-loop="${escAttr(tk.dw)}" title="Черновик задачи готовит цифровой — открыть петлю">черновик →</button>`:''}
+              ${tk.dw&&!tk.done?`<button class="dwl-btn ghost" data-loop="${escAttr(tk.dw)}" data-task="${si}:${ti}" title="Черновик задачи готовит цифровой — открыть петлю">черновик →</button>`:''}
             </div>`).join('')||'<div class="dwl-empty">задачи добавит РП</div>'}
             <div class="kp-add"><input type="text" data-addin="${si}" placeholder="＋ новая задача этапа…"/><select data-adddept="${si}">${depts.map(d=>`<option value="${d}">${escHtml(dLabel(d))}</option>`).join('')}</select><button class="dwl-btn acc" data-add="${si}">＋</button></div>
           </div>`).join('')}
@@ -220,7 +230,13 @@
           pushAudit({who:(tk.who||'исполнитель')+' · проект «'+p.name+'»', emoji:'✓', act:'задача принята: '+tk.t, dept:'проекты'}); }
         save(window.__KAM_PROJ); draw();
       });
-      root.querySelectorAll('[data-loop]').forEach(b=>b.onclick=()=>{ navTo('worker:'+b.dataset.loop); });
+      root.querySelectorAll('[data-loop]').forEach(b=>b.onclick=()=>{
+        const [si,ti] = b.dataset.task.split(':').map(Number);
+        const tk = p.stages[si].tasks[ti];
+        /* задача проекта уходит в петлю двойника и закроется обратно в проект */
+        window.__DW_TASK = { wid: b.dataset.loop, projId: p.id, si, ti, q: tk.t, who: tk.who };
+        navTo('worker:'+b.dataset.loop);
+      });
       root.querySelectorAll('[data-wgo]').forEach(b=>b.onclick=()=>navTo('worker:'+b.dataset.wgo));
       root.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{
         const si = +b.dataset.add;
@@ -237,6 +253,17 @@
     draw();
   }
 
+  /* ── закрытие задачи проекта из петли (вызывает dw-loop при приёмке) ── */
+  window.__KAM_PROJ_DONE = function(projId, si, ti, who){
+    const p = window.__KAM_PROJ.find(x=>x.id===projId); if (!p) return null;
+    const tk = (p.stages[si]||{tasks:[]}).tasks[ti]; if (!tk || tk.done) return p?{name:p.name, id:p.id}:null;
+    tk.done = true;
+    p.feed.unshift({ t:hh(), e:'✓ «'+tk.t+'» — принято через петлю ('+(who||tk.who||'исполнитель')+')' });
+    pushAudit({ who:(who||tk.who||'исполнитель')+' · проект «'+p.name+'»', emoji:'✓', act:'задача проекта принята через петлю: '+tk.t, dept:'проекты' });
+    save(window.__KAM_PROJ);
+    return { name:p.name, id:p.id };
+  };
+
   /* ── маршруты и меню ── */
   const exWS = WORKSPACES.find(w=>w.id==='exec');
   if (exWS){ const i = exWS.nav.findIndex(n=>n.id==='flowx');
@@ -252,6 +279,22 @@
       else renderProj(root, id.slice(6));
       return;
     }
-    return origStageKP.apply(this, arguments);
+    const r = origStageKP.apply(this, arguments);
+    /* проекты видны на дашборде Вячеслава, а не только на своём экране */
+    if (id==='exec' && window.__KAM_PROJ.length){
+      const g = document.querySelector('#work .grid-kpi');
+      if (g){
+        const box = document.createElement('div');
+        box.className = 'panel kp-execpanel';
+        box.innerHTML = `<h2>📁 Проекты департамента <span class="tag">${window.__KAM_PROJ.length} активных · клик → карточка</span></h2>
+          ${window.__KAM_PROJ.slice(0,4).map(p=>{ const all=p.stages.flatMap(s=>s.tasks), dn=all.filter(t=>t.done).length;
+            return `<button class="kp-exec-row" data-kpx="${p.id}"><i>${p.icon}</i><div><b>${escHtml(p.name)}</b><small>РП: ${escHtml((p.pm||'').split(':')[1]||'—')} · ${dn}/${all.length} задач${p.due?' · до '+escHtml(p.due):''}</small></div>
+              <span class="kp-exec-pct">${all.length?Math.round(dn/all.length*100):0}%</span></button>`; }).join('')}
+          <button class="dwl-btn ghost" data-kpx="new" style="margin-top:7px">＋ Новый проект (опросник)</button>`;
+        g.insertAdjacentElement('afterend', box);
+        box.querySelectorAll('[data-kpx]').forEach(b=>b.onclick=()=>navTo(b.dataset.kpx==='new'?'kproj-new':'kproj:'+b.dataset.kpx));
+      }
+    }
+    return r;
   };
 })();
