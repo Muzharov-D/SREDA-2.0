@@ -95,6 +95,27 @@
     .mp-ic:disabled{opacity:.35;cursor:default}
     .mp-editing .mp-w.ed{outline:1px dashed var(--line3);outline-offset:6px;border-radius:8px;margin-bottom:16px}
     .mp-addpanel{margin-top:22px;padding:14px 16px;border:1px dashed var(--acc);border-radius:var(--r-sm);background:color-mix(in srgb,var(--acc) 5%,transparent)}
+    .mp-doc{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px;align-items:start;margin-top:14px}
+    .mp-docpane{border:1px solid var(--line);border-radius:var(--r-sm);background:var(--panel);overflow:hidden;display:flex;flex-direction:column}
+    .mp-docpane .hd{padding:11px 13px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px;background:var(--panel2)}
+    .mp-docpane .hd b{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .mp-docpane textarea{width:100%;min-height:440px;border:0;background:transparent;color:var(--txt);font-family:var(--sans);font-size:14px;line-height:1.72;padding:16px 18px;resize:vertical;outline:none}
+    .mp-chat{border:1px solid var(--line);border-radius:var(--r-sm);background:var(--panel);display:flex;flex-direction:column;min-height:490px;max-height:74vh;position:sticky;top:12px}
+    .mp-chat-hd{display:flex;align-items:center;gap:8px;padding:11px 13px;border-bottom:1px solid var(--line);font-size:13px}
+    .mp-chat-hd .av2{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,var(--acc-deep),var(--acc));color:var(--on-acc);display:flex;align-items:center;justify-content:center;font-size:12px}
+    .mp-chat .thread{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+    .mp-b{max-width:90%;padding:9px 12px;border-radius:12px;font-size:13.5px;line-height:1.5;white-space:pre-wrap}
+    .mp-b.u{align-self:flex-end;background:var(--acc-soft);color:var(--txt);border:1px solid color-mix(in srgb,var(--acc) 24%,transparent)}
+    .mp-b.a{align-self:flex-start;background:var(--bg3);color:var(--txt)}
+    .mp-b.a.streaming::after{content:'▋';color:var(--acc);animation:mpBlink 1s steps(1) infinite}
+    .mp-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 13px 10px}
+    .mp-chip{border:1px solid var(--line2);background:transparent;color:var(--txt2);border-radius:20px;padding:5px 11px;font-size:12px;cursor:pointer;font-family:inherit;transition:var(--transition-fast)}
+    .mp-chip:hover{border-color:var(--acc);color:var(--acc)}
+    .mp-chatin{display:flex;gap:8px;padding:11px 13px;border-top:1px solid var(--line)}
+    .mp-chatin input{flex:1;background:var(--bg3);border:1px solid var(--line2);border-radius:var(--r-xs);padding:9px 12px;color:var(--txt);font-family:inherit;font-size:13.5px;outline:none}
+    .mp-chatin input:focus{border-color:var(--acc)}
+    .mp-chatin button{border:1px solid color-mix(in srgb,var(--acc) 40%,transparent);background:var(--acc-soft);color:var(--acc);border-radius:var(--r-xs);padding:0 15px;cursor:pointer;font-family:inherit}
+    @media(max-width:820px){.mp-doc{grid-template-columns:1fr}.mp-chat{position:static;max-height:none}}
     @media(max-width:720px){.mp-cols{grid-template-columns:1fr}}
     .mp-theme{width:34px;height:34px;border-radius:9px;border:1px solid var(--line2);background:var(--panel);color:var(--txt2);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:var(--transition-fast)}
     .mp-theme:hover{border-color:var(--acc);color:var(--acc)}
@@ -159,10 +180,10 @@
   function saveLayout(l){ try{ localStorage.setItem(LKEY, JSON.stringify(l)); }catch(e){} }
 
   const DRAFTS = [
-    { ic:'📄', t:'Черновик КП для банка «Гамма»',      by:'Двойник менеджера продаж', st:'на правку' },
-    { ic:'📝', t:'Протокол встречи «Гамма» · 10:00',    by:'Двойник ассистента',       st:'готов' },
-    { ic:'📊', t:'Отчёт Q3 — черновик',                 by:'Агент отчётности',         st:'на приёмку' },
-    { ic:'✉️', t:'Ответ контрагенту — черновик письма', by:'Двойник ассистента',       st:'на отправку' },
+    { id:'kp-gamma',       ic:'📄', t:'Черновик КП для банка «Гамма»',      by:'Двойник менеджера продаж', st:'на правку' },
+    { id:'protocol-gamma', ic:'📝', t:'Протокол встречи «Гамма» · 10:00',    by:'Двойник ассистента',       st:'готов' },
+    { id:'report-q3',      ic:'📊', t:'Отчёт Q3 — черновик',                 by:'Агент отчётности',         st:'на приёмку' },
+    { id:'email-reply',    ic:'✉️', t:'Ответ контрагенту — черновик письма', by:'Двойник ассистента',       st:'на отправку' },
   ];
   const MEET = [ { t:'09:00', text:'Ежедневный брифинг', by:'Двойник главы департамента', brief:false }, { t:'14:00', text:'Стратегическая встреча', by:'подготовлена ассистентом', brief:true } ];
 
@@ -174,7 +195,7 @@
   }
   function widgetBody(id){
     if(id==='waiting') return waitingItems().map(waitRowHTML).join('');
-    if(id==='drafts')  return DRAFTS.map(d=>`<div class="mp-row" data-doc="1" style="cursor:pointer"><span class="mp-emoji">${d.ic}</span><span class="mp-txt" style="flex:1;color:var(--txt)">${escHtml(d.t)} <span style="color:var(--faint)">· ${escHtml(d.by)}</span></span><span class="mp-pill" style="background:var(--acc-soft);color:var(--acc)">${escHtml(d.st)}</span><button class="mp-btn" data-doc="1">Открыть</button></div>`).join('');
+    if(id==='drafts')  return DRAFTS.map(d=>`<div class="mp-row" data-doc="${d.id}" style="cursor:pointer"><span class="mp-emoji">${d.ic}</span><span class="mp-txt" style="flex:1;color:var(--txt)">${escHtml(d.t)} <span style="color:var(--faint)">· ${escHtml(d.by)}</span></span><span class="mp-pill" style="background:var(--acc-soft);color:var(--acc)">${escHtml(d.st)}</span><button class="mp-btn" data-doc="${d.id}">Открыть</button></div>`).join('');
     if(id==='meetings') return MEET.map(m=>`<div class="mp-row"><span class="mp-time">${m.t}</span><span class="mp-txt">${escHtml(m.text)} <span style="color:var(--faint)">· ${escHtml(m.by)}</span></span>${m.brief?`<button class="mp-btn" data-brief="1">бриф</button>`:''}</div>`).join('');
     if(id==='staff')   return myStaff().map(w=>{ const pct=40+(String(w.id).length*7)%55; return `<div class="mp-row" data-open="${w.id}" style="cursor:pointer"><span class="mp-emoji">${w.emoji||'🤖'}</span><span class="mp-txt" style="flex:none;min-width:180px;color:var(--txt)">${escHtml(w.name)}</span><span class="mp-txt" style="color:var(--muted);font-size:13px">${escHtml(w.now||w.title||'')}</span><span class="mp-bar"><i style="width:${pct}%"></i></span><span class="mp-pct">${pct}%</span></div>`; }).join('');
     if(id==='zoom')    return `<div class="mp-row mp-suggest"><span class="mp-emoji">🎙️</span><span class="mp-txt">Из вчерашнего Zoom-звонка «Гамма»: 4 задачи и 1 встреча — кандидаты</span><button class="mp-btn" data-zoom="1">Разобрать</button></div>`;
@@ -187,8 +208,9 @@
   function addPalette(layout){
     const hidden = ALL_W.filter(x=>!layout.includes(x));
     return `<section class="mp-addpanel">
-      <div class="mp-sec" style="margin-top:0">Добавить блок на стол</div>
-      ${hidden.length ? hidden.map(id=>`<div class="mp-catrow"><span style="font-size:16px">▦</span><span style="flex:1">${W_TITLE[id]}</span><button class="mp-btn" data-addw="${id}">＋ вернуть</button></div>`).join('') : '<div class="mp-empty" style="text-align:left">Все блоки уже на столе</div>'}
+      <div class="mp-sec" style="margin-top:0">Настройка стола<span class="mp-wctl"><button class="mp-ic" data-reset="1">↺ сбросить к стандарту</button></span></div>
+      <div style="font-size:12px;color:var(--muted);margin:-2px 0 12px">Уберите лишнее кнопкой «× убрать» на блоке или верните снятое:</div>
+      ${hidden.length ? hidden.map(id=>`<div class="mp-catrow"><span style="font-size:16px">▦</span><span style="flex:1">${W_TITLE[id]}</span><button class="mp-btn" data-addw="${id}" style="border-color:color-mix(in srgb,var(--acc) 40%,transparent);color:var(--acc)">＋ вернуть</button></div>`).join('') : '<div class="mp-empty" style="text-align:left;margin-bottom:8px">Все блоки на столе. Снятые появятся здесь для возврата.</div>'}
       <div class="mp-catrow"><span style="font-size:16px">🧩</span><span style="flex:1">Блок «Воронка сделок» · из каталога</span><button class="mp-btn" data-cat="1">＋ добавить</button></div>
       <div class="mp-catrow"><span style="font-size:16px">🤖</span><span style="flex:1">ЦС «Переводчик» · из библиотеки</span><button class="mp-btn" data-cat="1">＋ нанять</button></div>
       <div class="mp-catrow" style="border-color:color-mix(in srgb,var(--acc) 26%,transparent);background:var(--acc-soft)"><span style="font-size:16px">✦</span><span style="flex:1;color:var(--acc)">Нет нужного блока или ЦС?</span><button class="mp-btn" data-esc="1" style="border-color:color-mix(in srgb,var(--acc) 40%,transparent);color:var(--acc)">Запросить у ЦС-администратора</button></div>
@@ -210,13 +232,13 @@
         </span>
       </div>
       <div id="mpDesk" class="${editing?'mp-editing':''}">
-        ${layout.map((id,i)=>widgetWrap(id,i,layout.length)).join('')}
         ${editing?addPalette(layout):''}
+        ${layout.map((id,i)=>widgetWrap(id,i,layout.length)).join('')}
       </div>
       <div class="mp-asst" data-asst="1"><span class="ic">💬</span><span class="t">Личный помощник — знает, на что вы смотрите. Спросите или поставьте задачу…</span><kbd>⌘K</kbd></div>`;
 
     root.querySelectorAll('[data-open]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); navTo('worker:'+b.dataset.open); });
-    root.querySelectorAll('[data-doc]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); toast('Открываю документ · черновик готов к правке'); });
+    root.querySelectorAll('[data-doc]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); window.__MP_DOC=b.dataset.doc; navTo('mypulse-doc'); });
     root.querySelectorAll('[data-accept]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); const row=b.closest('.mp-row'); if(row){ row.style.transition='opacity .25s'; row.style.opacity='0'; setTimeout(()=>row.remove(),250); } toast('Готово — точка закрыта'); });
     const zb=root.querySelector('[data-zoom]'); if(zb) zb.onclick=()=>navTo('mypulse-zoom');
     const br=root.querySelector('[data-brief]'); if(br) br.onclick=()=>toast('Бриф к встрече готовит Двойник ассистента');
@@ -225,6 +247,7 @@
     const eb=root.querySelector('#mpEdit'); if(eb) eb.onclick=()=>{ editing=!editing; if(!editing) toast('Раскладка сохранена'); renderMyPulse(root); };
     root.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ saveLayout(loadLayout().filter(x=>x!==b.dataset.rm)); renderMyPulse(root); });
     root.querySelectorAll('[data-addw]').forEach(b=>b.onclick=()=>{ const l=loadLayout(); if(!l.includes(b.dataset.addw)) l.push(b.dataset.addw); saveLayout(l); renderMyPulse(root); });
+    const rs=root.querySelector('[data-reset]'); if(rs) rs.onclick=()=>{ try{localStorage.removeItem(LKEY);}catch(e){} toast('Раскладка сброшена к стандарту'); renderMyPulse(root); };
     root.querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>{ const l=loadLayout(), i=l.indexOf(b.dataset.id), j=b.dataset.mv==='up'?i-1:i+1; if(i>=0&&j>=0&&j<l.length){ const t=l[i]; l[i]=l[j]; l[j]=t; saveLayout(l); renderMyPulse(root); } });
     root.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>toast('Блок добавлен на стол'));
     const esc=root.querySelector('[data-esc]'); if(esc) esc.onclick=()=>toast('Запрос отправлен ЦС-администратору');
@@ -432,10 +455,94 @@
     const st=root.querySelector('[data-staff]'); if(st) st.onclick=()=>toast('Компания укомплектована · штат создан, РЦС назначены');
   }
 
+  /* ── мастерская документа: документ + диалог с ассистентом (чат/IDE) ── */
+  const DOCS = {
+    'kp-gamma': { ic:'📄', kind:'КП', by:'Двойник менеджера продаж', status:'на правку',
+      title:'Коммерческое предложение · АО «Банк Гамма»',
+      chips:['Сократи вступление','Добавь скидку 10%','Проверь юр. риски','На согласование'],
+      body:[
+        'Коммерческое предложение для АО «Банк Гамма».',
+        'СРЕДА — корпоративная платформа цифровых сотрудников, разворачиваемая on-premise в контуре заказчика. Каждый цифровой сотрудник занимает должность, подчиняется руководителю и работает по корпоративным правилам.',
+        'Состав поставки: платформа + библиотека цифровых сотрудников под роли банка (KAM, юрист-договорник, аналитик), интеграции с почтой и внутренними системами через MCP.',
+        'Стоимость: базовая лицензия на платформу + оплата по числу руководителей цифровых сотрудников (РЦС).',
+        'Срок внедрения: 6–8 недель до продуктивной эксплуатации.',
+      ] },
+    'protocol-gamma': { ic:'📝', kind:'Протокол', by:'Двойник ассистента', status:'готов',
+      title:'Протокол встречи · клиент «Гамма» · 10:00–10:38',
+      chips:['Выдели решения','Назначь ответственных','Разослать участникам'],
+      body:[
+        'Участники: Вячеслав (КАМ), представители АО «Банк Гамма».',
+        'Обсудили: расширенный тариф, объёмы поставки на Q1, санкционную проверку контрагента.',
+        'Договорённости: прислать КП до конца недели; свериться по контрагенту; созвон-презентация в четверг 15:00.',
+      ] },
+    'report-q3': { ic:'📊', kind:'Отчёт', by:'Агент отчётности', status:'на приёмку',
+      title:'Отчёт департамента KAM · Q3 (черновик)',
+      chips:['Короткое резюме','Добавь график','На приёмку'],
+      body:[
+        'Итоги квартала по департаменту KAM.',
+        'Выручка: план выполнен на 104%. Воронка: 18 MQL, 6 горячих сделок.',
+        'Проекты РЖД: 2 в работе, риск-индекс в норме. Внедрения: SLA соблюдены.',
+      ] },
+    'email-reply': { ic:'✉️', kind:'Письмо', by:'Двойник ассистента', status:'на отправку',
+      title:'Ответ контрагенту (черновик письма)',
+      chips:['Сделай вежливее','Короче','Отправить'],
+      body:[
+        'Здравствуйте!',
+        'Благодарим за интерес к платформе СРЕДА. Направляем коммерческое предложение во вложении и готовы обсудить пилот.',
+        'С уважением, департамент KAM.',
+      ] },
+  };
+
+  function renderDoc(root){
+    const id = window.__MP_DOC || 'kp-gamma';
+    const d = DOCS[id] || DOCS['kp-gamma'];
+    root.innerHTML = `
+      <div class="mp-metarow"><span class="meta">${escHtml(d.kind)} · ${escHtml(d.by)} · статус: ${escHtml(d.status)}</span><button class="mp-btn" data-back="1">← В ассистента</button></div>
+      <div class="mp-doc">
+        <div class="mp-docpane">
+          <div class="hd"><span class="mp-emoji">${d.ic}</span><b style="flex:1;min-width:0">${escHtml(d.title)}</b>
+            <button class="mp-btn" data-save="1">Сохранить</button>
+            <button class="mp-btn" data-approve="1" style="border-color:color-mix(in srgb,var(--acc) 40%,transparent);color:var(--acc)">На согласование</button></div>
+          <textarea id="mpDocBody" spellcheck="false">${escHtml(d.body.join('\n\n'))}</textarea>
+        </div>
+        <div class="mp-chat">
+          <div class="mp-chat-hd"><span class="av2">◆</span><b>Личный ассистент</b><span style="color:var(--muted);font-size:12px;margin-left:auto">видит документ</span></div>
+          <div class="thread" id="mpThread"></div>
+          <div class="mp-chips" id="mpChips">${(d.chips||[]).map(c=>`<button class="mp-chip">${escHtml(c)}</button>`).join('')}</div>
+          <div class="mp-chatin"><input id="mpChatIn" placeholder="Спросите ассистента про документ…" autocomplete="off"/><button data-csend="1" aria-label="Отправить">▶</button></div>
+        </div>
+      </div>`;
+    const thread=root.querySelector('#mpThread'); const body=root.querySelector('#mpDocBody');
+    function bubble(cls,txt,stream){ const b=el(`<div class="mp-b ${cls}"></div>`); thread.appendChild(b); if(stream){ typeInto(b,txt,thread,null); } else { b.textContent=txt; } thread.scrollTop=thread.scrollHeight; return b; }
+    bubble('a', `Открыл «${d.title}». Вижу документ целиком — могу переписать, добавить условия, проверить или отправить дальше. Что делаем?`, false);
+
+    function respond(q){
+      bubble('u', q);
+      const lo=q.toLowerCase(); let reply='Готово. Что-то ещё по документу?'; let edit=null;
+      if(/скидк/.test(lo)){ reply='Добавил специальные условия со скидкой 10% в раздел стоимости.'; edit=t=>t+'\n\nСпециальные условия: скидка 10% при годовой предоплате.'; }
+      else if(/сократ|коротк|вступлен/.test(lo)){ reply='Сократил — оставил суть в двух абзацах.'; edit=t=>{ const p=t.split('\n\n'); return p.slice(0,2).join('\n\n'); }; }
+      else if(/риск|юр/.test(lo)){ reply='Проверил по реестру: санкционных рисков по контрагенту не выявлено. Рекомендую приложить справку — добавил пометку.'; edit=t=>t+'\n\n[Проверка: санкционных рисков нет · справка прилагается]'; }
+      else if(/вежлив|мягч/.test(lo)){ reply='Смягчил формулировки, добавил вступительную любезность.'; edit=t=>'Добрый день!\n\n'+t; }
+      else if(/реш|ответствен/.test(lo)){ reply='Выделил решения и проставил ответственных по договорённостям.'; edit=t=>t+'\n\nРешения: 1) КП — Двойник менеджера продаж, до пт. 2) Проверка контрагента — Юрист, до ср. 3) Созвон — чт 15:00.'; }
+      else if(/график|диаграм/.test(lo)){ reply='Добавил ссылку на график выручки по кварталам.'; edit=t=>t+'\n\n[График: выручка по кварталам Q1–Q3]'; }
+      else if(/отправ|соглас|приёмк|приемк|разосл/.test(lo)){ reply='Отправляю на следующий шаг — статус обновлён.'; }
+      setTimeout(()=>{ bubble('a', reply, true); if(edit) body.value=edit(body.value); }, 240);
+    }
+
+    root.querySelectorAll('.mp-chip').forEach(c=>c.onclick=()=>respond(c.textContent));
+    const inp=root.querySelector('#mpChatIn');
+    const send=()=>{ const v=(inp.value||'').trim(); if(!v) return; inp.value=''; respond(v); };
+    root.querySelector('[data-csend]').onclick=send;
+    inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); send(); } });
+    root.querySelector('[data-back]').onclick=()=>navTo('mypulse');
+    root.querySelector('[data-save]').onclick=()=>toast('Черновик сохранён');
+    root.querySelector('[data-approve]').onclick=()=>{ toast('Отправлено на согласование'); navTo('mypulse'); };
+  }
+
   /* ── маршруты: оборачиваем renderStage, добавляем свои экраны ── */
   const origStage = renderStage;
   renderStage = function(id){
-    const MINE = { 'mypulse':renderMyPulse, 'mypulse-zoom':renderZoom, 'mypulse-dept':renderDeptPulse, 'mypulse-co':renderCoPulse, 'mypulse-constructor':renderConstructor, 'mypulse-onboard':renderOnboarding };
+    const MINE = { 'mypulse':renderMyPulse, 'mypulse-zoom':renderZoom, 'mypulse-dept':renderDeptPulse, 'mypulse-co':renderCoPulse, 'mypulse-constructor':renderConstructor, 'mypulse-onboard':renderOnboarding, 'mypulse-doc':renderDoc };
     if (MINE[id]){
       const stage=document.getElementById('stage');
       stage.classList.add('full'); stage.innerHTML='<div class="work" id="work"></div>';
@@ -454,6 +561,7 @@
     if (id==='mypulse-co') return 'Пульс компании';
     if (id==='mypulse-constructor') return 'Конструктор рабочего места';
     if (id==='mypulse-onboard') return 'Онбординг компании';
+    if (id==='mypulse-doc') return 'Документ · ассистент';
     return origLabel.apply(this, arguments);
   };
 
