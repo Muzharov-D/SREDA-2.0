@@ -51,6 +51,8 @@
     .mp-us:hover{color:var(--txt2);background:var(--panel-hover)}
     .mp-us.on{background:var(--acc-soft);color:var(--acc);font-weight:600}
     .mp-userrole{color:var(--muted);font-size:13px;margin:0 0 4px}
+    .mp-topsw{height:32px;align-self:center}
+    .mp-topsw .mp-us{padding:5px 10px;font-size:12.5px}
     .mp-seg{display:inline-flex;border:1px solid var(--line2);border-radius:var(--r-xs);overflow:hidden;background:var(--panel)}
     .mp-seg-b{border:0;background:transparent;color:var(--muted);padding:7px 16px;font-size:13px;cursor:pointer;font-family:inherit;transition:var(--transition-fast)}
     .mp-seg-b:hover{color:var(--txt2);background:var(--panel-hover)}
@@ -304,13 +306,12 @@
     root.innerHTML = `
       <div class="mp-greet"><div class="av">◆</div><div style="flex:1;min-width:0"><div class="who">Личный ассистент</div><div class="msg" id="mpGreet">${greeted?escHtml(greet):''}</div></div></div>
       <div class="mp-metarow">
-        <span class="mp-userswitch" title="Демо-стенд: переключить пользователя">${Object.keys(USERS).map(k=>{const u=USERS[k];return `<button class="mp-us ${k===CURRENT?'on':''}" data-user="${k}">${u.av} ${u.first}</button>`;}).join('')}</span>
+        <span class="meta">${escHtml(hero().first)} · ${escHtml(hero().role)} · ${weekday()}, 08:00 · день собран</span>
         <span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           <button class="mp-btn" id="mpEdit">${editing?'✓ Готово':'⚙ Настроить стол'}</button>
           ${segHTML('me')}
         </span>
       </div>
-      <div class="mp-userrole">${escHtml(hero().role)} · ${weekday()}, 08:00 · день собран</div>
       <div id="mpDesk" class="${editing?'mp-editing':''}">
         ${editing?addPalette(layout):''}
         ${layout.map((id,i)=>widgetWrap(id,i,layout.length)).join('')}
@@ -684,6 +685,28 @@
     return origStage.apply(this, arguments);
   };
 
+  /* ── в KAM-демо не пускаем в старый ролевой кабинет с «демо-линзой» и чужими
+        закрытыми данными: любой вход в ролевой «Мой ассистент» → чистый стол,
+        а меню всегда держим менеджерским (exec) ── */
+  const ROLE_CABS = (window.__ORG && window.__ORG.roleIds) || [];
+  const origNavMP = navTo;
+  navTo = function(id, opts){
+    if (typeof id==='string'){
+      /* ролевой «Мой ассистент» (asst:dev) или «Рабочий стол» (голый id отдела),
+         а также канал/передачи/умения ролевого кабинета — уводим в чистый стол */
+      if (id.indexOf('asst:')===0){ const d=id.slice(5); if (USERS[d]) setUser(d); return origNavMP('mypulse', opts); }
+      if (ROLE_CABS.indexOf(id)>=0){ if (USERS[id]) setUser(id); return origNavMP('mypulse', opts); }
+      if (/^(channel|flow|lib):/.test(id)){ return origNavMP('mypulse', opts); }
+    }
+    origNavMP(id, opts);
+    try{
+      if (state.ws!=='exec' && state.ws!=='owner' && state.ws!=='platform' && ROLE_CABS.indexOf(state.ws)>=0){
+        if (USERS[state.ws]) setUser(state.ws);
+        state.ws='exec'; renderNav(); if (typeof renderTopWho==='function') renderTopWho(); refreshUserSw();
+      }
+    }catch(e){}
+  };
+
   /* ── подписи экранов (крошки / кнопка назад) ── */
   const origLabel = screenLabel;
   screenLabel = function(id){
@@ -728,9 +751,28 @@
     tr.insertBefore(b, tr.firstChild);
   }
 
+  /* ── переключатель пользователя в топбаре (глобальный, всегда чистый кабинет) ── */
+  function refreshUserSw(){ const sw=document.getElementById('mpUserSw'); if(sw&&sw.__r) sw.__r(); }
+  function setupUserSwitch(){
+    const tr=document.querySelector('.tb-right'); if(!tr || document.getElementById('mpUserSw')) return;
+    const wrap=document.createElement('div'); wrap.id='mpUserSw'; wrap.className='mp-userswitch mp-topsw';
+    wrap.__r=function(){
+      wrap.innerHTML=Object.keys(USERS).map(k=>{const u=USERS[k];return `<button class="mp-us ${k===CURRENT?'on':''}" data-user="${k}" title="${escHtml(u.role)}">${u.av} ${u.first}</button>`;}).join('');
+      wrap.querySelectorAll('[data-user]').forEach(b=>b.onclick=()=>{
+        setUser(b.dataset.user); greeted=false;
+        state.ws='exec'; state.screen='mypulse'; renderNav(); if(typeof renderTopWho==='function') renderTopWho();
+        renderStage('mypulse'); if(typeof decorateStage==='function') decorateStage('mypulse');   /* форсируем перерисовку — мы уже могли быть на mypulse */
+        wrap.__r();
+      });
+    };
+    wrap.__r();
+    tr.insertBefore(wrap, tr.firstChild);
+  }
+
   /* ── посадочный экран: Личный ассистент вместо Пульса компании ── */
   document.addEventListener('DOMContentLoaded', ()=>{
     setupThemeToggle();
+    setupUserSwitch();
     const h=(location.hash.slice(1)||'').trim();
     if (!h || h==='pulse' || h==='exec'){ try{ navTo('mypulse'); }catch(e){} }
   });
