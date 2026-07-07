@@ -88,6 +88,13 @@
     .mp-esc{border:1px solid color-mix(in srgb,var(--acc) 26%,transparent);background:var(--acc-soft);border-radius:var(--r-sm);padding:12px 13px;margin-bottom:9px}
     .mp-escwork{border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:0 var(--r-sm) var(--r-sm) 0;padding:10px 12px;background:var(--panel)}
     .mp-row.dashed{border-style:dashed;background:transparent}
+    .mp-wctl{margin-left:auto;display:inline-flex;gap:6px;text-transform:none;letter-spacing:0}
+    .mp-ic{border:1px solid var(--line2);background:var(--panel);color:var(--txt2);border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer;font-family:inherit;transition:var(--transition-fast)}
+    .mp-ic:hover{border-color:var(--acc);color:var(--acc)}
+    .mp-ic.rm:hover{border-color:var(--red);color:var(--red)}
+    .mp-ic:disabled{opacity:.35;cursor:default}
+    .mp-editing .mp-w.ed{outline:1px dashed var(--line3);outline-offset:6px;border-radius:8px;margin-bottom:16px}
+    .mp-addpanel{margin-top:22px;padding:14px 16px;border:1px dashed var(--acc);border-radius:var(--r-sm);background:color-mix(in srgb,var(--acc) 5%,transparent)}
     @media(max-width:720px){.mp-cols{grid-template-columns:1fr}}
     .mp-theme{width:34px;height:34px;border-radius:9px;border:1px solid var(--line2);background:var(--panel);color:var(--txt2);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:var(--transition-fast)}
     .mp-theme:hover{border-color:var(--acc);color:var(--acc)}
@@ -140,101 +147,88 @@
     wait.forEach(w=>cnt[w.tag]=(cnt[w.tag]||0)+1);
     const wtext = order.filter(t=>cnt[t]).map(t=>cnt[t]+' '+map[t]).join(', ');
     const n = wait.length;
-    return `Доброе утро, ${HERO.first}. Пока вы отдыхали, ваши цифровые сотрудники собрали день. Коротко: ${n} ${n===1?'решение ждёт':'решения ждут'} вас (${wtext}); 2 встречи — брифинг в 09:00 и стратегическая в 14:00. Готовы недельный дашборд и утренний брифинг от двойника главы департамента. Из вчерашнего звонка «Гамма» я выделил 4 задачи — подскажу по ходу дня.`;
+    return `Доброе утро, ${HERO.first}. Пока вы отдыхали, ваши цифровые сотрудники собрали день. Коротко: ${n} ${n===1?'решение ждёт':'решения ждут'} вас (${wtext}); 2 встречи — брифинг в 09:00 и стратегическая в 14:00. На столе уже лежат черновик КП для «Гаммы», протокол встречи и недельный дашборд — осталось проверить. Из вчерашнего звонка «Гамма» я выделил 4 задачи — подскажу по ходу дня.`;
   }
 
-  /* ── экран: Личный ассистент (высота «Я») ── */
+  /* ── рабочий стол: набор блоков с полной кастомизацией ── */
+  const ALL_W = ['waiting','drafts','meetings','staff','zoom'];
+  const W_TITLE = { waiting:'Ждёт меня', drafts:'Черновики и документы', meetings:'Встречи дня', staff:'Мои цифровые сотрудники в работе', zoom:'Предложено помощником' };
+  const LKEY = 'sreda_kam_layout_v1';
+  let editing = false;
+  function loadLayout(){ try{ const l=JSON.parse(localStorage.getItem(LKEY)); if(Array.isArray(l)&&l.length) return l.filter(x=>ALL_W.includes(x)); }catch(e){} return ALL_W.slice(); }
+  function saveLayout(l){ try{ localStorage.setItem(LKEY, JSON.stringify(l)); }catch(e){} }
+
+  const DRAFTS = [
+    { ic:'📄', t:'Черновик КП для банка «Гамма»',      by:'Двойник менеджера продаж', st:'на правку' },
+    { ic:'📝', t:'Протокол встречи «Гамма» · 10:00',    by:'Двойник ассистента',       st:'готов' },
+    { ic:'📊', t:'Отчёт Q3 — черновик',                 by:'Агент отчётности',         st:'на приёмку' },
+    { ic:'✉️', t:'Ответ контрагенту — черновик письма', by:'Двойник ассистента',       st:'на отправку' },
+  ];
+  const MEET = [ { t:'09:00', text:'Ежедневный брифинг', by:'Двойник главы департамента', brief:false }, { t:'14:00', text:'Стратегическая встреча', by:'подготовлена ассистентом', brief:true } ];
+
+  function widgetBadge(id){
+    if(id==='waiting') return `<span class="cnt mp-pill red">${waitingItems().length}</span>`;
+    if(id==='drafts')  return `<span class="cnt mp-pill" style="background:var(--acc-soft);color:var(--acc)">${DRAFTS.length}</span>`;
+    if(id==='staff')   return `<span class="cnt mp-pill" style="background:var(--acc-soft);color:var(--acc)">${myStaff().length}</span>`;
+    return '';
+  }
+  function widgetBody(id){
+    if(id==='waiting') return waitingItems().map(waitRowHTML).join('');
+    if(id==='drafts')  return DRAFTS.map(d=>`<div class="mp-row" data-doc="1" style="cursor:pointer"><span class="mp-emoji">${d.ic}</span><span class="mp-txt" style="flex:1;color:var(--txt)">${escHtml(d.t)} <span style="color:var(--faint)">· ${escHtml(d.by)}</span></span><span class="mp-pill" style="background:var(--acc-soft);color:var(--acc)">${escHtml(d.st)}</span><button class="mp-btn" data-doc="1">Открыть</button></div>`).join('');
+    if(id==='meetings') return MEET.map(m=>`<div class="mp-row"><span class="mp-time">${m.t}</span><span class="mp-txt">${escHtml(m.text)} <span style="color:var(--faint)">· ${escHtml(m.by)}</span></span>${m.brief?`<button class="mp-btn" data-brief="1">бриф</button>`:''}</div>`).join('');
+    if(id==='staff')   return myStaff().map(w=>{ const pct=40+(String(w.id).length*7)%55; return `<div class="mp-row" data-open="${w.id}" style="cursor:pointer"><span class="mp-emoji">${w.emoji||'🤖'}</span><span class="mp-txt" style="flex:none;min-width:180px;color:var(--txt)">${escHtml(w.name)}</span><span class="mp-txt" style="color:var(--muted);font-size:13px">${escHtml(w.now||w.title||'')}</span><span class="mp-bar"><i style="width:${pct}%"></i></span><span class="mp-pct">${pct}%</span></div>`; }).join('');
+    if(id==='zoom')    return `<div class="mp-row mp-suggest"><span class="mp-emoji">🎙️</span><span class="mp-txt">Из вчерашнего Zoom-звонка «Гамма»: 4 задачи и 1 встреча — кандидаты</span><button class="mp-btn" data-zoom="1">Разобрать</button></div>`;
+    return '';
+  }
+  function widgetWrap(id, i, total){
+    const ctl = editing ? `<span class="mp-wctl"><button class="mp-ic" data-mv="up" data-id="${id}" ${i===0?'disabled':''} aria-label="Выше">↑</button><button class="mp-ic" data-mv="dn" data-id="${id}" ${i===total-1?'disabled':''} aria-label="Ниже">↓</button><button class="mp-ic rm" data-rm="${id}">× убрать</button></span>` : '';
+    return `<section class="mp-w${editing?' ed':''}" data-w="${id}"><div class="mp-sec">${W_TITLE[id]} ${widgetBadge(id)}${ctl}</div>${widgetBody(id)}</section>`;
+  }
+  function addPalette(layout){
+    const hidden = ALL_W.filter(x=>!layout.includes(x));
+    return `<section class="mp-addpanel">
+      <div class="mp-sec" style="margin-top:0">Добавить блок на стол</div>
+      ${hidden.length ? hidden.map(id=>`<div class="mp-catrow"><span style="font-size:16px">▦</span><span style="flex:1">${W_TITLE[id]}</span><button class="mp-btn" data-addw="${id}">＋ вернуть</button></div>`).join('') : '<div class="mp-empty" style="text-align:left">Все блоки уже на столе</div>'}
+      <div class="mp-catrow"><span style="font-size:16px">🧩</span><span style="flex:1">Блок «Воронка сделок» · из каталога</span><button class="mp-btn" data-cat="1">＋ добавить</button></div>
+      <div class="mp-catrow"><span style="font-size:16px">🤖</span><span style="flex:1">ЦС «Переводчик» · из библиотеки</span><button class="mp-btn" data-cat="1">＋ нанять</button></div>
+      <div class="mp-catrow" style="border-color:color-mix(in srgb,var(--acc) 26%,transparent);background:var(--acc-soft)"><span style="font-size:16px">✦</span><span style="flex:1;color:var(--acc)">Нет нужного блока или ЦС?</span><button class="mp-btn" data-esc="1" style="border-color:color-mix(in srgb,var(--acc) 40%,transparent);color:var(--acc)">Запросить у ЦС-администратора</button></div>
+      <div class="mp-flowcap">Раскладка сохраняется под вас. Полезное поднимается в дефолт роли с санкцией владельца (§4.3).</div>
+    </section>`;
+  }
+
+  /* ── экран: Личный ассистент — рабочий стол (высота «Я») ── */
   function renderMyPulse(root){
-    const staff = myStaff();
-    const wait = waitingItems();
     const greet = greetingText();
-    const meetings = [
-      { t:'09:00', text:'Ежедневный брифинг', by:'Двойник главы департамента', brief:false },
-      { t:'14:00', text:'Стратегическая встреча', by:'подготовлена ассистентом', brief:true },
-    ];
+    const layout = loadLayout();
     root.innerHTML = `
-      <div class="mp-greet">
-        <div class="av">◆</div>
-        <div style="flex:1;min-width:0">
-          <div class="who">Личный ассистент</div>
-          <div class="msg" id="mpGreet">${greeted?escHtml(greet):''}</div>
-        </div>
-      </div>
+      <div class="mp-greet"><div class="av">◆</div><div style="flex:1;min-width:0"><div class="who">Личный ассистент</div><div class="msg" id="mpGreet">${greeted?escHtml(greet):''}</div></div></div>
       <div class="mp-metarow">
         <span class="meta">${HERO.first} · ${HERO.role} · ${weekday()}, 08:00 · день собран</span>
-        ${segHTML('me')}
+        <span style="display:flex;gap:10px;align-items:center">
+          <button class="mp-btn" id="mpEdit">${editing?'✓ Готово':'⚙ Настроить стол'}</button>
+          ${segHTML('me')}
+        </span>
       </div>
-
-      <div class="mp-sec">Ждёт меня <span class="cnt mp-pill red">${wait.length}</span></div>
-      ${wait.map((w,i)=>`
-        <div class="mp-row ${w.sev}" data-wi="${i}">
-          <span class="mp-pill ${w.sev}">${w.tag}</span>
-          <span class="mp-txt">${escHtml(w.text)}</span>
-          ${w.sev==='red' && w.tag==='приёмка' ? `<button class="mp-btn" data-accept="${i}">Принять</button>` : ''}
-          ${w.sev==='amber' ? `<button class="mp-btn" data-accept="${i}">Ответить</button>` : ''}
-          ${w.tag==='санкция' ? `<button class="mp-btn" data-accept="${i}">Разрешить</button>` : ''}
-          ${w.open ? `<button class="mp-btn" data-open="${w.open}">Открыть</button>` : ''}
-        </div>`).join('')}
-
-      <div class="mp-sec">Встречи дня</div>
-      ${meetings.map(m=>`
-        <div class="mp-row">
-          <span class="mp-time">${m.t}</span>
-          <span class="mp-txt">${escHtml(m.text)} <span style="color:var(--faint)">· ${escHtml(m.by)}</span></span>
-          ${m.brief?`<button class="mp-btn" data-brief="1">бриф</button>`:''}
-        </div>`).join('')}
-
-      <div class="mp-sec">Мои цифровые сотрудники в работе <span class="cnt mp-pill" style="background:var(--acc-soft);color:var(--acc)">${staff.length}</span></div>
-      ${staff.map(w=>{
-        const pct = 40 + (String(w.id).length*7)%55;
-        return `<div class="mp-row" data-open="${w.id}" style="cursor:pointer">
-          <span class="mp-emoji">${w.emoji||'🤖'}</span>
-          <span class="mp-txt" style="flex:none;min-width:150px;color:var(--txt)">${escHtml(w.name)}</span>
-          <span class="mp-txt" style="color:var(--muted);font-size:13px">${escHtml(w.now||w.title||'')}</span>
-          <span class="mp-bar"><i style="width:${pct}%"></i></span>
-          <span class="mp-pct">${pct}%</span>
-        </div>`;
-      }).join('')}
-      <div class="mp-row dashed" data-constructor="1" style="cursor:pointer">
-        <span class="mp-emoji">🧩</span>
-        <span class="mp-txt" style="color:var(--muted)">Настроить рабочее место — чего не хватает?</span>
-        <span class="mp-mb">конструктор</span>
+      <div id="mpDesk" class="${editing?'mp-editing':''}">
+        ${layout.map((id,i)=>widgetWrap(id,i,layout.length)).join('')}
+        ${editing?addPalette(layout):''}
       </div>
+      <div class="mp-asst" data-asst="1"><span class="ic">💬</span><span class="t">Личный помощник — знает, на что вы смотрите. Спросите или поставьте задачу…</span><kbd>⌘K</kbd></div>`;
 
-      <div class="mp-sec">Предложено помощником</div>
-      <div class="mp-row mp-suggest">
-        <span class="mp-emoji">🎙️</span>
-        <span class="mp-txt">Из вчерашнего Zoom-звонка «Гамма»: 4 задачи и 1 встреча — кандидаты</span>
-        <button class="mp-btn" data-zoom="1">Разобрать</button>
-      </div>
-
-      <div class="mp-asst" data-asst="1">
-        <span class="ic">💬</span>
-        <span class="t">Личный помощник — знает, на что вы смотрите. Спросите или поставьте задачу…</span>
-        <kbd>⌘K</kbd>
-      </div>`;
-
-    /* интерактив */
     root.querySelectorAll('[data-open]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); navTo('worker:'+b.dataset.open); });
-    root.querySelectorAll('[data-accept]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation();
-      const row=b.closest('.mp-row'); if(row){ row.style.transition='opacity .25s'; row.style.opacity='0'; setTimeout(()=>{ row.remove(); recount(root); },250); }
-      toast('Готово — точка закрыта'); });
+    root.querySelectorAll('[data-doc]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); toast('Открываю документ · черновик готов к правке'); });
+    root.querySelectorAll('[data-accept]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); const row=b.closest('.mp-row'); if(row){ row.style.transition='opacity .25s'; row.style.opacity='0'; setTimeout(()=>row.remove(),250); } toast('Готово — точка закрыта'); });
     const zb=root.querySelector('[data-zoom]'); if(zb) zb.onclick=()=>navTo('mypulse-zoom');
-    const cn=root.querySelector('[data-constructor]'); if(cn) cn.onclick=()=>navTo('mypulse-constructor');
     const br=root.querySelector('[data-brief]'); if(br) br.onclick=()=>toast('Бриф к встрече готовит Двойник ассистента');
-    const as=root.querySelector('[data-asst]'); if(as) as.onclick=()=>{ const ov=$('#overlay'); if(ov && ov._open) ov._open(); };
+    const as=root.querySelector('[data-asst]'); if(as) as.onclick=()=>{ const ov=$('#overlay'); if(ov&&ov._open) ov._open(); };
     wireSeg(root);
-    /* первый вход — ассистент печатает приветствие вживую, дальше показываем статично */
+    const eb=root.querySelector('#mpEdit'); if(eb) eb.onclick=()=>{ editing=!editing; if(!editing) toast('Раскладка сохранена'); renderMyPulse(root); };
+    root.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ saveLayout(loadLayout().filter(x=>x!==b.dataset.rm)); renderMyPulse(root); });
+    root.querySelectorAll('[data-addw]').forEach(b=>b.onclick=()=>{ const l=loadLayout(); if(!l.includes(b.dataset.addw)) l.push(b.dataset.addw); saveLayout(l); renderMyPulse(root); });
+    root.querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>{ const l=loadLayout(), i=l.indexOf(b.dataset.id), j=b.dataset.mv==='up'?i-1:i+1; if(i>=0&&j>=0&&j<l.length){ const t=l[i]; l[i]=l[j]; l[j]=t; saveLayout(l); renderMyPulse(root); } });
+    root.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>toast('Блок добавлен на стол'));
+    const esc=root.querySelector('[data-esc]'); if(esc) esc.onclick=()=>toast('Запрос отправлен ЦС-администратору');
     if(!greeted){ greeted=true; const g=root.querySelector('#mpGreet'); if(g) typeInto(g, greet, null, null); }
-  }
-  function recount(root){
-    const left = root.querySelectorAll('.mp-row.red, .mp-row.amber').length;
-    const cnt = root.querySelector('.mp-sec .cnt.red');
-    if(cnt) cnt.textContent = left;
-    if(left===0){
-      const first = root.querySelector('.mp-sec');
-      if(first){ const e=el(`<div class="mp-empty">Всё под контролем. ${myStaff().length} ЦС в работе, ближайшее решение — в 14:00.</div>`); first.insertAdjacentElement('afterend', e); }
-    }
   }
 
   /* ── экран: разбор Zoom → кандидаты в задачи (§6, ничего молча) ── */
@@ -476,13 +470,12 @@
     { id:'flowx',        label:'Передачи компании',     icon:'🔄' },
     { id:'project',      label:'Проекты на ревью',      icon:'📋' },
     { id:'exec',         label:'Дашборд',               icon:'📊' },
-    { sep:'Платформа Среды' },
-    { id:'mypulse-onboard', label:'Онбординг компании', icon:'🏢' },
-    { id:'modules', label:'С чего начать',        icon:'🪜' },
-    { id:'talent',  label:'Цифровой найм',        icon:'🌊' },
-    { id:'forge',   label:'Цифровое производство',icon:'🏭' },
-    { id:'bills',   label:'Счета Среды',          icon:'🧾' },
   ];
+  /* Онбординг компании и платформенные экраны — это работа админа/владельца
+     платформы, а не главы департамента. Убрано из кабинета Вячеслава,
+     онбординг перенесён в кабинет «Владелец платформы». */
+  const ownWS = WORKSPACES.find(w=>w.id==='owner');
+  if (ownWS && !ownWS.nav.some(n=>n.id==='mypulse-onboard')) ownWS.nav.unshift({ id:'mypulse-onboard', label:'Онбординг компании', icon:'🏢' });
 
   injectStyle();
 
