@@ -12,9 +12,18 @@
   if (!window.__ORG_KAM) return;
 
   /* ── протагонист и его цифровой штат (реальные данные org-kam.js) ── */
-  const HERO = { first:'Вячеслав', full:'Вячеслав Закусилов', role:'Глава департамента KAM', dept:'mgmt' };
-  const myStaff = () => (typeof DIGITAL_STAFF!=='undefined' && DIGITAL_STAFF.mgmt) || [];
+  /* мультипользовательский демо-стенд: три руководителя со своей спецификой */
+  const USERS = {
+    mgmt: { id:'mgmt', first:'Вячеслав', full:'Вячеслав Закусилов', role:'Глава департамента KAM',            dept:'mgmt', av:'🏛️' },
+    dev:  { id:'dev',  first:'Виктор',   full:'Виктор Рахманов',    role:'Глава направления Авандок.ИИ',        dept:'dev',  av:'🤖' },
+    prod: { id:'prod', first:'Василий',  full:'Василий Новиков',    role:'Глава производственного направления', dept:'prod', av:'🏭' },
+  };
+  const UKEY = 'sreda_kam_user';
+  let CURRENT = (function(){ try{ const u=localStorage.getItem(UKEY); return USERS[u]?u:'mgmt'; }catch(e){ return 'mgmt'; } })();
+  const hero = () => USERS[CURRENT] || USERS.mgmt;
+  const myStaff = () => (typeof DIGITAL_STAFF!=='undefined' && DIGITAL_STAFF[hero().dept]) || [];
   const staffById = (id) => myStaff().find(w=>w.id===id) || null;
+  window.__kamUser = hero; /* ассистент берёт текущего пользователя отсюда */
   let greeted = false; /* первый вход за сессию страницы — ассистент печатает приветствие вживую */
   const WD = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
   const weekday = () => WD[new Date().getDay()];
@@ -36,6 +45,12 @@
     @keyframes mpBlink{50%{opacity:0}}
     .mp-metarow{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 4px;flex-wrap:wrap}
     .mp-metarow .meta{color:var(--muted);font-size:13px}
+    .mp-userswitch{display:inline-flex;border:1px solid var(--line2);border-radius:var(--r-xs);overflow:hidden;background:var(--panel)}
+    .mp-us{border:0;background:transparent;color:var(--muted);padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit;transition:var(--transition-fast);border-right:1px solid var(--line2)}
+    .mp-us:last-child{border-right:0}
+    .mp-us:hover{color:var(--txt2);background:var(--panel-hover)}
+    .mp-us.on{background:var(--acc-soft);color:var(--acc);font-weight:600}
+    .mp-userrole{color:var(--muted);font-size:13px;margin:0 0 4px}
     .mp-seg{display:inline-flex;border:1px solid var(--line2);border-radius:var(--r-xs);overflow:hidden;background:var(--panel)}
     .mp-seg-b{border:0;background:transparent;color:var(--muted);padding:7px 16px;font-size:13px;cursor:pointer;font-family:inherit;transition:var(--transition-fast)}
     .mp-seg-b:hover{color:var(--txt2);background:var(--panel-hover)}
@@ -150,57 +165,119 @@
   }
   function wireSeg(scope){ scope.querySelectorAll('.mp-seg-b').forEach(b=>{ b.onclick=()=>{ if(!b.classList.contains('on')) navTo(b.dataset.h); }; }); }
 
-  /* ── «Ждёт меня» — точки участия человека (§7.2), часть выведена из штата ── */
-  function waitingItems(){
-    const items = [];
-    if (staffById('agent-reporting')) items.push({ sev:'red', tag:'приёмка', text:'Недельный дашборд собран агентом отчётности — принять', open:'agent-reporting' });
-    if (staffById('kam-director'))    items.push({ sev:'red', tag:'приёмка', text:'Ежедневный брифинг от двойника главы департамента готов — проверить', open:'kam-director' });
-    if (staffById('exec-assistant'))  items.push({ sev:'amber', tag:'уточнение', text:'Двойник ассистента: подтвердить встречу 14:00 от вашего имени?', open:'exec-assistant' });
-    items.push({ sev:'red', tag:'санкция', text:'Отправка КП банку-контрагенту — подтвердите (необратимо)' });
-    return items;
-  }
-  /* отдаём «Ждёт меня» наружу — ассистент отвечает реальными данными, не подсказками */
-  window.__kamWaiting = waitingItems;
+  /* ── данные под каждого пользователя (своя специфика роли) ── */
+  const UDATA = {
+    mgmt: {
+      day:'На столе — черновик КП для «Гаммы», протокол встречи и недельный дашборд.',
+      meet:'2 встречи — брифинг в 09:00 и стратегическая в 14:00',
+      zoom:'Из вчерашнего Zoom-звонка «Гамма»: 4 задачи и 1 встреча — кандидаты',
+      extra:null,
+      waiting:[
+        { sev:'red',   tag:'приёмка',  text:'Недельный дашборд собран агентом отчётности — принять', open:'agent-reporting' },
+        { sev:'red',   tag:'приёмка',  text:'Ежедневный брифинг от двойника главы департамента готов — проверить', open:'kam-director' },
+        { sev:'amber', tag:'уточнение',text:'Двойник ассистента: подтвердить встречу 14:00 от вашего имени?', open:'exec-assistant' },
+        { sev:'red',   tag:'санкция',  text:'Отправка КП банку-контрагенту — подтвердите (необратимо)' },
+      ],
+      drafts:[
+        { id:'kp-gamma',       ic:'📄', t:'Черновик КП для банка «Гамма»',      by:'Двойник менеджера продаж', st:'на правку' },
+        { id:'protocol-gamma', ic:'📝', t:'Протокол встречи «Гамма» · 10:00',    by:'Двойник ассистента',       st:'готов' },
+        { id:'report-q3',      ic:'📊', t:'Отчёт Q3 — черновик',                 by:'Агент отчётности',         st:'на приёмку' },
+        { id:'email-reply',    ic:'✉️', t:'Ответ контрагенту — черновик письма', by:'Двойник ассистента',       st:'на отправку' },
+      ],
+      meetings:[ { t:'09:00', text:'Ежедневный брифинг', by:'Двойник главы департамента', brief:false }, { t:'14:00', text:'Стратегическая встреча', by:'подготовлена ассистентом', brief:true } ],
+    },
+    dev: {
+      day:'На столе — ТЗ интеграции CDP, отчёт бенчмарка LLM и релиз-ноты 2.4.',
+      meet:'2 встречи — синк разработки в 10:00 и демо клиенту в 15:00',
+      zoom:'Из вчерашнего созвона по РЖД: 5 задач разработки — кандидаты',
+      extra:'models',
+      waiting:[
+        { sev:'red',   tag:'приёмка',  text:'Бенчмарк новой LLM готов — принять результат', open:'ai-internal-lead' },
+        { sev:'red',   tag:'санкция',  text:'Деплой ML-модели в прод — подтвердите (необратимо)' },
+        { sev:'amber', tag:'уточнение',text:'Двойник техлида: какую версию шины CDP брать в релиз 2.4?', open:'dev-team-lead' },
+        { sev:'red',   tag:'приёмка',  text:'Код-ревью интеграции РЖД — 2 замечания, проверить', open:'rail-tech-lead' },
+      ],
+      drafts:[
+        { id:'ts-cdp',     ic:'📄', t:'ТЗ интеграции CDP (черновик)', by:'Двойник разработчика РЖД',  st:'на правку' },
+        { id:'bench-llm',  ic:'📊', t:'Отчёт бенчмарка LLM',          by:'Двойник главы ИИ-решений', st:'на приёмку' },
+        { id:'release-24', ic:'📝', t:'Релиз-ноты 2.4 (черновик)',    by:'Двойник техлида',          st:'на согласование' },
+      ],
+      meetings:[ { t:'10:00', text:'Синк разработки', by:'команда CDP/EDP', brief:false }, { t:'15:00', text:'Демо клиенту', by:'подготовлено экспертом', brief:true } ],
+    },
+    prod: {
+      day:'На столе — план внедрения, статус-отчёт клиенту и акт приёмки.',
+      meet:'2 встречи — планёрка внедрений в 09:30 и статус с клиентом в 14:00',
+      zoom:'Из вчерашнего статуса с клиентом: 4 задачи внедрения — кандидаты',
+      extra:'sla',
+      waiting:[
+        { sev:'red',   tag:'приёмка',  text:'Приёмочные сценарии внедрения у клиента — проверить', open:'production-deputy' },
+        { sev:'red',   tag:'санкция',  text:'Передача проекта в поддержку с SLA — подтвердите', open:'production-director' },
+        { sev:'amber', tag:'уточнение',text:'Двойник зама: сдвигать ли веху внедрения на неделю?', open:'production-deputy' },
+        { sev:'red',   tag:'приёмка',  text:'Статус-отчёт по внедрению — принять перед отправкой клиенту' },
+      ],
+      drafts:[
+        { id:'impl-plan',      ic:'📄', t:'План внедрения у клиента (черновик)', by:'Двойник зама по производству', st:'на правку' },
+        { id:'status-client',  ic:'📊', t:'Статус-отчёт клиенту',                by:'Двойник главы производства',   st:'на приёмку' },
+        { id:'act-acceptance', ic:'📝', t:'Акт приёмки (черновик)',              by:'Двойник зама по производству', st:'на подпись' },
+      ],
+      meetings:[ { t:'09:30', text:'Планёрка внедрений', by:'проектный офис', brief:false }, { t:'14:00', text:'Статус с клиентом', by:'подготовлено ассистентом', brief:true } ],
+    },
+  };
+  const udata = () => UDATA[CURRENT] || UDATA.mgmt;
 
-  /* ── приветствие личного ассистента: короткое резюме дня (§5.2) ── */
+  function waitingItems(){ return udata().waiting.slice(); }
+  window.__kamWaiting = waitingItems;
+  const drafts   = () => udata().drafts;
+  const meetings = () => udata().meetings;
+  window.__kamDrafts = drafts; /* ассистент открывает черновики текущего пользователя */
+
   function greetingText(){
     const wait = waitingItems();
     const map = { 'приёмка':'на приёмку', 'уточнение':'уточнение', 'санкция':'на подпись' };
     const order = ['приёмка','уточнение','санкция']; const cnt = {};
     wait.forEach(w=>cnt[w.tag]=(cnt[w.tag]||0)+1);
     const wtext = order.filter(t=>cnt[t]).map(t=>cnt[t]+' '+map[t]).join(', ');
-    const n = wait.length;
-    return `Доброе утро, ${HERO.first}. Пока вы отдыхали, ваши цифровые сотрудники собрали день. Коротко: ${n} ${n===1?'решение ждёт':'решения ждут'} вас (${wtext}); 2 встречи — брифинг в 09:00 и стратегическая в 14:00. На столе уже лежат черновик КП для «Гаммы», протокол встречи и недельный дашборд — осталось проверить. Из вчерашнего звонка «Гамма» я выделил 4 задачи — подскажу по ходу дня.`;
+    const n = wait.length; const u = udata();
+    return `Доброе утро, ${hero().first}. Пока вы отдыхали, ваши цифровые сотрудники собрали день. Коротко: ${n} ${n===1?'решение ждёт':'решения ждут'} вас (${wtext}); ${u.meet}. ${u.day} Я рядом — подскажу по ходу дня.`;
   }
 
-  /* ── рабочий стол: набор блоков с полной кастомизацией ── */
-  const ALL_W = ['waiting','drafts','meetings','staff','zoom'];
-  const W_TITLE = { waiting:'Ждёт меня', drafts:'Черновики и документы', meetings:'Встречи дня', staff:'Мои цифровые сотрудники в работе', zoom:'Предложено помощником' };
-  const LKEY = 'sreda_kam_layout_v1';
+  /* ── рабочий стол: набор блоков с полной кастомизацией (у каждого свой) ── */
+  const BASE_W = ['waiting','drafts','meetings','staff','zoom'];
+  const allW = () => { const e=udata().extra; return e ? BASE_W.concat([e]) : BASE_W.slice(); };
+  const W_TITLE = { waiting:'Ждёт меня', drafts:'Черновики и документы', meetings:'Встречи дня', staff:'Мои цифровые сотрудники в работе', zoom:'Предложено помощником', models:'Модели и деплои', sla:'Внедрения и SLA' };
   let editing = false;
-  function loadLayout(){ try{ const l=JSON.parse(localStorage.getItem(LKEY)); if(Array.isArray(l)&&l.length) return l.filter(x=>ALL_W.includes(x)); }catch(e){} return ALL_W.slice(); }
-  function saveLayout(l){ try{ localStorage.setItem(LKEY, JSON.stringify(l)); }catch(e){} }
+  const lkey = () => 'sreda_kam_layout_'+CURRENT;
+  function loadLayout(){ try{ const l=JSON.parse(localStorage.getItem(lkey())); if(Array.isArray(l)&&l.length) return l.filter(x=>allW().includes(x)); }catch(e){} return allW(); }
+  function saveLayout(l){ try{ localStorage.setItem(lkey(), JSON.stringify(l)); }catch(e){} }
+  function setUser(u){ if(!USERS[u]||u===CURRENT) return; CURRENT=u; greeted=false; try{ localStorage.setItem(UKEY,u); }catch(e){} }
 
-  const DRAFTS = [
-    { id:'kp-gamma',       ic:'📄', t:'Черновик КП для банка «Гамма»',      by:'Двойник менеджера продаж', st:'на правку' },
-    { id:'protocol-gamma', ic:'📝', t:'Протокол встречи «Гамма» · 10:00',    by:'Двойник ассистента',       st:'готов' },
-    { id:'report-q3',      ic:'📊', t:'Отчёт Q3 — черновик',                 by:'Агент отчётности',         st:'на приёмку' },
-    { id:'email-reply',    ic:'✉️', t:'Ответ контрагенту — черновик письма', by:'Двойник ассистента',       st:'на отправку' },
+  /* специфические блоки роли */
+  const MODELS = [
+    { ic:'🧠', t:'GPT-совместимая LLM · бенчмарк', st:'готов к приёмке' },
+    { ic:'⚙️', t:'ML-модель скоринга · staging',   st:'ждёт деплоя' },
+    { ic:'🚄', t:'Шина CDP для РЖД · релиз 2.4',    st:'на ревью' },
   ];
-  const MEET = [ { t:'09:00', text:'Ежедневный брифинг', by:'Двойник главы департамента', brief:false }, { t:'14:00', text:'Стратегическая встреча', by:'подготовлена ассистентом', brief:true } ];
+  const SLA = [
+    { ic:'🏭', t:'Внедрение «Гамма» · этап «Сдача»', st:'приёмочные сценарии' },
+    { ic:'🛡️', t:'Поддержка «Дельта» · SLA 99.5%',  st:'в норме' },
+    { ic:'⏱️', t:'Внедрение «Омега» · веха',         st:'риск сдвига' },
+  ];
 
   function widgetBadge(id){
     if(id==='waiting') return `<span class="cnt mp-pill red">${waitingItems().length}</span>`;
-    if(id==='drafts')  return `<span class="cnt mp-pill" style="background:var(--acc-soft);color:var(--acc)">${DRAFTS.length}</span>`;
+    if(id==='drafts')  return `<span class="cnt mp-pill" style="background:var(--acc-soft);color:var(--acc)">${drafts().length}</span>`;
     if(id==='staff')   return `<span class="cnt mp-pill" style="background:var(--acc-soft);color:var(--acc)">${myStaff().length}</span>`;
     return '';
   }
+  const infoRows = (arr)=> arr.map(r=>`<div class="mp-row"><span class="mp-emoji">${r.ic}</span><span class="mp-txt" style="flex:1;color:var(--txt)">${escHtml(r.t)}</span><span class="mp-pill" style="background:var(--acc-soft);color:var(--acc)">${escHtml(r.st)}</span></div>`).join('');
   function widgetBody(id){
     if(id==='waiting') return waitingItems().map(waitRowHTML).join('');
-    if(id==='drafts')  return DRAFTS.map(d=>`<div class="mp-row" data-doc="${d.id}" style="cursor:pointer"><span class="mp-emoji">${d.ic}</span><span class="mp-txt" style="flex:1;color:var(--txt)">${escHtml(d.t)} <span style="color:var(--faint)">· ${escHtml(d.by)}</span></span><span class="mp-pill" style="background:var(--acc-soft);color:var(--acc)">${escHtml(d.st)}</span><button class="mp-btn" data-doc="${d.id}">Открыть</button></div>`).join('');
-    if(id==='meetings') return MEET.map(m=>`<div class="mp-row"><span class="mp-time">${m.t}</span><span class="mp-txt">${escHtml(m.text)} <span style="color:var(--faint)">· ${escHtml(m.by)}</span></span>${m.brief?`<button class="mp-btn" data-brief="1">бриф</button>`:''}</div>`).join('');
+    if(id==='drafts')  return drafts().map(d=>`<div class="mp-row" data-doc="${d.id}" style="cursor:pointer"><span class="mp-emoji">${d.ic}</span><span class="mp-txt" style="flex:1;color:var(--txt)">${escHtml(d.t)} <span style="color:var(--faint)">· ${escHtml(d.by)}</span></span><span class="mp-pill" style="background:var(--acc-soft);color:var(--acc)">${escHtml(d.st)}</span><button class="mp-btn" data-doc="${d.id}">Открыть</button></div>`).join('');
+    if(id==='meetings') return meetings().map(m=>`<div class="mp-row"><span class="mp-time">${m.t}</span><span class="mp-txt">${escHtml(m.text)} <span style="color:var(--faint)">· ${escHtml(m.by)}</span></span>${m.brief?`<button class="mp-btn" data-brief="1">бриф</button>`:''}</div>`).join('');
     if(id==='staff')   return myStaff().map(w=>{ const pct=40+(String(w.id).length*7)%55; return `<div class="mp-row" data-open="${w.id}" style="cursor:pointer"><span class="mp-emoji">${w.emoji||'🤖'}</span><span class="mp-txt" style="flex:none;min-width:180px;color:var(--txt)">${escHtml(w.name)}</span><span class="mp-txt" style="color:var(--muted);font-size:13px">${escHtml(w.now||w.title||'')}</span><span class="mp-bar"><i style="width:${pct}%"></i></span><span class="mp-pct">${pct}%</span></div>`; }).join('');
-    if(id==='zoom')    return `<div class="mp-row mp-suggest"><span class="mp-emoji">🎙️</span><span class="mp-txt">Из вчерашнего Zoom-звонка «Гамма»: 4 задачи и 1 встреча — кандидаты</span><button class="mp-btn" data-zoom="1">Разобрать</button></div>`;
+    if(id==='zoom')    return `<div class="mp-row mp-suggest"><span class="mp-emoji">🎙️</span><span class="mp-txt">${escHtml(udata().zoom)}</span><button class="mp-btn" data-zoom="1">Разобрать</button></div>`;
+    if(id==='models')  return infoRows(MODELS);
+    if(id==='sla')     return infoRows(SLA);
     return '';
   }
   function widgetWrap(id, i, total){
@@ -208,7 +285,7 @@
     return `<section class="mp-w${editing?' ed':''}" data-w="${id}"><div class="mp-sec">${W_TITLE[id]} ${widgetBadge(id)}${ctl}</div>${widgetBody(id)}</section>`;
   }
   function addPalette(layout){
-    const hidden = ALL_W.filter(x=>!layout.includes(x));
+    const hidden = allW().filter(x=>!layout.includes(x));
     return `<section class="mp-addpanel">
       <div class="mp-sec" style="margin-top:0">Настройка стола<span class="mp-wctl"><button class="mp-ic" data-reset="1">↺ сбросить к стандарту</button></span></div>
       <div style="font-size:12px;color:var(--muted);margin:-2px 0 12px">Уберите лишнее кнопкой «× убрать» на блоке или верните снятое:</div>
@@ -227,12 +304,13 @@
     root.innerHTML = `
       <div class="mp-greet"><div class="av">◆</div><div style="flex:1;min-width:0"><div class="who">Личный ассистент</div><div class="msg" id="mpGreet">${greeted?escHtml(greet):''}</div></div></div>
       <div class="mp-metarow">
-        <span class="meta">${HERO.first} · ${HERO.role} · ${weekday()}, 08:00 · день собран</span>
-        <span style="display:flex;gap:10px;align-items:center">
+        <span class="mp-userswitch" title="Демо-стенд: переключить пользователя">${Object.keys(USERS).map(k=>{const u=USERS[k];return `<button class="mp-us ${k===CURRENT?'on':''}" data-user="${k}">${u.av} ${u.first}</button>`;}).join('')}</span>
+        <span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           <button class="mp-btn" id="mpEdit">${editing?'✓ Готово':'⚙ Настроить стол'}</button>
           ${segHTML('me')}
         </span>
       </div>
+      <div class="mp-userrole">${escHtml(hero().role)} · ${weekday()}, 08:00 · день собран</div>
       <div id="mpDesk" class="${editing?'mp-editing':''}">
         ${editing?addPalette(layout):''}
         ${layout.map((id,i)=>widgetWrap(id,i,layout.length)).join('')}
@@ -249,7 +327,8 @@
     const eb=root.querySelector('#mpEdit'); if(eb) eb.onclick=()=>{ editing=!editing; if(!editing) toast('Раскладка сохранена'); renderMyPulse(root); };
     root.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ saveLayout(loadLayout().filter(x=>x!==b.dataset.rm)); renderMyPulse(root); });
     root.querySelectorAll('[data-addw]').forEach(b=>b.onclick=()=>{ const l=loadLayout(); if(!l.includes(b.dataset.addw)) l.push(b.dataset.addw); saveLayout(l); renderMyPulse(root); });
-    const rs=root.querySelector('[data-reset]'); if(rs) rs.onclick=()=>{ try{localStorage.removeItem(LKEY);}catch(e){} toast('Раскладка сброшена к стандарту'); renderMyPulse(root); };
+    const rs=root.querySelector('[data-reset]'); if(rs) rs.onclick=()=>{ try{localStorage.removeItem(lkey());}catch(e){} toast('Раскладка сброшена к стандарту'); renderMyPulse(root); };
+    root.querySelectorAll('[data-user]').forEach(b=>b.onclick=()=>{ setUser(b.dataset.user); renderMyPulse(root); });
     root.querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>{ const l=loadLayout(), i=l.indexOf(b.dataset.id), j=b.dataset.mv==='up'?i-1:i+1; if(i>=0&&j>=0&&j<l.length){ const t=l[i]; l[i]=l[j]; l[j]=t; saveLayout(l); renderMyPulse(root); } });
     root.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>toast('Блок добавлен на стол'));
     const esc=root.querySelector('[data-esc]'); if(esc) esc.onclick=()=>toast('Запрос отправлен ЦС-администратору');
@@ -333,27 +412,25 @@
     <span class="mp-bar"><i style="width:${pct}%;background:${loadCol(pct)}"></i></span>
     <span class="mp-pct">${pct}%</span></div>`;
 
-  /* ── экран: Пульс «Отдел» (Управление) ── */
+  /* ── экран: Пульс «Отдел» (текущего пользователя) ── */
   function renderDeptPulse(root){
-    const dept='mgmt';
+    const dept=hero().dept;
     const ppl=peopleOf(dept), dig=digitalOf(dept);
-    const wait=[
-      { sev:'red',   tag:'санкция',      text:'Отправка договора «Гамма» контрагенту — ждёт вашей подписи · висит 2 ч' },
-      { sev:'amber', tag:'согласование', text:'Привлечение чужого ЦС «Логист» из соседнего отдела в проект' },
-    ];
+    const firstDig = dig[0] || { name:'Цифровой сотрудник', emoji:'🤖' };
+    const wait = udata().waiting.slice(0,2);
     root.innerHTML = `
       <div class="mp-metarow"><span class="meta">Пульс отдела «${dLabel(dept)}» · ${weekday()}, утро</span>${segHTML('dept')}</div>
       <div class="mp-sec">Ждёт отдел <span class="cnt mp-pill red">${wait.length}</span></div>
       ${wait.map(waitRowHTML).join('')}
       <div class="mp-sec">Передачи сейчас</div>
       <div class="mp-flow">
-        ${fNode('🤖','Агент отчётности','acc')}
+        ${fNode(firstDig.emoji||'🤖', firstDig.name,'acc')}
         ${fSyn('ok')}
-        ${fNode('🧑‍💼','Вячеслав','acc')}
+        ${fNode('🧑‍💼',hero().first,'acc')}
         ${fSyn('gate')}
-        ${fNode('🏛️','Правление','mut')}
+        ${fNode('🏛️','Руководство','mut')}
       </div>
-      <div class="mp-flowcap"><span style="color:var(--red)">🔒 Передача застряла на гейте: недельный дашборд ждёт вашей приёмки — дальше в Правление не уходит.</span></div>
+      <div class="mp-flowcap"><span style="color:var(--red)">🔒 Передача застряла на гейте: результат ждёт вашей приёмки — дальше не уходит.</span></div>
       <div class="mp-sec">Загрузка штата <span class="cnt mp-pill" style="background:var(--acc-soft);color:var(--acc)">${ppl.length+dig.length}</span></div>
       ${ppl.map(p=>loadRow('🧑‍💼', (p.name||'')+' · '+(p.role||''), 55+((p.name||'').length*7)%38)).join('')}
       ${dig.map(d=>loadRow(d.emoji||'🤖', d.name, 45+(String(d.id).length*11)%55)).join('')}`;
@@ -492,6 +569,59 @@
         'Здравствуйте!',
         'Благодарим за интерес к платформе СРЕДА. Направляем коммерческое предложение во вложении и готовы обсудить пилот.',
         'С уважением, департамент KAM.',
+      ] },
+
+    /* документы Виктора (ИИ и разработка) */
+    'ts-cdp': { ic:'📄', kind:'ТЗ', by:'Двойник разработчика РЖД', status:'на правку',
+      title:'ТЗ интеграции CDP для РЖД (черновик)',
+      chips:['Сократи требования','Добавь критерии приёмки','Проверь риски интеграции','На согласование'],
+      body:[
+        'Техническое задание: интеграция CDP с системами заказчика (РЖД).',
+        'Цель: единая шина данных CDP/EDP с обменом событиями в реальном времени.',
+        'Интеграции: внутренние системы клиента через MCP-коннекторы; форматы и SLA обмена.',
+        'Критерии приёмки: нагрузочный тест, отказоустойчивость, журналирование.',
+      ] },
+    'bench-llm': { ic:'📊', kind:'Отчёт', by:'Двойник главы ИИ-решений', status:'на приёмку',
+      title:'Отчёт бенчмарка LLM (черновик)',
+      chips:['Короткое резюме','Добавь рекомендацию','Сравни стоимость','На приёмку'],
+      body:[
+        'Бенчмарк моделей для задач департамента: качество, скорость, стоимость.',
+        'Результат: кандидат превосходит текущую модель по качеству на 6% при сопоставимой цене.',
+        'Рекомендация: перевести скоринг MQL на новую модель после A/B на 2 недели.',
+      ] },
+    'release-24': { ic:'📝', kind:'Релиз-ноты', by:'Двойник техлида', status:'на согласование',
+      title:'Релиз-ноты 2.4 (черновик)',
+      chips:['Сгруппируй по компонентам','Добавь известные проблемы','Опубликовать'],
+      body:[
+        'Релиз 2.4: шина CDP, интеграции РЖД, ускорение обработки событий.',
+        'Изменения: новый коннектор, оптимизация ретраев, снижение джиттера.',
+        'Совместимость: обратно совместимо; миграции не требуются.',
+      ] },
+
+    /* документы Василия (производство/внедрения) */
+    'impl-plan': { ic:'📄', kind:'План', by:'Двойник зама по производству', status:'на правку',
+      title:'План внедрения у клиента (черновик)',
+      chips:['Уточни вехи','Добавь риски','Назначь ответственных','На согласование'],
+      body:[
+        'План внедрения платформы у клиента: этапы, вехи, ответственные.',
+        'Этапы: старт (доступы, стенды) → развёртывание (настройка, интеграции, обучение) → сдача (приёмка, передача в поддержку).',
+        'Сроки: 6–8 недель до продуктивной эксплуатации; контроль по вехам.',
+      ] },
+    'status-client': { ic:'📊', kind:'Статус-отчёт', by:'Двойник главы производства', status:'на приёмку',
+      title:'Статус-отчёт клиенту (черновик)',
+      chips:['Короткое резюме','Выдели риски','Добавь следующие шаги','На приёмку'],
+      body:[
+        'Статус внедрения на текущую неделю.',
+        'Готово: развёртывание в контуре, базовые интеграции, обучение первой группы.',
+        'В работе: приёмочные сценарии. Риски: сдвиг вехи на неделю из-за доступов.',
+      ] },
+    'act-acceptance': { ic:'📝', kind:'Акт', by:'Двойник зама по производству', status:'на подпись',
+      title:'Акт приёмки (черновик)',
+      chips:['Проверь по критериям','Добавь замечания','На подпись'],
+      body:[
+        'Акт приёмки работ по внедрению платформы.',
+        'Проверка по критериям приёмки: функциональность, производительность, SLA.',
+        'Замечания: отсутствуют / приняты к устранению в поддержке.',
       ] },
   };
 

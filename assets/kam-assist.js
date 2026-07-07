@@ -10,15 +10,12 @@
 
   /* ── персона: двойник руководителя текущего кабинета ── */
   function persona(){
-    const ws = state.ws;
-    if (ws === 'owner') return { name:'Ассистент платформы', emoji:'🧩', sub:'владелец · Среда' };
-    if (ws === 'exec' || !DIGITAL_STAFF[ws]) {
-      const w = (typeof ALL_DIGITAL!=='undefined') && ALL_DIGITAL.find(x=>x.id==='kam-director');
-      return { name:w?w.name:'Двойник главы департамента', emoji:'🏛️', sub:'личный ассистент Вячеслава', w };
-    }
-    const w = (DIGITAL_STAFF[ws]||[])[0];
-    return w ? { name:w.name, emoji:w.emoji, sub:'ассистент кабинета · '+(w.lead||''), w }
-             : { name:'Ассистент Среды', emoji:'💬', sub:'' };
+    if (state.ws === 'owner') return { name:'Ассистент платформы', emoji:'🧩', sub:'владелец · Среда' };
+    /* личный ассистент = двойник руководителя текущего пользователя (демо-стенд) */
+    const u = (typeof window.__kamUser==='function') ? window.__kamUser() : { dept:'mgmt', first:'Вячеслав' };
+    const staff = (typeof DIGITAL_STAFF!=='undefined' && DIGITAL_STAFF[u.dept]) || [];
+    const w = staff[0];
+    return { name: w ? w.name : 'Двойник руководителя', emoji: (w&&w.emoji)||'🏛️', sub:'личный ассистент · '+(u.first||''), w };
   }
 
   const deptOf = (id)=> DEPARTMENTS.find(d=>d.id===id) || {label:id, icon:''};
@@ -33,7 +30,7 @@
     if (id==='mypulse') return C(
       'Ваш рабочий стол: приветствие-резюме дня, что ждёт решения, черновики и документы, цифровые сотрудники в работе, разбор звонков. Стол настраивается — любой блок можно убрать, вернуть, переставить.',
       ['«⚙ Настроить стол» — уберите или верните любой блок','Клик по черновику — откроется документ и я рядом','«Разобрать» в предложениях превращу звонок в задачи'],
-      [['Что ждёт меня?','?waiting'],['Открыть черновик КП','doc:kp-gamma'],['Разобрать звонок','mypulse-zoom'],['Пульс отдела','mypulse-dept']]);
+      [['Что ждёт меня?','?waiting'],['Открыть черновик','firstdoc'],['Разобрать звонок','mypulse-zoom'],['Пульс отдела','mypulse-dept']]);
     if (id==='mypulse-dept') return C(
       'Пульс отдела «Управление»: что ждёт решения по отделу, поток передач с застрявшим гейтом и загрузка штата — люди и цифровые.',
       ['Красный замок в потоке — передача застряла на вашей приёмке','Загрузка ЦС под 100% — сигнал перераспределить'],
@@ -183,6 +180,7 @@
     if (action==='?waiting'){ say(waitingAnswer()); return; }
     if (action==='?do'){ const ctx=ctxOf(state.screen); say('Здесь стоит: '+ctx.tips.join('. ')+'.'); return; }
     if (action.indexOf('say:')===0){ respond(action.slice(4)); return; }        // прокинуть как реплику
+    if (action==='firstdoc'){ const d=((typeof window.__kamDrafts==='function'&&window.__kamDrafts())||[])[0]; if(d){ window.__MP_DOC=d.id; navTo('mypulse-doc'); say('Открыл черновик — я рядом, правьте словами.'); } else say('Черновиков сейчас нет.'); return; }
     if (action.indexOf('doc:')===0){ window.__MP_DOC=action.slice(4); navTo('mypulse-doc'); say('Открыл документ — я рядом, справа. Скажите, что поправить.'); return; }
     navTo(action);
   }
