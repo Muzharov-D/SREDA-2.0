@@ -212,7 +212,10 @@
     const all = p.stages.flatMap(s=>s.tasks), done = all.filter(t=>t.done).length;
     const depts = [...new Set(p.people.map(k=>k.split(':')[0]).concat(p.digital.map(wid=>{const w=ALL_DIGITAL.find(x=>x.id===wid); return w?w.dept:'';})))].filter(Boolean);
     function draw(){
-      const dn = p.stages.flatMap(s=>s.tasks).filter(t=>t.done).length;
+      /* список задач ЖИВОЙ: после добавления задачи устаревший all
+         ошибочно показывал «Завершить проект» при незакрытой новой */
+      const all = p.stages.flatMap(s=>s.tasks);
+      const dn = all.filter(t=>t.done).length;
       const st = p.status||'active';
       const pmName = (p.pm||'').split(':')[1]||'—';
       const stBadge = st==='pending' ? '⏳ ожидает подтверждения РП' : st==='done' ? '✓ завершён' : '● активен';
