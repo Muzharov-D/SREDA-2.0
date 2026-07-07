@@ -4699,6 +4699,16 @@ body.portal-mode .who,body.portal-mode .filial-sw{display:none}
 .kp-exec-row b{ font-size:12.5px; display:block; } .kp-exec-row small{ color:var(--muted); font-size:10.5px; }
 .kp-exec-pct{ font-size:12px; font-weight:800; color:var(--acc); }
 .dwl-projbn{ border:1px solid color-mix(in srgb, var(--acc) 40%, transparent); background:color-mix(in srgb, var(--acc) 7%, transparent); border-radius:11px; padding:8px 12px; font-size:12px; }
+.kp-banner{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; border-radius:13px; padding:11px 15px; margin-bottom:13px; font-size:13px; }
+.kp-banner.pend{ border:1px solid color-mix(in srgb, var(--amber) 50%, transparent); background:color-mix(in srgb, var(--amber) 8%, transparent); }
+.kp-banner.fin{ border:1px solid color-mix(in srgb, var(--acc) 45%, transparent); background:color-mix(in srgb, var(--acc) 7%, transparent); }
+.kp-banner.fin input{ flex:1; min-width:220px; background:var(--bg2); border:1px solid var(--line); border-radius:9px; padding:8px 11px; color:var(--txt); font-size:12.5px; }
+.kp-banner.done{ border:1px solid color-mix(in srgb, var(--acc) 45%, transparent); background:color-mix(in srgb, var(--acc) 7%, transparent); }
+.kp-st{ font-style:normal; font-size:10px; font-weight:800; padding:1px 8px; border-radius:14px; margin-left:auto; }
+.kp-st.pend{ color:var(--amber); border:1px solid color-mix(in srgb, var(--amber) 50%, transparent); }
+.kp-st.act{ color:var(--acc); border:1px solid color-mix(in srgb, var(--acc) 45%, transparent); }
+.kp-st.done{ color:var(--muted); border:1px solid var(--line); }
+.kp-busy{ font-style:normal; font-size:9.5px; color:var(--amber); border:1px solid color-mix(in srgb, var(--amber) 45%, transparent); border-radius:12px; padding:0 6px; margin-left:auto; }
 .ka-head{ display:flex; align-items:center; gap:9px; padding:11px 13px; border-bottom:1px solid var(--line); background:var(--bg2); }
 .ka-av{ width:34px; height:34px; display:grid; place-items:center; font-size:17px; background:color-mix(in srgb, var(--acc) 13%, transparent); border-radius:10px; flex:none; }
 .ka-who{ flex:1; min-width:0; } .ka-who b{ font-size:13px; display:block; } .ka-who small{ color:var(--muted); font-size:10.5px; }

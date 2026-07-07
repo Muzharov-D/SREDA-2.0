@@ -100,6 +100,13 @@ function initDb() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`);
 
+      /* проекты департамента KAM: кросс-девайс, вне seedAll */
+      db.run(`CREATE TABLE IF NOT EXISTS kam_projects (
+        id TEXT PRIMARY KEY,
+        data TEXT NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`);
+
       db.run(`CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         channel TEXT,

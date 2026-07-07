@@ -43,9 +43,28 @@
   /* ── стор проектов ── */
   const KEY = 'sreda_kam_projects';
   function load(){ try{ return JSON.parse(localStorage.getItem(KEY)||'[]'); }catch(e){ return []; } }
-  function save(list){ try{ localStorage.setItem(KEY, JSON.stringify(list.slice(-20))); }catch(e){} }
+  function save(list){
+    try{ localStorage.setItem(KEY, JSON.stringify(list.slice(-20))); }catch(e){}
+    /* бэкенд — кросс-девайс, как у обучения; офлайн не мешает */
+    try{ if (typeof apiPost==='function') apiPost('/kam/projects', { list: list.slice(-20) }).catch(()=>{}); }catch(e){}
+  }
   window.__KAM_PROJ = load();
   if (/[?&#]reset\b/.test(location.search + location.hash)){ window.__KAM_PROJ = []; save([]); }
+  else {
+    /* подтянуть с бэкенда: серверные версии приоритетнее по id, локальные-новые остаются */
+    try{ if (typeof apiGet==='function') apiGet('/kam/projects').then(rows=>{
+      if (!Array.isArray(rows) || !rows.length) return;
+      const byId = {}; rows.forEach(p=>{ if (p && p.id) byId[p.id]=p; });
+      const localOnly = window.__KAM_PROJ.filter(p=>!byId[p.id]);
+      window.__KAM_PROJ = rows.concat(localOnly);
+      try{ localStorage.setItem(KEY, JSON.stringify(window.__KAM_PROJ.slice(-20))); }catch(e){}
+      if (localOnly.length) save(window.__KAM_PROJ);
+    }).catch(()=>{}); }catch(e){}
+  }
+  /* занятость: в скольких незавершённых проектах уже занят человек/цифровой */
+  function busyCount(key, isDigital){
+    return window.__KAM_PROJ.filter(p=>p.status!=='done' && (isDigital ? p.digital.includes(key) : p.people.includes(key))).length;
+  }
 
   const peopleOf = (dept)=> (COCKPITS[dept]&&COCKPITS[dept].team||[]).map((t,i)=>({ dept, i, name:(Array.isArray(t)?t[0]:t.name), role:(Array.isArray(t)?t[1]:t.role) }));
   const dLabel = (id)=> (DEPARTMENTS.find(x=>x.id===id)||{label:id}).label;
@@ -93,8 +112,8 @@
         ${rec && (rec.people.length||rec.digital.length) ? `<button class="btn go" id="kpRec" style="margin-bottom:10px">✨ Рекомендованный состав под «${escHtml(tpl.title)}»</button>`:''}
         <div class="kp-crew">${ROLE_IDS.map(d=>`
           <div class="kp-dept"><b>${dIcon(d)} ${escHtml(dLabel(d))}</b>
-            ${peopleOf(d).map(p=>{ const k=d+':'+p.name; return `<label class="kp-pick ${W.people.has(k)?'on':''}"><input type="checkbox" data-pp="${escAttr(k)}" ${W.people.has(k)?'checked':''}/>👤 ${escHtml(p.name)} <small>${escHtml(p.role)}</small></label>`; }).join('')}
-            ${(DIGITAL_STAFF[d]||[]).map(w=>{ return `<label class="kp-pick dgt ${W.digital.has(w.id)?'on':''}"><input type="checkbox" data-pd="${escAttr(w.id)}" ${W.digital.has(w.id)?'checked':''}/>${w.emoji} ${escHtml(w.name)} <small>цифровой</small></label>`; }).join('')}
+            ${peopleOf(d).map(p=>{ const k=d+':'+p.name; const bz=busyCount(k,false); return `<label class="kp-pick ${W.people.has(k)?'on':''}"><input type="checkbox" data-pp="${escAttr(k)}" ${W.people.has(k)?'checked':''}/>👤 ${escHtml(p.name)} <small>${escHtml(p.role)}</small>${bz?`<i class="kp-busy" title="уже занят в ${bz} проект(ах)">в ${bz} пр.</i>`:''}</label>`; }).join('')}
+            ${(DIGITAL_STAFF[d]||[]).map(w=>{ const bz=busyCount(w.id,true); return `<label class="kp-pick dgt ${W.digital.has(w.id)?'on':''}"><input type="checkbox" data-pd="${escAttr(w.id)}" ${W.digital.has(w.id)?'checked':''}/>${w.emoji} ${escHtml(w.name)} <small>цифровой</small>${bz?`<i class="kp-busy" title="уже занят в ${bz} проект(ах)">в ${bz} пр.</i>`:''}</label>`; }).join('')}
           </div>`).join('')}</div>
         <div class="kp-count">Выбрано: 👤 ${W.people.size} людей · 🤖 ${W.digital.size} цифровых · направлений: ${new Set([...W.people].map(k=>k.split(':')[0]).concat([...W.digital].map(id=>{const w=ALL_DIGITAL.find(x=>x.id===id); return w?w.dept:'';}))).size}</div>`;
       }
@@ -135,6 +154,8 @@
       const tpl = TPL.find(t=>t.id===W.tpl)||TPL[4];
       const proj = { id:'kp'+Date.now().toString(36), tpl:W.tpl, icon:tpl.icon, name:W.name.trim(), goal:W.goal.trim(), due:W.due.trim(),
         pm:W.pm, created:hh(),
+        /* жизненный цикл: назначенный РП должен ПОДТВЕРДИТЬ назначение */
+        status: W.pm==='mgmt:Вячеслав' ? 'active' : 'pending',
         people:[...W.people], digital:[...W.digital],
         stages: tpl.stages.map(s=>({ name:s.name, tasks:s.tasks.map(t=>({ ...t, who:null, dw:null, done:false })) })),
         feed:[{t:hh(), e:'Проект создан. РП: '+(W.pm||'').split(':')[1]+(W.pm==='mgmt:Вячеслав'?' (ведёт сам)':' — назначен Вячеславом')}] };
@@ -156,6 +177,7 @@
         box.push({ id:'kp-'+proj.id+'-'+d, type:'system', text:'📁 Проект «'+proj.name+'»: в состав включены '+names.join(', ')+' · РП: '+((W.pm||'').split(':')[1]||'')+(proj.due?' · дедлайн '+proj.due:''), time:proj.created });
       });
       proj.feed.unshift({t:proj.created, e:'Назначения отправлены в каналы '+pDepts.length+' направлений'});
+      if (proj.status==='pending') proj.feed.unshift({t:proj.created, e:'⏳ Ожидает подтверждения РП: '+(W.pm||'').split(':')[1]});
       toast('Проект создан — назначения ушли в каналы направлений');
       window.__KPW = null;
       navTo('kproj:'+proj.id);
@@ -172,8 +194,9 @@
       <div class="kp-grid">${P.map(p=>{
         const all = p.stages.flatMap(s=>s.tasks), done = all.filter(t=>t.done).length;
         const depts = new Set(p.people.map(k=>k.split(':')[0]).concat(p.digital.map(id=>{const w=ALL_DIGITAL.find(x=>x.id===id); return w?w.dept:'';})));
+        const stb = p.status==='pending'?'<em class="kp-st pend">⏳ ждёт РП</em>':p.status==='done'?'<em class="kp-st done">✓ завершён</em>':'<em class="kp-st act">● активен</em>';
         return `<button class="kp-card" data-kp="${p.id}">
-          <div class="kp-card-h"><i>${p.icon}</i><b>${escHtml(p.name)}</b></div>
+          <div class="kp-card-h"><i>${p.icon}</i><b>${escHtml(p.name)}</b>${stb}</div>
           <small>РП: ${escHtml((p.pm||'').split(':')[1]||'—')} · 👤${p.people.length}+🤖${p.digital.length} · ${depts.size} направлений${p.due?' · до '+escHtml(p.due):''}</small>
           <div class="track"><div class="fill" style="width:${all.length?Math.round(done/all.length*100):0}%"></div></div>
           <small>${done}/${all.length} задач</small>
@@ -190,7 +213,16 @@
     const depts = [...new Set(p.people.map(k=>k.split(':')[0]).concat(p.digital.map(wid=>{const w=ALL_DIGITAL.find(x=>x.id===wid); return w?w.dept:'';})))].filter(Boolean);
     function draw(){
       const dn = p.stages.flatMap(s=>s.tasks).filter(t=>t.done).length;
-      root.innerHTML = workHead({icon:p.icon, label:p.name}, (p.goal||'')+' · РП: '+((p.pm||'').split(':')[1]||'—')+(p.due?' · дедлайн '+p.due:'')) + `
+      const st = p.status||'active';
+      const pmName = (p.pm||'').split(':')[1]||'—';
+      const stBadge = st==='pending' ? '⏳ ожидает подтверждения РП' : st==='done' ? '✓ завершён' : '● активен';
+      root.innerHTML = workHead({icon:p.icon, label:p.name}, (p.goal||'')+' · РП: '+pmName+(p.due?' · дедлайн '+p.due:'')+' · '+stBadge) + `
+      ${st==='pending'?`<div class="kp-banner pend">⏳ <b>${escHtml(pmName)}</b> назначен(а) руководителем проекта и должен(на) подтвердить назначение — до этого работы не стартуют.
+        <button class="dwl-btn acc" id="kpConfirm">✓ Подтвердить назначение (за ${escHtml(pmName)} · демо)</button></div>`:''}
+      ${st==='done'?`<div class="kp-banner done">🏁 Проект завершён. Итог: ${escHtml(p.outcome||p.goal||'—')} · итог передан в пакет знаний ${p.outcomePack?('«'+escHtml(p.outcomePack)+'»'):''}</div>`:''}
+      ${st==='active' && all.length && dn===all.length?`<div class="kp-banner fin">🏁 Все задачи приняты — завершите проект: итог уйдёт в пакет знаний направления РП.
+        <input type="text" id="kpOutcome" placeholder="Итог проекта (чему научились / что получили)" value="${escAttr(p.goal||'')}"/>
+        <button class="dwl-btn acc" id="kpFinish">Завершить проект ✓</button></div>`:''}
       <div class="grid-kpi" style="margin-bottom:12px">
         <div class="kpi"><div class="l">Прогресс</div><div class="v">${all.length?Math.round(dn/all.length*100):0}%</div><div class="d flat">● ${dn}/${all.length} задач</div></div>
         <div class="kpi"><div class="l">Состав</div><div class="v">${p.people.length}+${p.digital.length}</div><div class="d flat">● люди + цифровые</div></div>
@@ -201,10 +233,10 @@
         <div>
           ${p.stages.map((s,si)=>`<div class="panel kp-stage"><h2>${si+1}. ${escHtml(s.name)} <span class="tag">${s.tasks.filter(t=>t.done).length}/${s.tasks.length}</span></h2>
             ${s.tasks.map((tk,ti)=>`<div class="kp-task ${tk.done?'done':''}">
-              <label class="kp-chk"><input type="checkbox" data-done="${si}:${ti}" ${tk.done?'checked':''}/></label>
+              <label class="kp-chk"><input type="checkbox" data-done="${si}:${ti}" ${tk.done?'checked':''} ${(p.status||'active')!=='active'?'disabled':''}/></label>
               <div class="kp-task-b"><b>${escHtml(tk.t)}</b>
                 <small>${dIcon(tk.dept)} ${escHtml(dLabel(tk.dept))} · 👤 ${escHtml(tk.who||'не назначен')}${tk.dw?(' + '+escHtml((ALL_DIGITAL.find(x=>x.id===tk.dw)||{}).name||'')):''}</small></div>
-              ${tk.dw&&!tk.done?`<button class="dwl-btn ghost" data-loop="${escAttr(tk.dw)}" data-task="${si}:${ti}" title="Черновик задачи готовит цифровой — открыть петлю">черновик →</button>`:''}
+              ${tk.dw&&!tk.done&&(p.status||'active')==='active'?`<button class="dwl-btn ghost" data-loop="${escAttr(tk.dw)}" data-task="${si}:${ti}" title="Черновик задачи готовит цифровой — открыть петлю">черновик →</button>`:''}
             </div>`).join('')||'<div class="dwl-empty">задачи добавит РП</div>'}
             <div class="kp-add"><input type="text" data-addin="${si}" placeholder="＋ новая задача этапа…"/><select data-adddept="${si}">${depts.map(d=>`<option value="${d}">${escHtml(dLabel(d))}</option>`).join('')}</select><button class="dwl-btn acc" data-add="${si}">＋</button></div>
           </div>`).join('')}
@@ -223,6 +255,26 @@
       wire();
     }
     function wire(){
+      const cf = root.querySelector('#kpConfirm'); if (cf) cf.onclick = ()=>{
+        p.status = 'active';
+        const pmName = (p.pm||'').split(':')[1]||'РП';
+        p.feed.unshift({ t:hh(), e:'✓ '+pmName+' подтвердил(а) назначение — проект активен, работы стартовали' });
+        pushAudit({ who:pmName, emoji:'📁', act:'подтвердил(а) назначение РП проекта «'+p.name+'» — статус: активен', dept:'проекты' });
+        save(window.__KAM_PROJ); draw(); toast('РП подтвердил назначение — задачи открыты');
+      };
+      const fin = root.querySelector('#kpFinish'); if (fin) fin.onclick = ()=>{
+        const out = (root.querySelector('#kpOutcome').value||'').trim() || p.goal || 'проект выполнен';
+        p.status = 'done'; p.outcome = out;
+        const pmDept = (p.pm||'mgmt:').split(':')[0];
+        /* итог проекта — в пакет знаний направления РП: система качества замкнута */
+        if (window.__ORG_PACK_ADD){
+          const pk = window.__ORG_PACK_ADD({ dept: pmDept }, { q:'Проект: '+p.name, done:{ artifact:'Итог проекта «'+p.name+'»: '+out } });
+          if (pk) p.outcomePack = pk.pack;
+        }
+        p.feed.unshift({ t:hh(), e:'🏁 Проект завершён. Итог: '+out+(p.outcomePack?' → пакет знаний «'+p.outcomePack+'»':'') });
+        pushAudit({ who:(p.pm||'').split(':')[1]||'РП', emoji:'🏁', act:'проект «'+p.name+'» завершён · итог в пакет знаний'+(p.outcomePack?' «'+p.outcomePack+'»':''), dept:'проекты' });
+        save(window.__KAM_PROJ); draw(); toast('🏁 Проект завершён — итог ушёл в пакет знаний');
+      };
       root.querySelectorAll('[data-done]').forEach(c=>c.onchange=()=>{
         const [si,ti] = c.dataset.done.split(':').map(Number);
         const tk = p.stages[si].tasks[ti]; tk.done = c.checked;
@@ -252,6 +304,18 @@
     }
     draw();
   }
+
+  /* ── префилл мастера ассистентом: «создай проект тендера…» → шаг 4 ── */
+  window.__KAM_WIZ_PREFILL = function(o){
+    const tpl = TPL.find(t=>t.id===(o&&o.tpl)) || TPL[0];
+    const pm = (o&&o.pm) || 'mgmt:Вячеслав';
+    const W = { step:3, tpl:tpl.id, name:(o&&o.name)||tpl.title+' · новый', goal:tpl.goal, due:(o&&o.due)||'',
+      pm, people:new Set(tpl.rec.people), digital:new Set(tpl.rec.digital) };
+    if (pm!=='mgmt:Вячеслав') W.people.add(pm);
+    window.__KPW = W;
+    navTo('kproj-new');
+    return { tpl: tpl.title, pm: pm.split(':')[1] };
+  };
 
   /* ── закрытие задачи проекта из петли (вызывает dw-loop при приёмке) ── */
   window.__KAM_PROJ_DONE = function(projId, si, ti, who){

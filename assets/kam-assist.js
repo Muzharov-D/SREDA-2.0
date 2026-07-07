@@ -205,7 +205,18 @@
   function respond(q){
     const t = q.toLowerCase(), ctx = ctxOf(state.screen);
     if (/онбординг|провед|экскурс|покажи платформу|обучение/.test(t)) return onbStart();
-    if (/созда(й|ть) проект|нов(ый|ого) проект/.test(t)) return act('kproj-new','Создать проект');
+    if (/созда(й|ть) проект|нов(ый|ого) проект|сделай проект/.test(t)){
+      /* ассистент ЗАПОЛНЯЕТ опросник: тип из слов, РП по имени, рекомендованный состав */
+      const tplId = /тендер|госзакуп|44-фз/.test(t)?'tender' : /внедрен/.test(t)?'impl' : /запуск|релиз|фич/.test(t)?'launch' : /пилот/.test(t)?'pilot' : null;
+      if (tplId && window.__KAM_WIZ_PREFILL){
+        let pm = null;
+        ROLE_IDS.forEach(d=>{ (COCKPITS[d]&&COCKPITS[d].team||[]).forEach(tm=>{ const nmv=(Array.isArray(tm)?tm[0]:tm.name);
+          if (new RegExp('(рп|руководител[а-я]*)[^а-яё]+'+nmv.toLowerCase()).test(t) || t.indexOf(nmv.toLowerCase())>=0 && /рп|руководит/.test(t)) pm=d+':'+nmv; }); });
+        const got = window.__KAM_WIZ_PREFILL({ tpl:tplId, pm });
+        return say('Собрала проект «'+got.tpl+'»: рекомендованный состав, РП — '+got.pm+'. Проверьте сводку и жмите «Создать проект» — или вернитесь «Назад» поправить.');
+      }
+      return act('kproj-new','Создать проект');
+    }
     if (/проект/.test(t) && !/тендер/.test(t)) return act('kproj');
     if (/что это|где я|что за экран/.test(t)) return say(ctx.what);
     if (/что (мне )?(с)?делать|что дальше|подскажи/.test(t)) return say('Здесь стоит: '+ctx.tips.join('. ')+'.'+(KA.onb>=0?'':' Или скажите «онбординг» — проведу по всей платформе.'));
