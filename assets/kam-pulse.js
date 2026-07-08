@@ -166,6 +166,7 @@
     @media(max-width:720px){.mp-cols{grid-template-columns:1fr}}
     .mp-theme{width:34px;height:34px;border-radius:9px;border:1px solid var(--line2);background:var(--panel);color:var(--txt2);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:var(--transition-fast)}
     .mp-theme:hover{border-color:var(--acc);color:var(--acc)}
+    .mp-theme.on{background:var(--acc-soft);border-color:color-mix(in srgb,var(--acc) 45%,transparent);color:var(--acc)}
     /* ── Светлая тема (палитра питч-сайта: фиолет #8D61FE на белом) ── */
     :root[data-theme="light"]{
       color-scheme:light;
@@ -340,7 +341,19 @@
   /* сохранённый пустой стол — валидное состояние, не подменяем стандартом */
   function loadLayout(){ try{ const l=JSON.parse(localStorage.getItem(lkey())); if(Array.isArray(l)) return l.filter(x=>allW().includes(x)); }catch(e){} return allW(); }
   function saveLayout(l){ try{ localStorage.setItem(lkey(), JSON.stringify(l)); }catch(e){} }
-  function setUser(u){ if(!USERS[u]||u===CURRENT) return; CURRENT=u; greeted=false; try{ localStorage.setItem(UKEY,u); }catch(e){} }
+  /* кабинет и профиль в шапке — это текущий пользователь, а не статичный «Менеджмент» */
+  function syncCabinet(){
+    const w = (typeof WORKSPACES!=='undefined') && WORKSPACES.find(x=>x.id==='exec'); if(!w) return;
+    const h = hero();
+    w.icon = h.av || '📊'; w.label = dLabel(h.dept); w.persona = h.first+' · '+h.role;
+  }
+  function forceCabinet(){   /* renderNav кэширует по ws.id — заставляем пересобрать шапку кабинета */
+    syncCabinet();
+    const nav=document.getElementById('nav'); if(nav) nav.dataset.ws='';
+    try{ renderNav(); }catch(e){}
+    if (typeof renderTopWho==='function') renderTopWho();
+  }
+  function setUser(u){ if(!USERS[u]||u===CURRENT) return; CURRENT=u; greeted=false; try{ localStorage.setItem(UKEY,u); }catch(e){} syncCabinet(); }
 
   /* ── конструктор рабочего места: состояние под каждого пользователя ──
      Гейты — не декорация: выключенный гейт убирает эти решения из «Ждёт меня»
@@ -949,8 +962,9 @@
       /* телепорт в ролевой кабинет (например, dpulse:dev) — возвращаем чистое меню.
          Личность НЕ трогаем: смотреть чужой отдел ≠ становиться его руководителем. */
       if (state.ws!=='exec' && state.ws!=='owner' && state.ws!=='platform' && ROLE_CABS.indexOf(state.ws)>=0){
-        state.ws='exec'; renderNav(); if (typeof renderTopWho==='function') renderTopWho();
+        state.ws='exec'; forceCabinet();
       }
+      markCtorBtn();
     }catch(e){}
   };
 
@@ -999,6 +1013,16 @@
     tr.insertBefore(b, tr.firstChild);
   }
 
+  /* ── конструктор рабочего места доступен с любой вкладки ── */
+  function setupCtorBtn(){
+    const tr=document.querySelector('.tb-right'); if(!tr || document.getElementById('mpCtor')) return;
+    const b=document.createElement('button'); b.id='mpCtor'; b.className='mp-theme'; b.type='button';
+    b.textContent='⚙'; b.title='Конструктор рабочего места'; b.setAttribute('aria-label','Конструктор рабочего места');
+    b.onclick=()=>navTo('mypulse-constructor');
+    tr.insertBefore(b, tr.firstChild);
+  }
+  function markCtorBtn(){ const b=document.getElementById('mpCtor'); if(b) b.classList.toggle('on', state.screen==='mypulse-constructor'); }
+
   /* ── переключатель пользователя в топбаре (глобальный, всегда чистый кабинет) ── */
   function refreshUserSw(){ const sw=document.getElementById('mpUserSw'); if(sw&&sw.__r) sw.__r(); }
   function setupUserSwitch(){
@@ -1008,7 +1032,7 @@
       wrap.innerHTML=Object.keys(USERS).map(k=>{const u=USERS[k];return `<button class="mp-us ${k===CURRENT?'on':''}" data-user="${k}" title="${escHtml(u.role)}">${u.av} ${u.first}</button>`;}).join('');
       wrap.querySelectorAll('[data-user]').forEach(b=>b.onclick=()=>{
         setUser(b.dataset.user); greeted=false;
-        state.ws='exec'; state.screen='mypulse'; renderNav(); if(typeof renderTopWho==='function') renderTopWho();
+        state.ws='exec'; state.screen='mypulse'; forceCabinet();
         renderStage('mypulse'); if(typeof decorateStage==='function') decorateStage('mypulse');   /* форсируем перерисовку — мы уже могли быть на mypulse */
         wrap.__r();
       });
@@ -1020,7 +1044,9 @@
   /* ── посадочный экран: Личный ассистент вместо Пульса компании ── */
   document.addEventListener('DOMContentLoaded', ()=>{
     setupThemeToggle();
+    setupCtorBtn();
     setupUserSwitch();
+    forceCabinet();   /* шапка кабинета — под текущего пользователя, а не «Менеджмент · CEO» */
     const h=(location.hash.slice(1)||'').trim();
     if (!h || h==='pulse' || h==='exec'){ try{ navTo('mypulse'); }catch(e){} }
   });
