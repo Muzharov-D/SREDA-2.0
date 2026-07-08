@@ -79,6 +79,13 @@
     .mp-rep li{color:var(--txt2);font-size:13px;line-height:1.6}
     .mp-rep p{margin:0;color:var(--txt);font-size:13.5px;line-height:1.55}
     .mp-rep .ft{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px solid var(--line2);color:var(--muted);font-size:12px}
+    /* спокойный вид: строка-решение кликабельна, отчёт раскрывается под ней */
+    .mp-row.clk{cursor:pointer}
+    .mp-row.clk:hover{border-color:color-mix(in srgb,var(--acc) 30%,transparent)}
+    .mp-chev{flex:none;color:var(--faint);font-size:11px;margin-left:2px}
+    .mp-calmnote{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0 4px;color:var(--muted);font-size:12.5px}
+    .mp-routesum{padding:14px 16px;border:1px solid var(--line2);border-radius:var(--r-sm);background:var(--panel);color:var(--muted);font-size:13.5px;line-height:1.7}
+    .mp-routesum b{color:var(--txt);font-weight:600}
     /* маршрут отдела в пульсе компании */
     .mp-deptcard{margin-bottom:6px}
     .mp-deptcard .mp-row{margin-bottom:0}
@@ -348,7 +355,7 @@
     w.icon = h.av || '📊'; w.label = dLabel(h.dept); w.persona = h.first+' · '+h.role;
   }
   function forceCabinet(){   /* renderNav кэширует по ws.id — заставляем пересобрать шапку кабинета */
-    syncCabinet();
+    syncCabinet(); applyNav();
     const nav=document.getElementById('nav'); if(nav) nav.dataset.ws='';
     try{ renderNav(); }catch(e){}
     if (typeof renderTopWho==='function') renderTopWho();
@@ -372,6 +379,15 @@
     { id:'санкция',   t:'Санкция на необратимое', d:'Отправка контрагенту, деплой в прод, подпись. Рекомендуем держать включённым.', warn:true },
     { id:'уточнение', t:'Уточнения при неоднозначности', d:'Ассистент спрашивает вас, когда не уверен. Выключите — решает сам по умолчанию.' },
   ];
+  /* ── вид интерфейса: спокойный (по умолчанию) ↔ полный ──
+     Первый экран отвечает на один вопрос: «что от меня ждут сейчас».
+     Блоки, маршруты и разделы меню открываются, когда человек их захочет. */
+  const MKEY = () => 'sreda_kam_mode_'+CURRENT;
+  function setMode(m){ try{ localStorage.setItem(MKEY(), m); }catch(e){} }
+  const calm = () => { try{ return localStorage.getItem(MKEY())!=='full'; }catch(e){ return true; } };
+  /* в спокойном виде — человеческий глагол вместо термина */
+  const TAG_PLAIN = { 'приёмка':'принять', 'санкция':'подписать', 'уточнение':'ответить', 'решение':'решить' };
+
   const GKEY = () => 'sreda_kam_gates_'+CURRENT;
   const SKEY = () => 'sreda_kam_staff_'+CURRENT;
   const EKEY = () => 'sreda_kam_esc_'+CURRENT;
@@ -394,7 +410,7 @@
 
   function escList(){ try{ const e=JSON.parse(localStorage.getItem(EKEY())); if(Array.isArray(e)) return e; }catch(e){} return []; }
   function addEsc(t){ const l=escList(); l.unshift(t); try{ localStorage.setItem(EKEY(), JSON.stringify(l)); }catch(e){} }
-  function resetWorkplace(){ try{ [lkey(),GKEY(),SKEY(),EKEY(),HDKEY()].forEach(k=>localStorage.removeItem(k)); }catch(e){} }
+  function resetWorkplace(){ try{ [lkey(),GKEY(),SKEY(),EKEY(),HDKEY(),MKEY()].forEach(k=>localStorage.removeItem(k)); }catch(e){} }
 
   /* специфические блоки роли */
   const MODELS = [
@@ -447,13 +463,15 @@
   /* ── экран: Личный ассистент — рабочий стол (высота «Я») ── */
   function renderMyPulse(root){
     const greet = greetingText();
-    const layout = loadLayout();
+    const q = calm();
+    const layout = q ? ['waiting'] : loadLayout();   /* спокойный вид: только то, что ждёт вас */
+    const hidden = q ? loadLayout().filter(x=>x!=='waiting').length : 0;
     root.innerHTML = `
       <div class="mp-greet"><div class="av">◆</div><div style="flex:1;min-width:0"><div class="who">Личный ассистент</div><div class="msg" id="mpGreet">${greeted?escHtml(greet):''}</div></div></div>
       <div class="mp-metarow">
         <span class="meta">${escHtml(hero().first)} · ${escHtml(hero().role)} · ${weekday()}, 08:00 · день собран</span>
         <span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <button class="mp-btn" id="mpEdit">⚙ Конструктор рабочего места</button>
+          ${q?'':`<button class="mp-btn" id="mpEdit">⚙ Конструктор рабочего места</button>`}
           ${segHTML('me')}
         </span>
       </div>
@@ -461,6 +479,11 @@
         ${layout.length ? layout.map(id=>widgetWrap(id)).join('')
           : `<div class="mp-empty">Стол пуст — соберите его в конструкторе.<div style="margin-top:12px"><button class="mp-btn" id="mpEdit2">⚙ Открыть конструктор</button></div></div>`}
       </div>
+      ${q
+        ? `<div class="mp-calmnote">Спокойный вид: показываю только решения, которые ждут вас.${hidden?` Ещё ${hidden} ${hidden===1?'блок скрыт':hidden<5?'блока скрыто':'блоков скрыто'}.`:''}
+             <button class="mp-btn" data-mode="full">Показать весь стол →</button></div>`
+        : `<div class="mp-calmnote">Полный вид: все блоки рабочего стола.
+             <button class="mp-btn" data-mode="calm">← Вернуть спокойный вид</button></div>`}
       <div class="mp-asst" data-asst="1"><span class="ic">💬</span><span class="t">Личный помощник — знает, на что вы смотрите. Спросите или поставьте задачу…</span><kbd>⌘K</kbd></div>`;
 
     root.querySelectorAll('[data-open]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); navTo('worker:'+b.dataset.open); });
@@ -471,6 +494,8 @@
     const as=root.querySelector('[data-asst]'); if(as) as.onclick=()=>{ const ov=$('#overlay'); if(ov&&ov._open) ov._open(); };
     wireSeg(root); wireReports(root);
     root.querySelectorAll('#mpEdit,#mpEdit2').forEach(b=>b.onclick=()=>navTo('mypulse-constructor'));
+    root.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{ setMode(b.dataset.mode); forceCabinet();
+      toast(b.dataset.mode==='calm'?'Спокойный вид — только решения, которые ждут вас':'Полный вид — все блоки и разделы'); renderMyPulse(root); });
     if(!greeted){ greeted=true; const g=root.querySelector('#mpGreet'); if(g) typeInto(g, greet, null, null); }
   }
 
@@ -530,7 +555,7 @@
 
   /* ── общие компоненты «точка участия» и «поток передач» ── */
   /* агент своими словами: что сделал, что получилось, куда уходит дальше */
-  function repHTML(id){
+  function repHTML(id, withOpen){
     const r = report(id); if(!r) return '';
     const w = allDigital().find(x=>x.id===id) || {};
     return `<div class="mp-rep" hidden>
@@ -538,6 +563,7 @@
       ${r.did.length?`<b>Что сделал</b><ul>${r.did.map(d=>`<li>${escHtml(d)}</li>`).join('')}</ul>`:''}
       <b>Результат</b><p>${escHtml(r.result)}</p>
       ${(r.took||r.next)?`<div class="ft">${r.took?`<span>⏱ ${escHtml(r.took)}</span>`:''}${r.next?`<span>→ ${escHtml(r.next)}</span>`:''}</div>`:''}
+      ${withOpen?`<div class="ft"><button class="mp-btn" data-open="${id}">Открыть карточку сотрудника</button></div>`:''}
     </div>`;
   }
   const hasRep = (id)=> !!(id && report(id));
@@ -545,24 +571,38 @@
   function waitRowHTML(w){
     const btn = w.sev==='amber' ? 'Ответить' : (w.tag==='санкция' ? 'Подписать' : (w.tag==='решение' ? 'Решить' : 'Принять'));
     const rid = w.open || w.by;   /* open — его работу принимаете; by — он подготовил материал под вашу подпись */
+    const rep = hasRep(rid);
+    if (calm()){
+      /* одна строка — одно действие; отчёт раскрывается кликом по самой строке */
+      return `<div class="mp-witem">
+        <div class="mp-row ${w.sev}${rep?' clk':''}" ${rep?'data-rep="1" title="Показать отчёт сотрудника"':''}>
+          <span class="mp-pill ${w.sev}">${TAG_PLAIN[w.tag]||w.tag}</span>
+          <span class="mp-txt">${escHtml(w.text)}</span>
+          ${rep?'<span class="mp-chev">▾</span>':''}
+          <button class="mp-btn" data-accept="1">${btn}</button>
+        </div>
+        ${rid?repHTML(rid,true):''}
+      </div>`;
+    }
     return `<div class="mp-witem">
       <div class="mp-row ${w.sev}">
         <span class="mp-pill ${w.sev}">${w.tag}</span>
         <span class="mp-txt">${escHtml(w.text)}</span>
-        ${hasRep(rid)?`<button class="mp-btn" data-rep="1">Отчёт ▾</button>`:''}
+        ${rep?`<button class="mp-btn" data-rep="1">Отчёт ▾</button>`:''}
         ${rid?`<button class="mp-btn" data-open="${rid}">Открыть</button>`:''}
         <button class="mp-btn" data-accept="1">${btn}</button>
       </div>
       ${rid?repHTML(rid):''}
     </div>`;
   }
-  /* раскрытие отчётов — общее для стола и пульсов */
+  /* раскрытие отчётов — общее для стола и пульсов (триггером может быть кнопка или вся строка) */
   function wireReports(root){
     root.querySelectorAll('[data-rep]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation();
       const item=b.closest('.mp-witem'); const box=item&&item.querySelector('.mp-rep'); if(!box) return;
       const opening=box.hasAttribute('hidden');
       if(opening) box.removeAttribute('hidden'); else box.setAttribute('hidden','');
-      b.textContent = opening?'Отчёт ▴':'Отчёт ▾';
+      if (b.tagName==='BUTTON') b.textContent = opening?'Отчёт ▴':'Отчёт ▾';
+      const ch = b.querySelector && b.querySelector('.mp-chev'); if(ch) ch.textContent = opening?'▴':'▾';
     });
   }
   function wireWait(root){
@@ -600,6 +640,13 @@
       <div class="mp-metarow"><span class="meta">Пульс отдела «${dLabel(dept)}» · ${weekday()}, утро</span>${segHTML('dept')}</div>
       <div class="mp-sec">Ждёт отдел <span class="cnt mp-pill red">${wait.length}</span></div>
       ${wait.map(waitRowHTML).join('')}
+      ${calm() ? `
+      <div class="mp-sec">Как работает отдел</div>
+      <div class="mp-routesum">
+        <b>${escHtml(rt.in.map(x=>dLabel(x[0])).join(', ')||'—')}</b> передают работу вашим цифровым сотрудникам →
+        <b>${escHtml(hero().first)}</b> ${gateOn('приёмка')?'принимает результат':'ничего не принимает вручную'} →
+        уходит в <b>${escHtml(rt.out.map(x=>dLabel(x[0])).join(', ')||'—')}</b>
+      </div>` : `
       <div class="mp-sec">Путь взаимодействия отдела</div>
       <div class="mp-flowcap" style="margin-top:0">Кто передаёт работу в отдел, где она проходит через вас и куда уходит дальше.</div>
       ${rt.in.map(([from,what,by])=>`<div class="mp-row">
@@ -623,7 +670,7 @@
         <span class="mp-emoji">📤</span>
         <span class="mp-txt" style="flex:none;min-width:190px;color:var(--txt)">${dIcon(to)} ${escHtml(dLabel(to))}</span>
         <span class="mp-txt" style="flex:1;color:var(--muted);font-size:13px">передаём: ${escHtml(what)}</span>
-        <span class="mp-pill" style="${g.style}">${g.t}</span></div>`; }).join('')}
+        <span class="mp-pill" style="${g.style}">${g.t}</span></div>`; }).join('')}`}
       <div class="mp-sec">Кто над чем работает <span class="cnt mp-pill" style="background:var(--acc-soft);color:var(--acc)">${ppl.length+dig.length}</span></div>
       ${ppl.map(p=>{ const n=leadsCount(dept,p.name); return `<div class="mp-row">
         <span class="mp-emoji">🧑‍💼</span>
@@ -664,7 +711,7 @@
           <span class="mp-pct">${dLoad(id)}%</span>
           <button class="mp-ic" data-hide="${id}" title="Скрыть отдел из пульса" aria-label="Скрыть ${escHtml(dLabel(id))}">×</button>
         </div>
-        <div class="mp-routeline"><span>📥 принимает от: ${escHtml(from)}</span><span>📤 передаёт в: ${escHtml(to)}</span></div></div>`; }).join('')
+        ${calm()?'':`<div class="mp-routeline"><span>📥 принимает от: ${escHtml(from)}</span><span>📤 передаёт в: ${escHtml(to)}</span></div>`}</div>`; }).join('')
         :'<div class="mp-empty" style="text-align:left">Все отделы скрыты — верните нужные ниже.</div>'}
       ${hid.length?`<div class="mp-hidrow"><span class="mp-mb" style="min-width:0">Скрыты:</span>
         ${hid.map(id=>`<button class="mp-btn" data-show="${id}">${dIcon(id)} ${escHtml(dLabel(id))} ＋</button>`).join('')}
@@ -712,7 +759,13 @@
           <button class="mp-btn" data-reset="1">↺ сбросить</button>
           <button class="mp-btn" data-back="1">← На рабочий стол</button></span></div>
 
-      <div class="mp-sec">Блоки рабочего стола <span class="cnt mp-pill" style="${ACC_PILL}">${layout.length} из ${avail.length}</span></div>
+      <div class="mp-sec">Вид интерфейса</div>
+      <div class="mp-cr">
+        <button class="mp-tg ${calm()?'':'on'}" data-mode="1" role="switch" aria-checked="${!calm()}" aria-label="Полный вид"><i></i></button>
+        <span class="tt"><b>Полный вид</b><span>Все блоки стола, маршруты передач и разделы меню. Выключено — спокойный вид: только решения, которые ждут вас.</span></span>
+        <span class="mp-pill" style="${ACC_PILL};flex:none">${calm()?'спокойный':'полный'}</span></div>
+
+      <div class="mp-sec">Блоки рабочего стола <span class="cnt mp-pill" style="${ACC_PILL}">${layout.length} из ${avail.length}</span>${calm()?`<span class="mp-pill" style="background:var(--panel-hover);color:var(--muted);margin-left:6px">видно только «Ждёт меня»</span>`:''}</div>
       ${avail.map(blockRow).join('')}
 
       <div class="mp-sec">Цифровой штат <span class="cnt mp-pill" style="${ACC_PILL}">${mine.length} в работе</span></div>
@@ -741,8 +794,11 @@
       <div class="mp-flowcap">⤴ Полезная доработка поднимается в дефолт роли для всех — с санкцией владельца контекста (§4.3). Каждая эскалация обогащает библиотеку ролей.</div>`;
 
     const again = ()=>renderConstructor(root);
+    root.querySelector('[data-mode]').onclick=()=>{ const full=calm(); setMode(full?'full':'calm'); forceCabinet();
+      toast(full?'Полный вид — все блоки и разделы':'Спокойный вид — только решения, которые ждут вас'); again(); };
     root.querySelector('[data-back]').onclick=()=>navTo('mypulse');
-    root.querySelector('[data-reset]').onclick=()=>{ resetWorkplace(); toast('Рабочее место сброшено к стандарту роли'); again(); };
+    root.querySelector('[data-reset]').onclick=()=>{ resetWorkplace(); forceCabinet();   /* сброс возвращает и спокойный вид, и меню */
+      toast('Рабочее место сброшено к стандарту роли'); again(); };
     root.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{ const id=b.dataset.w, l=loadLayout(), i=l.indexOf(id);
       if(i>=0) l.splice(i,1); else l.push(id); saveLayout(l); again(); });
     root.querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>{ const l=loadLayout(), i=l.indexOf(b.dataset.id), j=b.dataset.mv==='up'?i-1:i+1;
@@ -983,8 +1039,13 @@
 
   /* ── меню менеджмента: чистая иерархия вместо «навалено» ──
      Личный ассистент и три высоты сверху; компания и платформа — под группами. */
-  const exWS = WORKSPACES.find(w=>w.id==='exec');
-  if (exWS) exWS.nav = [
+  /* меню: в спокойном виде — только три высоты, без дублей и платформенных экранов */
+  const NAV_CALM = [
+    { id:'mypulse',      label:'Мой день',      icon:'💬' },
+    { id:'mypulse-dept', label:'Отдел',         icon:'🫀' },
+    { id:'mypulse-co',   label:'Компания',      icon:'🌐' },
+  ];
+  const NAV_FULL = [
     { id:'mypulse',             label:'Личный ассистент',           icon:'💬' },
     { id:'mypulse-constructor', label:'Конструктор рабочего места', icon:'🧩' },
     { id:'mypulse-dept',        label:'Пульс отдела',               icon:'🫀' },
@@ -994,6 +1055,8 @@
     { id:'pulse',        label:'Карта оргструктуры',    icon:'🧠' },
     { id:'exec',         label:'Дашборд',               icon:'📊' },
   ];
+  function applyNav(){ const w = WORKSPACES.find(x=>x.id==='exec'); if(w) w.nav = calm()?NAV_CALM:NAV_FULL; }
+  applyNav();
   /* Онбординг компании и платформенные экраны — это работа админа/владельца
      платформы, а не главы департамента. Убрано из кабинета Вячеслава,
      онбординг перенесён в кабинет «Владелец платформы». */
