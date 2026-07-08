@@ -21,7 +21,8 @@
   const UKEY = 'sreda_kam_user';
   let CURRENT = (function(){ try{ const u=localStorage.getItem(UKEY); return USERS[u]?u:'mgmt'; }catch(e){ return 'mgmt'; } })();
   const hero = () => USERS[CURRENT] || USERS.mgmt;
-  const myStaff = () => (typeof DIGITAL_STAFF!=='undefined' && DIGITAL_STAFF[hero().dept]) || [];
+  /* штат = ростер из конструктора (свои ЦС минус уволенные плюс привлечённые) */
+  const myStaff = () => { const ids=staffIds(); return allDigital().filter(w=>ids.indexOf(w.id)>=0); };
   const staffById = (id) => myStaff().find(w=>w.id===id) || null;
   window.__kamUser = hero; /* ассистент берёт текущего пользователя отсюда */
   let greeted = false; /* первый вход за сессию страницы — ассистент печатает приветствие вживую */
@@ -53,6 +54,19 @@
     .mp-userrole{color:var(--muted);font-size:13px;margin:0 0 4px}
     .mp-topsw{height:32px;align-self:center}
     .mp-topsw .mp-us{padding:5px 10px;font-size:12.5px}
+    /* конструктор рабочего места */
+    .mp-cr{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line2);border-radius:var(--r-sm);margin-bottom:8px;background:var(--panel);transition:var(--transition-fast)}
+    .mp-cr:hover{border-color:color-mix(in srgb,var(--acc) 26%,transparent)}
+    .mp-cr .tt{flex:1;min-width:0}
+    .mp-cr .tt b{display:block;color:var(--txt);font-size:14px;font-weight:600;margin-bottom:2px}
+    .mp-cr .tt span{display:block;color:var(--muted);font-size:12.5px;line-height:1.45}
+    .mp-tg{position:relative;width:42px;height:24px;flex:none;border-radius:999px;border:1px solid var(--line2);background:var(--panel-hover);cursor:pointer;transition:var(--transition-fast);padding:0}
+    .mp-tg i{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--muted);transition:var(--transition-fast)}
+    .mp-tg.on{background:var(--acc-soft);border-color:color-mix(in srgb,var(--acc) 45%,transparent)}
+    .mp-tg.on i{left:21px;background:var(--acc)}
+    .mp-in{flex:1;min-width:0;background:var(--panel-hover);border:1px solid var(--line2);border-radius:var(--r-xs);color:var(--txt);padding:9px 12px;font-family:inherit;font-size:13.5px;outline:none;transition:var(--transition-fast)}
+    .mp-in::placeholder{color:var(--faint)}
+    .mp-in:focus{border-color:color-mix(in srgb,var(--acc) 50%,transparent);background:var(--panel)}
     .mp-seg{display:inline-flex;border:1px solid var(--line2);border-radius:var(--r-xs);overflow:hidden;background:var(--panel)}
     .mp-seg-b{border:0;background:transparent;color:var(--muted);padding:7px 16px;font-size:13px;cursor:pointer;font-family:inherit;transition:var(--transition-fast)}
     .mp-seg-b:hover{color:var(--txt2);background:var(--panel-hover)}
@@ -227,7 +241,8 @@
   };
   const udata = () => UDATA[CURRENT] || UDATA.mgmt;
 
-  function waitingItems(){ return udata().waiting.slice(); }
+  /* выключенный гейт → ассистент делает сам, решение не поднимается к вам */
+  function waitingItems(){ return udata().waiting.filter(w=>gateOn(w.tag)); }
   window.__kamWaiting = waitingItems;
   const drafts   = () => udata().drafts;
   const meetings = () => udata().meetings;
@@ -247,11 +262,45 @@
   const BASE_W = ['waiting','drafts','meetings','staff','zoom'];
   const allW = () => { const e=udata().extra; return e ? BASE_W.concat([e]) : BASE_W.slice(); };
   const W_TITLE = { waiting:'Ждёт меня', drafts:'Черновики и документы', meetings:'Встречи дня', staff:'Мои цифровые сотрудники в работе', zoom:'Предложено помощником', models:'Модели и деплои', sla:'Внедрения и SLA' };
-  let editing = false;
   const lkey = () => 'sreda_kam_layout_'+CURRENT;
-  function loadLayout(){ try{ const l=JSON.parse(localStorage.getItem(lkey())); if(Array.isArray(l)&&l.length) return l.filter(x=>allW().includes(x)); }catch(e){} return allW(); }
+  /* сохранённый пустой стол — валидное состояние, не подменяем стандартом */
+  function loadLayout(){ try{ const l=JSON.parse(localStorage.getItem(lkey())); if(Array.isArray(l)) return l.filter(x=>allW().includes(x)); }catch(e){} return allW(); }
   function saveLayout(l){ try{ localStorage.setItem(lkey(), JSON.stringify(l)); }catch(e){} }
   function setUser(u){ if(!USERS[u]||u===CURRENT) return; CURRENT=u; greeted=false; try{ localStorage.setItem(UKEY,u); }catch(e){} }
+
+  /* ── конструктор рабочего места: состояние под каждого пользователя ──
+     Гейты — не декорация: выключенный гейт убирает эти решения из «Ждёт меня»
+     (ассистент делает сам). Штат — реальный ростер ЦС, влияет на стол и пульс. */
+  const W_DESC = {
+    waiting:'Решения, которые не уходят дальше без вас.',
+    drafts:'Черновики от цифровых сотрудников — правятся словами.',
+    meetings:'Расписание дня с готовыми брифами.',
+    staff:'Ваши цифровые сотрудники и что они делают сейчас.',
+    zoom:'Кандидаты в задачи из вчерашних звонков.',
+    models:'Модели, бенчмарки и деплои направления.',
+    sla:'Внедрения у клиентов и состояние SLA.',
+  };
+  const GATES = [
+    { id:'приёмка',   t:'Приёмка результатов',    d:'Результат цифрового сотрудника ждёт вашей приёмки. Выключите — ассистент принимает сам.' },
+    { id:'санкция',   t:'Санкция на необратимое', d:'Отправка контрагенту, деплой в прод, подпись. Рекомендуем держать включённым.', warn:true },
+    { id:'уточнение', t:'Уточнения при неоднозначности', d:'Ассистент спрашивает вас, когда не уверен. Выключите — решает сам по умолчанию.' },
+  ];
+  const GKEY = () => 'sreda_kam_gates_'+CURRENT;
+  const SKEY = () => 'sreda_kam_staff_'+CURRENT;
+  const EKEY = () => 'sreda_kam_esc_'+CURRENT;
+  function gates(){ try{ const g=JSON.parse(localStorage.getItem(GKEY())); if(g&&typeof g==='object') return g; }catch(e){} return {}; }
+  const gateOn  = (id) => gates()[id]!==false;
+  const cntTag  = (id) => udata().waiting.filter(w=>w.tag===id).length;
+  function setGate(id,on){ const g=gates(); g[id]=on; try{ localStorage.setItem(GKEY(), JSON.stringify(g)); }catch(e){} }
+
+  const allDigital  = () => { try{ return Object.keys(DIGITAL_STAFF).reduce((a,k)=>a.concat(DIGITAL_STAFF[k]||[]),[]); }catch(e){ return []; } };
+  const deptOfDigital = (id) => { try{ return Object.keys(DIGITAL_STAFF).find(k=>(DIGITAL_STAFF[k]||[]).some(w=>w.id===id))||''; }catch(e){ return ''; } };
+  function staffIds(){ try{ const s=JSON.parse(localStorage.getItem(SKEY())); if(Array.isArray(s)) return s; }catch(e){} return digitalOf(hero().dept).map(w=>w.id); }
+  function setStaffIds(ids){ try{ localStorage.setItem(SKEY(), JSON.stringify(ids)); }catch(e){} }
+  function toggleStaff(id){ const s=staffIds(), i=s.indexOf(id); if(i>=0) s.splice(i,1); else s.push(id); setStaffIds(s); return i<0; }
+  function escList(){ try{ const e=JSON.parse(localStorage.getItem(EKEY())); if(Array.isArray(e)) return e; }catch(e){} return []; }
+  function addEsc(t){ const l=escList(); l.unshift(t); try{ localStorage.setItem(EKEY(), JSON.stringify(l)); }catch(e){} }
+  function resetWorkplace(){ try{ [lkey(),GKEY(),SKEY(),EKEY()].forEach(k=>localStorage.removeItem(k)); }catch(e){} }
 
   /* специфические блоки роли */
   const MODELS = [
@@ -271,32 +320,24 @@
     if(id==='staff')   return `<span class="cnt mp-pill" style="background:var(--acc-soft);color:var(--acc)">${myStaff().length}</span>`;
     return '';
   }
+  /* статус ЦС — из реальных данных: если его результат ждёт вас, он стоит на гейте */
+  const GREEN_PILL = 'background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green)';
+  const staffPill = (w)=> waitingItems().some(x=>x.open===w.id)
+    ? `<span class="mp-pill red">ждёт вашей приёмки</span>`
+    : `<span class="mp-pill" style="${GREEN_PILL}">в работе</span>`;
   const infoRows = (arr)=> arr.map(r=>`<div class="mp-row"><span class="mp-emoji">${r.ic}</span><span class="mp-txt" style="flex:1;color:var(--txt)">${escHtml(r.t)}</span><span class="mp-pill" style="background:var(--acc-soft);color:var(--acc)">${escHtml(r.st)}</span></div>`).join('');
   function widgetBody(id){
     if(id==='waiting') return waitingItems().map(waitRowHTML).join('');
     if(id==='drafts')  return drafts().map(d=>`<div class="mp-row" data-doc="${d.id}" style="cursor:pointer"><span class="mp-emoji">${d.ic}</span><span class="mp-txt" style="flex:1;color:var(--txt)">${escHtml(d.t)} <span style="color:var(--faint)">· ${escHtml(d.by)}</span></span><span class="mp-pill" style="background:var(--acc-soft);color:var(--acc)">${escHtml(d.st)}</span><button class="mp-btn" data-doc="${d.id}">Открыть</button></div>`).join('');
     if(id==='meetings') return meetings().map(m=>`<div class="mp-row"><span class="mp-time">${m.t}</span><span class="mp-txt">${escHtml(m.text)} <span style="color:var(--faint)">· ${escHtml(m.by)}</span></span>${m.brief?`<button class="mp-btn" data-brief="1">бриф</button>`:''}</div>`).join('');
-    if(id==='staff')   return myStaff().map(w=>{ const pct=40+(String(w.id).length*7)%55; return `<div class="mp-row" data-open="${w.id}" style="cursor:pointer"><span class="mp-emoji">${w.emoji||'🤖'}</span><span class="mp-txt" style="flex:none;min-width:180px;color:var(--txt)">${escHtml(w.name)}</span><span class="mp-txt" style="color:var(--muted);font-size:13px">${escHtml(w.now||w.title||'')}</span><span class="mp-bar"><i style="width:${pct}%"></i></span><span class="mp-pct">${pct}%</span></div>`; }).join('');
+    if(id==='staff')   return myStaff().map(w=>`<div class="mp-row" data-open="${w.id}" style="cursor:pointer"><span class="mp-emoji">${w.emoji||'🤖'}</span><span class="mp-txt" style="flex:none;min-width:200px;color:var(--txt)">${escHtml(w.name)}</span><span class="mp-txt" style="flex:1;color:var(--muted);font-size:13px">${escHtml(w.now||w.title||'')}</span>${staffPill(w)}</div>`).join('');
     if(id==='zoom')    return `<div class="mp-row mp-suggest"><span class="mp-emoji">🎙️</span><span class="mp-txt">${escHtml(udata().zoom)}</span><button class="mp-btn" data-zoom="1">Разобрать</button></div>`;
     if(id==='models')  return infoRows(MODELS);
     if(id==='sla')     return infoRows(SLA);
     return '';
   }
-  function widgetWrap(id, i, total){
-    const ctl = editing ? `<span class="mp-wctl"><button class="mp-ic" data-mv="up" data-id="${id}" ${i===0?'disabled':''} aria-label="Выше">↑</button><button class="mp-ic" data-mv="dn" data-id="${id}" ${i===total-1?'disabled':''} aria-label="Ниже">↓</button><button class="mp-ic rm" data-rm="${id}">× убрать</button></span>` : '';
-    return `<section class="mp-w${editing?' ed':''}" data-w="${id}"><div class="mp-sec">${W_TITLE[id]} ${widgetBadge(id)}${ctl}</div>${widgetBody(id)}</section>`;
-  }
-  function addPalette(layout){
-    const hidden = allW().filter(x=>!layout.includes(x));
-    return `<section class="mp-addpanel">
-      <div class="mp-sec" style="margin-top:0">Настройка стола<span class="mp-wctl"><button class="mp-ic" data-reset="1">↺ сбросить к стандарту</button></span></div>
-      <div style="font-size:12px;color:var(--muted);margin:-2px 0 12px">Уберите лишнее кнопкой «× убрать» на блоке или верните снятое:</div>
-      ${hidden.length ? hidden.map(id=>`<div class="mp-catrow"><span style="font-size:16px">▦</span><span style="flex:1">${W_TITLE[id]}</span><button class="mp-btn" data-addw="${id}" style="border-color:color-mix(in srgb,var(--acc) 40%,transparent);color:var(--acc)">＋ вернуть</button></div>`).join('') : '<div class="mp-empty" style="text-align:left;margin-bottom:8px">Все блоки на столе. Снятые появятся здесь для возврата.</div>'}
-      <div class="mp-catrow"><span style="font-size:16px">🧩</span><span style="flex:1">Блок «Воронка сделок» · из каталога</span><button class="mp-btn" data-cat="1">＋ добавить</button></div>
-      <div class="mp-catrow"><span style="font-size:16px">🤖</span><span style="flex:1">ЦС «Переводчик» · из библиотеки</span><button class="mp-btn" data-cat="1">＋ нанять</button></div>
-      <div class="mp-catrow" style="border-color:color-mix(in srgb,var(--acc) 26%,transparent);background:var(--acc-soft)"><span style="font-size:16px">✦</span><span style="flex:1;color:var(--acc)">Нет нужного блока или ЦС?</span><button class="mp-btn" data-esc="1" style="border-color:color-mix(in srgb,var(--acc) 40%,transparent);color:var(--acc)">Запросить у ЦС-администратора</button></div>
-      <div class="mp-flowcap">Раскладка сохраняется под вас. Полезное поднимается в дефолт роли с санкцией владельца (§4.3).</div>
-    </section>`;
+  function widgetWrap(id){
+    return `<section class="mp-w" data-w="${id}"><div class="mp-sec">${W_TITLE[id]} ${widgetBadge(id)}</div>${widgetBody(id)}</section>`;
   }
 
   /* ── экран: Личный ассистент — рабочий стол (высота «Я») ── */
@@ -308,13 +349,13 @@
       <div class="mp-metarow">
         <span class="meta">${escHtml(hero().first)} · ${escHtml(hero().role)} · ${weekday()}, 08:00 · день собран</span>
         <span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <button class="mp-btn" id="mpEdit">${editing?'✓ Готово':'⚙ Настроить стол'}</button>
+          <button class="mp-btn" id="mpEdit">⚙ Конструктор рабочего места</button>
           ${segHTML('me')}
         </span>
       </div>
-      <div id="mpDesk" class="${editing?'mp-editing':''}">
-        ${editing?addPalette(layout):''}
-        ${layout.map((id,i)=>widgetWrap(id,i,layout.length)).join('')}
+      <div id="mpDesk">
+        ${layout.length ? layout.map(id=>widgetWrap(id)).join('')
+          : `<div class="mp-empty">Стол пуст — соберите его в конструкторе.<div style="margin-top:12px"><button class="mp-btn" id="mpEdit2">⚙ Открыть конструктор</button></div></div>`}
       </div>
       <div class="mp-asst" data-asst="1"><span class="ic">💬</span><span class="t">Личный помощник — знает, на что вы смотрите. Спросите или поставьте задачу…</span><kbd>⌘K</kbd></div>`;
 
@@ -325,14 +366,7 @@
     const br=root.querySelector('[data-brief]'); if(br) br.onclick=()=>toast('Бриф к встрече готовит Двойник ассистента');
     const as=root.querySelector('[data-asst]'); if(as) as.onclick=()=>{ const ov=$('#overlay'); if(ov&&ov._open) ov._open(); };
     wireSeg(root);
-    const eb=root.querySelector('#mpEdit'); if(eb) eb.onclick=()=>{ editing=!editing; if(!editing) toast('Раскладка сохранена'); renderMyPulse(root); };
-    root.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ saveLayout(loadLayout().filter(x=>x!==b.dataset.rm)); renderMyPulse(root); });
-    root.querySelectorAll('[data-addw]').forEach(b=>b.onclick=()=>{ const l=loadLayout(); if(!l.includes(b.dataset.addw)) l.push(b.dataset.addw); saveLayout(l); renderMyPulse(root); });
-    const rs=root.querySelector('[data-reset]'); if(rs) rs.onclick=()=>{ try{localStorage.removeItem(lkey());}catch(e){} toast('Раскладка сброшена к стандарту'); renderMyPulse(root); };
-    root.querySelectorAll('[data-user]').forEach(b=>b.onclick=()=>{ setUser(b.dataset.user); renderMyPulse(root); });
-    root.querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>{ const l=loadLayout(), i=l.indexOf(b.dataset.id), j=b.dataset.mv==='up'?i-1:i+1; if(i>=0&&j>=0&&j<l.length){ const t=l[i]; l[i]=l[j]; l[j]=t; saveLayout(l); renderMyPulse(root); } });
-    root.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>toast('Блок добавлен на стол'));
-    const esc=root.querySelector('[data-esc]'); if(esc) esc.onclick=()=>toast('Запрос отправлен ЦС-администратору');
+    root.querySelectorAll('#mpEdit,#mpEdit2').forEach(b=>b.onclick=()=>navTo('mypulse-constructor'));
     if(!greeted){ greeted=true; const g=root.querySelector('#mpGreet'); if(g) typeInto(g, greet, null, null); }
   }
 
@@ -407,11 +441,9 @@
   }
   const fNode = (emoji,label,tone)=>`<div class="mp-node"><div class="mp-nb ${tone||'acc'}">${emoji}</div><span>${escHtml(label)}</span></div>`;
   const fSyn  = (kind)=> kind==='gate' ? `<div class="mp-syn red"><span class="lk">🔒</span></div>` : `<div class="mp-syn ok"></div>`;
-  const loadRow = (emoji,label,pct)=>`<div class="mp-row">
-    <span class="mp-emoji">${emoji}</span>
-    <span class="mp-txt" style="flex:none;min-width:200px;color:var(--txt)">${escHtml(label)}</span>
-    <span class="mp-bar"><i style="width:${pct}%;background:${loadCol(pct)}"></i></span>
-    <span class="mp-pct">${pct}%</span></div>`;
+  /* сколько ЦС подчиняется человеку — из поля lead цифрового сотрудника */
+  const leadsCount = (dept,name)=>{ const first=String(name||'').split(' ')[0]; if(!first) return 0;
+    return digitalOf(dept).filter(d=>String(d.lead||'').indexOf(first)>=0).length; };
 
   /* ── экран: Пульс «Отдел» (текущего пользователя) ── */
   function renderDeptPulse(root){
@@ -432,10 +464,18 @@
         ${fNode('🏛️','Руководство','mut')}
       </div>
       <div class="mp-flowcap"><span style="color:var(--red)">🔒 Передача застряла на гейте: результат ждёт вашей приёмки — дальше не уходит.</span></div>
-      <div class="mp-sec">Загрузка штата <span class="cnt mp-pill" style="background:var(--acc-soft);color:var(--acc)">${ppl.length+dig.length}</span></div>
-      ${ppl.map(p=>loadRow('🧑‍💼', (p.name||'')+' · '+(p.role||''), 55+((p.name||'').length*7)%38)).join('')}
-      ${dig.map(d=>loadRow(d.emoji||'🤖', d.name, 45+(String(d.id).length*11)%55)).join('')}`;
-    wireWait(root); wireSeg(root);
+      <div class="mp-sec">Кто над чем работает <span class="cnt mp-pill" style="background:var(--acc-soft);color:var(--acc)">${ppl.length+dig.length}</span></div>
+      ${ppl.map(p=>{ const n=leadsCount(dept,p.name); return `<div class="mp-row">
+        <span class="mp-emoji">🧑‍💼</span>
+        <span class="mp-txt" style="flex:none;min-width:200px;color:var(--txt)">${escHtml(p.name||'')}</span>
+        <span class="mp-txt" style="flex:1;color:var(--muted);font-size:13px">${escHtml(p.role||'')}</span>
+        ${n?`<span class="mp-pill" style="background:var(--acc-soft);color:var(--acc)">${n} ЦС в подчинении</span>`:''}</div>`; }).join('')}
+      ${dig.map(d=>`<div class="mp-row" data-open="${d.id}" style="cursor:pointer">
+        <span class="mp-emoji">${d.emoji||'🤖'}</span>
+        <span class="mp-txt" style="flex:none;min-width:200px;color:var(--txt)">${escHtml(d.name)}</span>
+        <span class="mp-txt" style="flex:1;color:var(--muted);font-size:13px">${escHtml(d.now||d.title||'')}</span>
+        ${staffPill(d)}</div>`).join('')}`;
+    wireWait(root); wireSeg(root);   /* wireWait вешает и data-open на карточки ЦС */
   }
 
   /* ── экран: Пульс «Компания» (Оркестратор) ── */
@@ -465,37 +505,83 @@
     wireWait(root); wireSeg(root);
   }
 
-  /* ── экран: Конструктор рабочего места + эскалация (§7, §4.3) ── */
-  const catRow = (emoji,label,btn)=>`<div class="mp-catrow"><span style="font-size:16px">${emoji}</span><span style="flex:1">${label}</span><button class="mp-btn" data-add="1">${btn}</button></div>`;
+  /* ── экран: Конструктор рабочего места (§7, §4.3) ──
+     Всё здесь настоящее: блоки, штат ЦС, гейты и эскалация сохраняются под
+     текущего пользователя и сразу меняют его стол, пульс и очередь решений. */
+  const ACC_PILL = 'background:var(--acc-soft);color:var(--acc)';
+  const OTHERS_SHOWN = 6;
   function renderConstructor(root){
+    const layout = loadLayout(), avail = allW();
+    const mine   = staffIds();
+    const own    = digitalOf(hero().dept);
+    const ownIds = own.map(w=>w.id);
+    const hiredOutside = allDigital().filter(w=>ownIds.indexOf(w.id)<0 && mine.indexOf(w.id)>=0);
+    const others = allDigital().filter(w=>ownIds.indexOf(w.id)<0 && mine.indexOf(w.id)<0);
+    const shown  = others.slice(0, OTHERS_SHOWN);
+    const esc    = escList();
+
+    const blockRow = (id)=>{ const on=layout.indexOf(id)>=0, pos=layout.indexOf(id);
+      return `<div class="mp-cr">
+        <button class="mp-tg ${on?'on':''}" data-w="${id}" role="switch" aria-checked="${on}" aria-label="${W_TITLE[id]}"><i></i></button>
+        <span class="tt"><b>${W_TITLE[id]}</b><span>${W_DESC[id]||''}</span></span>
+        ${on?`<span style="display:flex;gap:4px;flex:none">
+          <button class="mp-ic" data-mv="up" data-id="${id}" ${pos===0?'disabled':''} aria-label="Выше">↑</button>
+          <button class="mp-ic" data-mv="dn" data-id="${id}" ${pos===layout.length-1?'disabled':''} aria-label="Ниже">↓</button></span>`:''}</div>`; };
+
+    const staffRow = (w,hired)=>`<div class="mp-cr">
+      <span style="font-size:18px;flex:none">${w.emoji||'🤖'}</span>
+      <span class="tt"><b>${escHtml(w.name)}</b><span>${escHtml(w.title||'')}${w.now?' · '+escHtml(w.now):''}</span></span>
+      <button class="mp-btn" data-staff="${w.id}" style="flex:none">${hired?'Уволить':'＋ нанять'}</button></div>`;
+
     root.innerHTML = `
-      <div class="mp-metarow"><span class="meta">Конструктор рабочего места · роль KAM · дефолт — гипотеза</span><button class="mp-btn" data-back="1">← В ассистента</button></div>
-      <div class="mp-ask"><span style="font-size:16px;color:var(--muted)">🔎</span><span class="mp-txt" style="color:var(--muted)">Сверять договоры с реестром санкций…</span><span class="mp-mb">чего не хватает?</span></div>
-      <div class="mp-cols">
-        <div>
-          <div class="mp-sec" style="margin-top:0">Есть в системе · добавить сейчас</div>
-          ${catRow('🧩','Блок «Воронка сделок»','＋ добавить')}
-          ${catRow('🤖','ЦС «Переводчик»','＋ нанять')}
-          ${catRow('📁','Контекст «Проект Гамма»','＋ подключить')}
-        </div>
-        <div>
-          <div class="mp-sec" style="margin-top:0">Нет в системе · эскалация</div>
-          <div class="mp-esc">
-            <div style="font-size:13px;color:var(--txt);margin-bottom:10px">«ЦС, сверяющий договоры с реестром санкций» — в каталоге нет.</div>
-            <button class="mp-btn" data-esc="1" style="width:100%;border-color:color-mix(in srgb,var(--acc) 40%,transparent);color:var(--acc);font-weight:600">Эскалировать ЦС-администратору</button>
-          </div>
-          <div class="mp-escwork">
-            <div style="font-size:12px;color:var(--amber);margin-bottom:4px">⏳ в работе у ЦС-администратора</div>
-            <div style="font-size:13px;color:var(--txt)">Коннектор к 1С · провижинит доступ</div>
-            <div style="font-size:11px;color:var(--faint);margin-top:4px">запрошено вчера · вернётся с готовым блоком</div>
-          </div>
-        </div>
-      </div>
-      <div class="mp-flowcap" style="margin-top:18px">⤴ Полезная доработка поднимается в дефолт роли «KAM» для всех — с санкцией владельца контекста (§4.3). Каждая эскалация обогащает библиотеку ролей.</div>`;
+      <div class="mp-metarow"><span class="meta">Конструктор рабочего места · ${escHtml(hero().first)} · ${escHtml(hero().role)}</span>
+        <span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="mp-btn" data-reset="1">↺ сбросить</button>
+          <button class="mp-btn" data-back="1">← На рабочий стол</button></span></div>
+
+      <div class="mp-sec">Блоки рабочего стола <span class="cnt mp-pill" style="${ACC_PILL}">${layout.length} из ${avail.length}</span></div>
+      ${avail.map(blockRow).join('')}
+
+      <div class="mp-sec">Цифровой штат <span class="cnt mp-pill" style="${ACC_PILL}">${mine.length} в работе</span></div>
+      ${own.map(w=>staffRow(w, mine.indexOf(w.id)>=0)).join('')}
+      ${hiredOutside.length?`<div class="mp-flowcap" style="margin:2px 0 10px">Привлечены из других отделов:</div>${hiredOutside.map(w=>staffRow(w,true)).join('')}`:''}
+      <div class="mp-sec" style="font-size:13px">Привлечь ЦС из другого отдела</div>
+      ${shown.length?shown.map(w=>`<div class="mp-cr">
+        <span style="font-size:18px;flex:none">${w.emoji||'🤖'}</span>
+        <span class="tt"><b>${escHtml(w.name)}</b><span>${escHtml(dLabel(deptOfDigital(w.id)))} · нужна санкция владельца контекста</span></span>
+        <button class="mp-btn" data-staff="${w.id}" style="flex:none">＋ привлечь</button></div>`).join(''):'<div class="mp-empty" style="text-align:left">Весь каталог уже привлечён.</div>'}
+      ${others.length>shown.length?`<div class="mp-flowcap">Показаны ${shown.length} из ${others.length} — остальные в полном каталоге ЦС.</div>`:''}
+
+      <div class="mp-sec">Права ассистента · гейты <span class="cnt mp-pill red">${waitingItems().length} ждёт вас</span></div>
+      ${GATES.map(g=>`<div class="mp-cr">
+        <button class="mp-tg ${gateOn(g.id)?'on':''}" data-gate="${g.id}" role="switch" aria-checked="${gateOn(g.id)}" aria-label="${g.t}"><i></i></button>
+        <span class="tt"><b>${g.t}${g.warn?' <span style="color:var(--amber)">⚠</span>':''}</b><span>${g.d}</span></span>
+        <span class="mp-pill" style="${ACC_PILL};flex:none">${cntTag(g.id)} в очереди</span></div>`).join('')}
+      <div class="mp-flowcap">Выключенный гейт — ассистент делает сам и не спрашивает. Включённый — решение остаётся за вами. Счётчик «ждёт вас» меняется сразу.</div>
+
+      <div class="mp-sec">Чего не хватает · эскалация ЦС-администратору</div>
+      <div class="mp-cr"><input class="mp-in" id="mpEscIn" placeholder="Например: ЦС, сверяющий договоры с реестром санкций"><button class="mp-btn" data-escadd="1" style="flex:none">Эскалировать</button></div>
+      ${esc.map(e=>`<div class="mp-escwork">
+        <div style="font-size:12px;color:var(--amber);margin-bottom:4px">⏳ в работе у ЦС-администратора</div>
+        <div style="font-size:13px;color:var(--txt)">${escHtml(e)}</div>
+        <div style="font-size:11px;color:var(--faint);margin-top:4px">запрошено вами · вернётся готовым блоком</div></div>`).join('')}
+      <div class="mp-flowcap">⤴ Полезная доработка поднимается в дефолт роли для всех — с санкцией владельца контекста (§4.3). Каждая эскалация обогащает библиотеку ролей.</div>`;
+
+    const again = ()=>renderConstructor(root);
     root.querySelector('[data-back]').onclick=()=>navTo('mypulse');
-    root.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{ const r=b.closest('.mp-catrow'); if(r){ r.style.opacity='.5'; b.textContent='✓ добавлено'; b.disabled=true; } toast('Добавлено в рабочее место'); });
-    const esc=root.querySelector('[data-esc]'); if(esc) esc.onclick=()=>{ esc.textContent='✓ передано ЦС-администратору'; esc.disabled=true; toast('Передал ЦС-администратору · соберёт блок'); };
-    wireSeg(root);
+    root.querySelector('[data-reset]').onclick=()=>{ resetWorkplace(); toast('Рабочее место сброшено к стандарту роли'); again(); };
+    root.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{ const id=b.dataset.w, l=loadLayout(), i=l.indexOf(id);
+      if(i>=0) l.splice(i,1); else l.push(id); saveLayout(l); again(); });
+    root.querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>{ const l=loadLayout(), i=l.indexOf(b.dataset.id), j=b.dataset.mv==='up'?i-1:i+1;
+      if(i>=0&&j>=0&&j<l.length){ const t=l[i]; l[i]=l[j]; l[j]=t; saveLayout(l); again(); } });
+    root.querySelectorAll('[data-staff]').forEach(b=>b.onclick=()=>{ const hired=toggleStaff(b.dataset.staff);
+      toast(hired?'Цифровой сотрудник нанят':'Цифровой сотрудник снят с задач'); again(); });
+    root.querySelectorAll('[data-gate]').forEach(b=>b.onclick=()=>{ const id=b.dataset.gate, on=!gateOn(id); setGate(id,on);
+      toast(on?'Гейт включён — решение за вами':'Гейт снят — ассистент делает сам'); again(); });
+    const add=root.querySelector('[data-escadd]'), inp=root.querySelector('#mpEscIn');
+    const doEsc=()=>{ const v=(inp.value||'').trim(); if(!v){ inp.focus(); return; } addEsc(v); toast('Передал ЦС-администратору · соберёт блок'); again(); };
+    if(add) add.onclick=doEsc;
+    if(inp) inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); doEsc(); } });
   }
 
   /* ── экран: Онбординг компании (Экран 5) — штат из библиотеки ЦС (§9) ── */
@@ -724,8 +810,9 @@
      Личный ассистент и три высоты сверху; компания и платформа — под группами. */
   const exWS = WORKSPACES.find(w=>w.id==='exec');
   if (exWS) exWS.nav = [
-    { id:'mypulse',      label:'Личный ассистент',      icon:'💬' },
-    { id:'mypulse-dept', label:'Пульс отдела',          icon:'🫀' },
+    { id:'mypulse',             label:'Личный ассистент',           icon:'💬' },
+    { id:'mypulse-constructor', label:'Конструктор рабочего места', icon:'🧩' },
+    { id:'mypulse-dept',        label:'Пульс отдела',               icon:'🫀' },
     { id:'kproj',        label:'Проекты департамента',  icon:'📁' },
     { sep:'Компания' },
     { id:'mypulse-co',   label:'Пульс компании',        icon:'🌐' },
