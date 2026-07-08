@@ -67,6 +67,9 @@
     .mp-in{flex:1;min-width:0;background:var(--panel-hover);border:1px solid var(--line2);border-radius:var(--r-xs);color:var(--txt);padding:9px 12px;font-family:inherit;font-size:13.5px;outline:none;transition:var(--transition-fast)}
     .mp-in::placeholder{color:var(--faint)}
     .mp-in:focus{border-color:color-mix(in srgb,var(--acc) 50%,transparent);background:var(--panel)}
+    .mp-hidrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 4px}
+    .mp-row [data-hide]{opacity:0;flex:none;transition:var(--transition-fast)}
+    .mp-row:hover [data-hide],.mp-row [data-hide]:focus-visible{opacity:1}
     .mp-seg{display:inline-flex;border:1px solid var(--line2);border-radius:var(--r-xs);overflow:hidden;background:var(--panel)}
     .mp-seg-b{border:0;background:transparent;color:var(--muted);padding:7px 16px;font-size:13px;cursor:pointer;font-family:inherit;transition:var(--transition-fast)}
     .mp-seg-b:hover{color:var(--txt2);background:var(--panel-hover)}
@@ -298,9 +301,16 @@
   function staffIds(){ try{ const s=JSON.parse(localStorage.getItem(SKEY())); if(Array.isArray(s)) return s; }catch(e){} return digitalOf(hero().dept).map(w=>w.id); }
   function setStaffIds(ids){ try{ localStorage.setItem(SKEY(), JSON.stringify(ids)); }catch(e){} }
   function toggleStaff(id){ const s=staffIds(), i=s.indexOf(id); if(i>=0) s.splice(i,1); else s.push(id); setStaffIds(s); return i<0; }
+  /* скрытые отделы в пульсе — под каждого пользователя свои */
+  const HDKEY = () => 'sreda_kam_hidedepts_'+CURRENT;
+  function hiddenDepts(){ try{ const a=JSON.parse(localStorage.getItem(HDKEY())); if(Array.isArray(a)) return a; }catch(e){} return []; }
+  function setHiddenDepts(a){ try{ localStorage.setItem(HDKEY(), JSON.stringify(a)); }catch(e){} }
+  function hideDept(id){ const h=hiddenDepts(); if(h.indexOf(id)<0){ h.push(id); setHiddenDepts(h); } }
+  function showDept(id){ setHiddenDepts(hiddenDepts().filter(x=>x!==id)); }
+
   function escList(){ try{ const e=JSON.parse(localStorage.getItem(EKEY())); if(Array.isArray(e)) return e; }catch(e){} return []; }
   function addEsc(t){ const l=escList(); l.unshift(t); try{ localStorage.setItem(EKEY(), JSON.stringify(l)); }catch(e){} }
-  function resetWorkplace(){ try{ [lkey(),GKEY(),SKEY(),EKEY()].forEach(k=>localStorage.removeItem(k)); }catch(e){} }
+  function resetWorkplace(){ try{ [lkey(),GKEY(),SKEY(),EKEY(),HDKEY()].forEach(k=>localStorage.removeItem(k)); }catch(e){} }
 
   /* специфические блоки роли */
   const MODELS = [
@@ -481,7 +491,7 @@
   /* ── экран: Пульс «Компания» (Оркестратор) ── */
   function renderCoPulse(root){
     const feed = ((window.__ORG && window.__ORG.pulseFeed) || []).filter(f=>f[0]==='x');
-    const depts = DEPTS();
+    const all = DEPTS(), hid = hiddenDepts().filter(id=>all.indexOf(id)>=0), vis = all.filter(id=>hid.indexOf(id)<0);
     const wait=[
       { sev:'red',   tag:'решение',      text:'Тендер РЖД: цена лота у порога маржи — нужно решение по участию' },
       { sev:'amber', tag:'согласование', text:'Кросс-отдельный проект «Внедрение Гамма» — подтвердить состав команды' },
@@ -492,15 +502,23 @@
       ${wait.map(waitRowHTML).join('')}
       <div class="mp-sec">Межотделовые передачи <span class="cnt mp-pill" style="background:var(--acc-soft);color:var(--acc)">${feed.length}</span></div>
       ${feed.map(f=>`<div class="mp-row"><span class="mp-emoji">🔄</span><span class="mp-txt" style="flex:none;min-width:230px;color:var(--txt)">${escHtml(f[1])}</span><span class="mp-txt" style="color:var(--muted);font-size:13px">${escHtml(f[2])}</span></div>`).join('')}
-      <div class="mp-sec">Отделы <span class="cnt mp-pill" style="background:var(--acc-soft);color:var(--acc)">${depts.length}</span></div>
-      ${depts.map(id=>`<div class="mp-row" data-dept="${id}" style="cursor:pointer">
+      <div class="mp-sec">Отделы <span class="cnt mp-pill" style="background:var(--acc-soft);color:var(--acc)">${vis.length}</span>${hid.length?`<span class="mp-pill" style="background:var(--panel-hover);color:var(--muted);margin-left:6px">+${hid.length} скрыто</span>`:''}</div>
+      ${vis.length?vis.map(id=>`<div class="mp-row" data-dept="${id}" style="cursor:pointer">
         <span class="mp-emoji">${dIcon(id)}</span>
         <span class="mp-txt" style="flex:none;min-width:170px;color:var(--txt)">${escHtml(dLabel(id))}</span>
         <span class="mp-mb" style="min-width:104px">${hc(id)} чел · ${dhc(id)} ЦС</span>
         <span class="mp-bar"><i style="width:${dLoad(id)}%;background:${loadCol(dLoad(id))}"></i></span>
-        <span class="mp-pct">${dLoad(id)}%</span></div>`).join('')}
+        <span class="mp-pct">${dLoad(id)}%</span>
+        <button class="mp-ic" data-hide="${id}" title="Скрыть отдел из пульса" aria-label="Скрыть ${escHtml(dLabel(id))}">×</button></div>`).join('')
+        :'<div class="mp-empty" style="text-align:left">Все отделы скрыты — верните нужные ниже.</div>'}
+      ${hid.length?`<div class="mp-hidrow"><span class="mp-mb" style="min-width:0">Скрыты:</span>
+        ${hid.map(id=>`<button class="mp-btn" data-show="${id}">${dIcon(id)} ${escHtml(dLabel(id))} ＋</button>`).join('')}
+        <button class="mp-btn" data-showall="1" style="border-color:color-mix(in srgb,var(--acc) 40%,transparent);color:var(--acc)">показать все</button></div>`:''}
       <div class="mp-linkrow"><button class="mp-btn" data-map="1">Открыть карту оргструктуры →</button></div>`;
     root.querySelectorAll('[data-dept]').forEach(b=>b.onclick=()=>navTo(b.dataset.dept==='mgmt'?'mypulse-dept':'dpulse:'+b.dataset.dept));
+    root.querySelectorAll('[data-hide]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); hideDept(b.dataset.hide); toast('Отдел скрыт из пульса'); renderCoPulse(root); });
+    root.querySelectorAll('[data-show]').forEach(b=>b.onclick=()=>{ showDept(b.dataset.show); renderCoPulse(root); });
+    const sa=root.querySelector('[data-showall]'); if(sa) sa.onclick=()=>{ setHiddenDepts([]); toast('Показаны все отделы'); renderCoPulse(root); };
     const mp=root.querySelector('[data-map]'); if(mp) mp.onclick=()=>navTo('pulse');
     wireWait(root); wireSeg(root);
   }
@@ -786,9 +804,10 @@
     }
     origNavMP(id, opts);
     try{
+      /* телепорт в ролевой кабинет (например, dpulse:dev) — возвращаем чистое меню.
+         Личность НЕ трогаем: смотреть чужой отдел ≠ становиться его руководителем. */
       if (state.ws!=='exec' && state.ws!=='owner' && state.ws!=='platform' && ROLE_CABS.indexOf(state.ws)>=0){
-        if (USERS[state.ws]) setUser(state.ws);
-        state.ws='exec'; renderNav(); if (typeof renderTopWho==='function') renderTopWho(); refreshUserSw();
+        state.ws='exec'; renderNav(); if (typeof renderTopWho==='function') renderTopWho();
       }
     }catch(e){}
   };

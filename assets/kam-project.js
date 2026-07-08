@@ -71,6 +71,34 @@
   const dIcon = (id)=> (DEPARTMENTS.find(x=>x.id===id)||{icon:''}).icon;
   const hh = ()=>{ const t=new Date(); return String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0'); };
 
+  /* текущий пользователь стенда (мультипользовательский режим) */
+  const hero    = ()=> (typeof window.__kamUser==='function') ? window.__kamUser() : { dept:'mgmt', first:'Вячеслав', role:'Глава департамента KAM' };
+  const heroKey = ()=> hero().dept+':'+hero().first;
+
+  /* ── контекст проекта → состав и руководитель ──
+     Направление, которое ведёт больше всего задач шаблона, даёт кандидата в РП;
+     при равенстве побеждает менее занятый в других проектах. */
+  function taskLoad(tpl){ const m={}; (tpl.stages||[]).forEach(s=>(s.tasks||[]).forEach(t=>{ m[t.dept]=(m[t.dept]||0)+1; })); return m; }
+  function totalTasks(tpl){ return (tpl.stages||[]).reduce((a,s)=>a+(s.tasks||[]).length,0); }
+  function recommendPM(tpl){
+    if (!tpl || !tpl.stages || !totalTasks(tpl)) return null;
+    const load = taskLoad(tpl), total = totalTasks(tpl);
+    const cands = (tpl.rec.people||[])
+      .filter(k=>k.split(':')[0]!=='mgmt')                    /* глава департамента — отдельной картой «ведёт сам» */
+      .map(k=>{ const d=k.split(':')[0]; return { key:k, dept:d, tasks:load[d]||0, busy:busyCount(k,false) }; });
+    if (!cands.length){                                        /* шаблон без рекомендаций — берём главного по нагрузке */
+      const d = Object.keys(load).sort((a,b)=>load[b]-load[a])[0];
+      const p = d && peopleOf(d)[0];
+      if (!p) return null;
+      cands.push({ key:d+':'+p.name, dept:d, tasks:load[d], busy:busyCount(d+':'+p.name,false) });
+    }
+    cands.sort((a,b)=> (b.tasks-a.tasks) || (a.busy-b.busy));
+    const c = cands[0];
+    return { key:c.key, name:c.key.split(':')[1], dept:c.dept,
+      reason:`${dLabel(c.dept)} ведёт ${c.tasks} из ${total} задач шаблона · ${c.busy?'занят в '+c.busy+' пр.':'не занят в других проектах'}` };
+  }
+  const recSet = (tpl)=>({ people:new Set((tpl&&tpl.rec.people)||[]), digital:new Set((tpl&&tpl.rec.digital)||[]) });
+
   /* ── МАСТЕР: опросник создания проекта ── */
   function renderWizard(root){
     const W = (window.__KPW = window.__KPW || { step:0, tpl:null, name:'', goal:'', due:'', pm:null, people:new Set(), digital:new Set() });
@@ -84,6 +112,13 @@
         <button class="btn go" id="kpNext" ${canNext()?'':'disabled'}>${W.step===3?'Создать проект ✓':'Далее →'}</button>
       </div>`;
       wire();
+    }
+    /* подобрать состав и руководителя под выбранный шаблон */
+    function applyRec(t){
+      const r = recSet(t);
+      W.people = r.people; W.digital = r.digital;
+      const pm = recommendPM(t);
+      W.rec = pm; W.pm = pm ? pm.key : heroKey();
     }
     function canNext(){
       if (W.step===0) return W.tpl && (W.name||'').trim().length>2;
@@ -99,21 +134,32 @@
         <div class="kp-f"><label>Название проекта</label><input id="kpName" type="text" value="${escAttr(W.name)}" placeholder="Например: Тендер РЖД · событийная платформа"/></div>
         <div class="kp-f"><label>Цель (критерий успеха)</label><input id="kpGoal" type="text" value="${escAttr(W.goal)}" placeholder="${escAttr((TPL.find(t=>t.id===W.tpl)||{}).goal||'Что считаем успехом')}"/></div>
         <div class="kp-f"><label>Дедлайн</label><input id="kpDue" type="text" value="${escAttr(W.due)}" placeholder="например: 18 июля"/></div>`;
-      if (W.step===1) return `
+      if (W.step===1){
+        const rec = W.rec, me = heroKey();
+        return `
         <h2>Кто ведёт проект?</h2>
-        <div class="od-gov" style="margin-bottom:10px">Так работает реальный процесс: Вячеслав ведёт сам — или назначает руководителя проекта, и тогда состав формирует РП.</div>
-        <div class="kp-pm ${W.pm==='mgmt:Вячеслав'?'on':''}" data-pm="mgmt:Вячеслав"><b>🏛️ Вячеслав ведёт сам</b><small>глава департамента · полный обзор</small></div>
-        <h3 class="kp-h3">…или назначить руководителя проекта:</h3>
-        <div class="kp-pmlist">${ROLE_IDS.filter(d=>d!=='mgmt').map(d=>peopleOf(d).map(p=>`<div class="kp-pm sm ${W.pm===d+':'+p.name?'on':''}" data-pm="${d}:${p.name}"><b>${escHtml(p.name)}</b><small>${escHtml(p.role)} · ${escHtml(dLabel(d))}</small></div>`).join('')).join('')}</div>`;
+        <div class="od-gov" style="margin-bottom:10px">Ассистент разобрал этапы проекта и предложил руководителя. Решение за вами: примите рекомендацию, ведите сами или назначьте другого.</div>
+        ${rec?`<div class="kp-pm rec ${W.pm===rec.key?'on':''}" data-pm="${escAttr(rec.key)}">
+          <b>✨ Рекомендуем: ${escHtml(rec.name)}</b><small>${escHtml(rec.reason)}</small></div>`:''}
+        <div class="kp-pm ${W.pm===me?'on':''}" data-pm="${escAttr(me)}"><b>🏛️ ${escHtml(hero().first)} ведёт сам</b><small>${escHtml(hero().role)} · полный обзор</small></div>
+        <h3 class="kp-h3">…или назначить другого руководителя проекта:</h3>
+        <div class="kp-pmlist">${ROLE_IDS.filter(d=>d!==hero().dept).map(d=>peopleOf(d).map(p=>{ const k=d+':'+p.name; if(rec&&k===rec.key) return '';
+          const bz=busyCount(k,false);
+          return `<div class="kp-pm sm ${W.pm===k?'on':''}" data-pm="${escAttr(k)}"><b>${escHtml(p.name)}</b><small>${escHtml(p.role)} · ${escHtml(dLabel(d))}${bz?' · в '+bz+' пр.':''}</small></div>`; }).join('')).join('')}</div>`;
+      }
       if (W.step===2){
-        const rec = tpl && tpl.rec;
+        const rec = tpl && tpl.rec, hasRec = !!(rec && (rec.people.length||rec.digital.length));
+        const recP = (k)=> hasRec && rec.people.indexOf(k)>=0 ? '<i class="kp-rec" title="подобран под контекст проекта">✨</i>' : '';
+        const recD = (id)=> hasRec && rec.digital.indexOf(id)>=0 ? '<i class="kp-rec" title="подобран под контекст проекта">✨</i>' : '';
         return `
         <h2>Состав проекта <span class="tag">люди и цифровые из любых направлений — как в жизни</span></h2>
-        ${rec && (rec.people.length||rec.digital.length) ? `<button class="btn go" id="kpRec" style="margin-bottom:10px">✨ Рекомендованный состав под «${escHtml(tpl.title)}»</button>`:''}
+        ${hasRec?`<div class="od-gov" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+          <span style="flex:1;min-width:220px">✨ Команда уже подобрана под «${escHtml(tpl.title)}» — по этапам и задачам проекта. Правьте чекбоксами.</span>
+          <button class="btn ghost" id="kpRec">↺ Вернуть рекомендованный состав</button></div>`:''}
         <div class="kp-crew">${ROLE_IDS.map(d=>`
           <div class="kp-dept"><b>${dIcon(d)} ${escHtml(dLabel(d))}</b>
-            ${peopleOf(d).map(p=>{ const k=d+':'+p.name; const bz=busyCount(k,false); return `<label class="kp-pick ${W.people.has(k)?'on':''}"><input type="checkbox" data-pp="${escAttr(k)}" ${W.people.has(k)?'checked':''}/>👤 ${escHtml(p.name)} <small>${escHtml(p.role)}</small>${bz?`<i class="kp-busy" title="уже занят в ${bz} проект(ах)">в ${bz} пр.</i>`:''}</label>`; }).join('')}
-            ${(DIGITAL_STAFF[d]||[]).map(w=>{ const bz=busyCount(w.id,true); return `<label class="kp-pick dgt ${W.digital.has(w.id)?'on':''}"><input type="checkbox" data-pd="${escAttr(w.id)}" ${W.digital.has(w.id)?'checked':''}/>${w.emoji} ${escHtml(w.name)} <small>цифровой</small>${bz?`<i class="kp-busy" title="уже занят в ${bz} проект(ах)">в ${bz} пр.</i>`:''}</label>`; }).join('')}
+            ${peopleOf(d).map(p=>{ const k=d+':'+p.name; const bz=busyCount(k,false); return `<label class="kp-pick ${W.people.has(k)?'on':''}"><input type="checkbox" data-pp="${escAttr(k)}" ${W.people.has(k)?'checked':''}/>👤 ${escHtml(p.name)} <small>${escHtml(p.role)}</small>${recP(k)}${bz?`<i class="kp-busy" title="уже занят в ${bz} проект(ах)">в ${bz} пр.</i>`:''}</label>`; }).join('')}
+            ${(DIGITAL_STAFF[d]||[]).map(w=>{ const bz=busyCount(w.id,true); return `<label class="kp-pick dgt ${W.digital.has(w.id)?'on':''}"><input type="checkbox" data-pd="${escAttr(w.id)}" ${W.digital.has(w.id)?'checked':''}/>${w.emoji} ${escHtml(w.name)} <small>цифровой</small>${recD(w.id)}${bz?`<i class="kp-busy" title="уже занят в ${bz} проект(ах)">в ${bz} пр.</i>`:''}</label>`; }).join('')}
           </div>`).join('')}</div>
         <div class="kp-count">Выбрано: 👤 ${W.people.size} человек · 🤖 ${W.digital.size} цифровых · направлений: ${new Set([...W.people].map(k=>k.split(':')[0]).concat([...W.digital].map(id=>{const w=ALL_DIGITAL.find(x=>x.id===id); return w?w.dept:'';}))).size}</div>`;
       }
@@ -124,7 +170,7 @@
           <div class="kp-f ro"><label>Проект</label><b>${(tpl||{}).icon||'📁'} ${escHtml(W.name)}</b></div>
           <div class="kp-f ro"><label>Цель</label><b>${escHtml(W.goal||'—')}</b></div>
           <div class="kp-f ro"><label>Дедлайн</label><b>${escHtml(W.due||'—')}</b></div>
-          <div class="kp-f ro"><label>Руководитель проекта</label><b>${escHtml((W.pm||'').split(':')[1]||'')}${W.pm==='mgmt:Вячеслав'?' (ведёт сам)':' — назначен Вячеславом'}</b></div>
+          <div class="kp-f ro"><label>Руководитель проекта</label><b>${escHtml((W.pm||'').split(':')[1]||'')}${W.pm===heroKey()?' (ведёт сам)':' — назначен руководителем проекта'}${W.rec&&W.pm===W.rec.key?' <span class="tag">✨ по рекомендации</span>':''}</b></div>
           <div class="kp-f ro"><label>Состав</label><b>👤 ${W.people.size} + 🤖 ${W.digital.size} из ${depts.size} направлений</b></div>
           <div class="kp-f ro"><label>Этапы</label><b>${(tpl||TPL[4]).stages.map(s=>s.name).join(' → ')}</b></div>
         </div>
@@ -133,6 +179,8 @@
     function wire(){
       root.querySelectorAll('[data-tpl]').forEach(b=>b.onclick=()=>{ W.tpl=b.dataset.tpl; const t=TPL.find(x=>x.id===W.tpl);
         if (!W.name && t.id!=='free') W.name = t.title+' · ';
+        if (!W.goal || TPL.some(x=>x.goal && x.goal===W.goal)) W.goal = t.goal||'';   /* цель из шаблона, если не своя */
+        applyRec(t);                                  /* смена контекста → новый состав и новый кандидат в РП */
         draw(); });
       const nm=root.querySelector('#kpName'); if(nm) nm.oninput=()=>{ W.name=nm.value; root.querySelector('#kpNext').disabled=!canNext(); };
       const gl=root.querySelector('#kpGoal'); if(gl) gl.oninput=()=>{ W.goal=gl.value; };
@@ -141,12 +189,13 @@
       root.querySelectorAll('[data-pp]').forEach(c=>c.onchange=()=>{ c.checked?W.people.add(c.dataset.pp):W.people.delete(c.dataset.pp); draw(); });
       root.querySelectorAll('[data-pd]').forEach(c=>c.onchange=()=>{ c.checked?W.digital.add(c.dataset.pd):W.digital.delete(c.dataset.pd); draw(); });
       const rc=root.querySelector('#kpRec'); if(rc) rc.onclick=()=>{ const t=TPL.find(x=>x.id===W.tpl);
-        t.rec.people.forEach(k=>W.people.add(k)); t.rec.digital.forEach(k=>W.digital.add(k)); draw();
-        toast('Состав собран по шаблону — правьте чекбоксами'); };
+        const r=recSet(t); W.people=r.people; W.digital=r.digital;
+        if (W.pm && W.pm!==heroKey()) W.people.add(W.pm);   /* РП всегда в составе */
+        draw(); toast('Состав возвращён к рекомендованному'); };
       const pv=root.querySelector('#kpPrev'); if(pv) pv.onclick=()=>{ W.step--; draw(); };
       const nx=root.querySelector('#kpNext'); if(nx) nx.onclick=()=>{
         if (!canNext()) return;
-        if (W.step<3){ W.step++; if (W.step===2 && W.pm && W.pm!=='mgmt:Вячеслав') W.people.add(W.pm); draw(); return; }
+        if (W.step<3){ W.step++; if (W.step===2 && W.pm && W.pm!==heroKey()) W.people.add(W.pm); draw(); return; }
         createProject();
       };
     }
@@ -155,10 +204,10 @@
       const proj = { id:'kp'+Date.now().toString(36), tpl:W.tpl, icon:tpl.icon, name:W.name.trim(), goal:W.goal.trim(), due:W.due.trim(),
         pm:W.pm, created:hh(),
         /* жизненный цикл: назначенный РП должен ПОДТВЕРДИТЬ назначение */
-        status: W.pm==='mgmt:Вячеслав' ? 'active' : 'pending',
+        status: W.pm===heroKey() ? 'active' : 'pending',
         people:[...W.people], digital:[...W.digital],
         stages: tpl.stages.map(s=>({ name:s.name, tasks:s.tasks.map(t=>({ ...t, who:null, dw:null, done:false })) })),
-        feed:[{t:hh(), e:'Проект создан. РП: '+(W.pm||'').split(':')[1]+(W.pm==='mgmt:Вячеслав'?' (ведёт сам)':' — назначен Вячеславом')}] };
+        feed:[{t:hh(), e:'Проект создан. РП: '+(W.pm||'').split(':')[1]+(W.pm===heroKey()?' (ведёт сам)':' — назначен '+hero().first)+(W.rec&&W.pm===W.rec.key?' · по рекомендации ассистента':'')}] };
       /* автоназначение: исполнитель = первый человек состава из отдела задачи, напарник = первый цифровой */
       proj.stages.forEach(s=>s.tasks.forEach(tk=>{
         tk.who = (proj.people.find(k=>k.split(':')[0]===tk.dept)||'').split(':')[1]||null;
@@ -311,10 +360,12 @@
   /* ── префилл мастера ассистентом: «создай проект тендера…» → шаг 4 ── */
   window.__KAM_WIZ_PREFILL = function(o){
     const tpl = TPL.find(t=>t.id===(o&&o.tpl)) || TPL[0];
-    const pm = (o&&o.pm) || 'mgmt:Вячеслав';
+    const rec = recommendPM(tpl);                       /* ассистент тоже предлагает РП по контексту */
+    const pm  = (o&&o.pm) || (rec?rec.key:heroKey());
+    const r   = recSet(tpl);
     const W = { step:3, tpl:tpl.id, name:(o&&o.name)||tpl.title+' · новый', goal:tpl.goal, due:(o&&o.due)||'',
-      pm, people:new Set(tpl.rec.people), digital:new Set(tpl.rec.digital) };
-    if (pm!=='mgmt:Вячеслав') W.people.add(pm);
+      pm, rec, people:r.people, digital:r.digital };
+    if (pm!==heroKey()) W.people.add(pm);
     window.__KPW = W;
     navTo('kproj-new');
     return { tpl: tpl.title, pm: pm.split(':')[1] };
