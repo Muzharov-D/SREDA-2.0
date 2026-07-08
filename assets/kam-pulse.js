@@ -70,6 +70,19 @@
     .mp-hidrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 4px}
     .mp-row [data-hide]{opacity:0;flex:none;transition:var(--transition-fast)}
     .mp-row:hover [data-hide],.mp-row [data-hide]:focus-visible{opacity:1}
+    /* отчёт цифрового сотрудника: что сделал и что получилось */
+    .mp-witem{margin-bottom:2px}
+    .mp-rep{margin:-2px 0 10px;padding:12px 16px;border:1px solid var(--line2);border-left:3px solid var(--acc);border-radius:0 var(--r-sm) var(--r-sm) 0;background:var(--panel-hover)}
+    .mp-rep .hd{font-size:12.5px;color:var(--acc);font-weight:600;margin-bottom:8px}
+    .mp-rep b{display:block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--faint);margin:8px 0 4px}
+    .mp-rep ul{margin:0;padding-left:18px}
+    .mp-rep li{color:var(--txt2);font-size:13px;line-height:1.6}
+    .mp-rep p{margin:0;color:var(--txt);font-size:13.5px;line-height:1.55}
+    .mp-rep .ft{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px solid var(--line2);color:var(--muted);font-size:12px}
+    /* маршрут отдела в пульсе компании */
+    .mp-deptcard{margin-bottom:6px}
+    .mp-deptcard .mp-row{margin-bottom:0}
+    .mp-routeline{display:flex;gap:18px;flex-wrap:wrap;padding:5px 16px 9px 46px;color:var(--faint);font-size:11.5px}
     .mp-seg{display:inline-flex;border:1px solid var(--line2);border-radius:var(--r-xs);overflow:hidden;background:var(--panel)}
     .mp-seg-b{border:0;background:transparent;color:var(--muted);padding:7px 16px;font-size:13px;cursor:pointer;font-family:inherit;transition:var(--transition-fast)}
     .mp-seg-b:hover{color:var(--txt2);background:var(--panel-hover)}
@@ -244,6 +257,57 @@
   };
   const udata = () => UDATA[CURRENT] || UDATA.mgmt;
 
+  /* ── путь взаимодействия: что отдел принимает и что отдаёт ──
+     [отдел, что передают, кто принимает у нас] / [отдел, что передаём, гейт] */
+  const ROUTES = {
+    mgmt: { in:[ ['sales','воронку и прогноз выручки','agent-reporting'], ['prod','статусы внедрений и риски','kam-director'], ['dev','статус релизов','kam-director'] ],
+            out:[ ['strategy','приоритеты квартала','accept'], ['sales','решения по сделкам','sign'], ['hr','планы по штату','auto'] ] },
+    dev:  { in:[ ['sales','требования клиента и сроки','dev-team-lead'], ['rzd','отраслевые требования','rail-tech-lead'], ['avandata','сырые данные платформы','ai-internal-lead'] ],
+            out:[ ['prod','релиз и документацию','accept'], ['mgmt','статус разработки','auto'], ['sales','демо и технические ответы','sign'] ] },
+    prod: { in:[ ['sales','контракт и обязательства','production-director'], ['dev','релиз и документацию','production-deputy'] ],
+            out:[ ['mgmt','статус внедрения и риски','auto'], ['hr','потребность в ресурсах','accept'], ['sales','сигнал на допродажу','sign'] ] },
+    sales:{ in:[ ['marketing','квалифицированные лиды',null], ['dev','демо и технические ответы',null] ],
+            out:[ ['prod','контракт на внедрение','sign'], ['mgmt','воронку и прогноз','auto'] ] },
+    marketing:{ in:[ ['strategy','позиционирование',null], ['dev','материалы по продукту',null] ],
+            out:[ ['sales','квалифицированные лиды','accept'] ] },
+    strategy:{ in:[ ['mgmt','цели департамента',null], ['avandata','аналитику рынка',null] ],
+            out:[ ['marketing','позиционирование','accept'], ['mgmt','стратегические рекомендации','auto'] ] },
+    rzd:  { in:[ ['sales','запрос отраслевого клиента',null] ],
+            out:[ ['dev','отраслевые требования','accept'], ['mgmt','риски по контракту','auto'] ] },
+    hr:   { in:[ ['prod','потребность в ресурсах',null], ['mgmt','планы по штату',null] ],
+            out:[ ['mgmt','кадровые сигналы','auto'] ] },
+    avandata:{ in:[ ['dev','сырые данные платформы',null] ],
+            out:[ ['strategy','аналитику рынка','auto'], ['sales','сегменты и скоринг','accept'] ] },
+  };
+
+  /* ── отчёты цифровых сотрудников: что сделал и что получилось ── */
+  const REPORTS = {
+    'agent-reporting': { did:['Собрал выручку, воронку и статусы проектов из CRM и трекера','Сверил факт с планом за неделю','Свёл в дашборд, подсветил отклонения'],
+      result:'Недельный дашборд готов: выручка 84% плана, воронка +12 сделок, 2 отклонения выше 15% помечены красным.', took:'12 минут вместо 3 часов', next:'После вашей приёмки уходит в Правление' },
+    'kam-director': { did:['Прочитал вчерашние отчёты отделов и почту','Отобрал 4 события, влияющие на решения дня','Подсветил риск по тендеру РЖД'],
+      result:'Брифинг на 09:00 готов: 4 события, 1 риск (цена лота у порога маржи), 3 решения ждут вас.', took:'6 минут', next:'После проверки — в ваш календарь и канал отдела' },
+    'exec-assistant': { did:['Сверил календарь и участников встречи 14:00','Поднял историю переговоров и прошлые протоколы','Составил повестку и черновик протокола'],
+      result:'Встреча 14:00 подготовлена: повестка из 5 пунктов, бриф по участникам, черновик протокола.', took:'4 минуты', next:'Нужно подтверждение: отправлять ли приглашение от вашего имени' },
+    'ai-internal-lead': { did:['Прогнал 6 моделей на 240 задачах департамента','Замерил качество, задержку и стоимость на токен','Сравнил с моделью, которая сейчас в проде'],
+      result:'Кандидат обходит текущую модель на 6% по качеству при сопоставимой цене; задержка выросла на 40 мс.', took:'ночной прогон, 5 часов', next:'После вашей приёмки — A/B на скоринге MQL, 2 недели' },
+    'dev-team-lead': { did:['Собрал релиз 2.4 и прогнал регрессию','Проверил совместимость шины CDP с контуром РЖД','Нашёл расхождение версий шины между стендами'],
+      result:'Релиз готов, но версия шины CDP на стенде РЖД отстаёт на минор — нужно решение, какую версию брать в 2.4.', took:'2 часа', next:'Жду вашего ответа, дальше — публикация релиз-нот' },
+    'rail-tech-lead': { did:['Проверил интеграцию с системами РЖД по 18 сценариям','Прогнал нагрузочный тест на пиковом профиле','Оформил 2 замечания к обработке ретраев'],
+      result:'Интеграция проходит 16 из 18 сценариев; 2 замечания по ретраям — не блокирующие, но правятся до сдачи.', took:'3 часа', next:'После вашей приёмки код-ревью закрывается' },
+    'production-deputy': { did:['Прогнал приёмочные сценарии на контуре клиента','Зафиксировал 3 замечания и передал разработке','Обновил план вех с учётом задержки доступов'],
+      result:'Приёмочные сценарии пройдены на 90%; 3 замечания в работе, веха «Сдача» под риском сдвига на неделю.', took:'полдня', next:'После вашей приёмки — статус-отчёт клиенту' },
+    'production-director': { did:['Свёл SLA по действующим внедрениям','Проверил готовность поддержки принять проект','Подготовил пакет передачи с регламентом эскалаций'],
+      result:'Проект готов к передаче в поддержку: SLA 99.5%, дежурства расписаны, регламент эскалаций согласован.', took:'1 час', next:'Передача необратима — нужна ваша подпись' },
+  };
+  /* у любого ЦС есть отчёт: если не расписан вручную — собираем из его обязанностей */
+  function report(id){
+    if (REPORTS[id]) return REPORTS[id];
+    const w = allDigital().find(x=>x.id===id); if(!w) return null;
+    const duties = (w.ji && w.ji.duties) || [];
+    if (!duties.length && !w.now) return null;
+    return { did: duties.slice(0,3), result: w.now ? 'Сейчас в работе: '+w.now+'.' : (w.title||''), took:'', next:'' };
+  }
+
   /* выключенный гейт → ассистент делает сам, решение не поднимается к вам */
   function waitingItems(){ return udata().waiting.filter(w=>gateOn(w.tag)); }
   window.__kamWaiting = waitingItems;
@@ -340,7 +404,13 @@
     if(id==='waiting') return waitingItems().map(waitRowHTML).join('');
     if(id==='drafts')  return drafts().map(d=>`<div class="mp-row" data-doc="${d.id}" style="cursor:pointer"><span class="mp-emoji">${d.ic}</span><span class="mp-txt" style="flex:1;color:var(--txt)">${escHtml(d.t)} <span style="color:var(--faint)">· ${escHtml(d.by)}</span></span><span class="mp-pill" style="background:var(--acc-soft);color:var(--acc)">${escHtml(d.st)}</span><button class="mp-btn" data-doc="${d.id}">Открыть</button></div>`).join('');
     if(id==='meetings') return meetings().map(m=>`<div class="mp-row"><span class="mp-time">${m.t}</span><span class="mp-txt">${escHtml(m.text)} <span style="color:var(--faint)">· ${escHtml(m.by)}</span></span>${m.brief?`<button class="mp-btn" data-brief="1">бриф</button>`:''}</div>`).join('');
-    if(id==='staff')   return myStaff().map(w=>`<div class="mp-row" data-open="${w.id}" style="cursor:pointer"><span class="mp-emoji">${w.emoji||'🤖'}</span><span class="mp-txt" style="flex:none;min-width:200px;color:var(--txt)">${escHtml(w.name)}</span><span class="mp-txt" style="flex:1;color:var(--muted);font-size:13px">${escHtml(w.now||w.title||'')}</span>${staffPill(w)}</div>`).join('');
+    if(id==='staff')   return myStaff().map(w=>`<div class="mp-witem">
+      <div class="mp-row" data-open="${w.id}" style="cursor:pointer">
+        <span class="mp-emoji">${w.emoji||'🤖'}</span>
+        <span class="mp-txt" style="flex:none;min-width:200px;color:var(--txt)">${escHtml(w.name)}</span>
+        <span class="mp-txt" style="flex:1;color:var(--muted);font-size:13px">${escHtml(w.now||w.title||'')}</span>
+        ${staffPill(w)}${hasRep(w.id)?`<button class="mp-btn" data-rep="1">Отчёт ▾</button>`:''}
+      </div>${repHTML(w.id)}</div>`).join('');
     if(id==='zoom')    return `<div class="mp-row mp-suggest"><span class="mp-emoji">🎙️</span><span class="mp-txt">${escHtml(udata().zoom)}</span><button class="mp-btn" data-zoom="1">Разобрать</button></div>`;
     if(id==='models')  return infoRows(MODELS);
     if(id==='sla')     return infoRows(SLA);
@@ -375,7 +445,7 @@
     const zb=root.querySelector('[data-zoom]'); if(zb) zb.onclick=()=>navTo('mypulse-zoom');
     const br=root.querySelector('[data-brief]'); if(br) br.onclick=()=>toast('Бриф к встрече готовит Двойник ассистента');
     const as=root.querySelector('[data-asst]'); if(as) as.onclick=()=>{ const ov=$('#overlay'); if(ov&&ov._open) ov._open(); };
-    wireSeg(root);
+    wireSeg(root); wireReports(root);
     root.querySelectorAll('#mpEdit,#mpEdit2').forEach(b=>b.onclick=()=>navTo('mypulse-constructor'));
     if(!greeted){ greeted=true; const g=root.querySelector('#mpGreet'); if(g) typeInto(g, greet, null, null); }
   }
@@ -435,19 +505,46 @@
   const loadCol = (p) => p>=95?'var(--red)':p>=82?'var(--amber)':'var(--acc)';
 
   /* ── общие компоненты «точка участия» и «поток передач» ── */
+  /* агент своими словами: что сделал, что получилось, куда уходит дальше */
+  function repHTML(id){
+    const r = report(id); if(!r) return '';
+    const w = allDigital().find(x=>x.id===id) || {};
+    return `<div class="mp-rep" hidden>
+      <div class="hd">${w.emoji||'🤖'} ${escHtml(w.name||'Цифровой сотрудник')} — отчёт о работе</div>
+      ${r.did.length?`<b>Что сделал</b><ul>${r.did.map(d=>`<li>${escHtml(d)}</li>`).join('')}</ul>`:''}
+      <b>Результат</b><p>${escHtml(r.result)}</p>
+      ${(r.took||r.next)?`<div class="ft">${r.took?`<span>⏱ ${escHtml(r.took)}</span>`:''}${r.next?`<span>→ ${escHtml(r.next)}</span>`:''}</div>`:''}
+    </div>`;
+  }
+  const hasRep = (id)=> !!(id && report(id));
+
   function waitRowHTML(w){
     const btn = w.sev==='amber' ? 'Ответить' : (w.tag==='санкция' ? 'Подписать' : (w.tag==='решение' ? 'Решить' : 'Принять'));
-    return `<div class="mp-row ${w.sev}">
-      <span class="mp-pill ${w.sev}">${w.tag}</span>
-      <span class="mp-txt">${escHtml(w.text)}</span>
-      ${w.open?`<button class="mp-btn" data-open="${w.open}">Открыть</button>`:''}
-      <button class="mp-btn" data-accept="1">${btn}</button>
+    return `<div class="mp-witem">
+      <div class="mp-row ${w.sev}">
+        <span class="mp-pill ${w.sev}">${w.tag}</span>
+        <span class="mp-txt">${escHtml(w.text)}</span>
+        ${hasRep(w.open)?`<button class="mp-btn" data-rep="1">Отчёт ▾</button>`:''}
+        ${w.open?`<button class="mp-btn" data-open="${w.open}">Открыть</button>`:''}
+        <button class="mp-btn" data-accept="1">${btn}</button>
+      </div>
+      ${w.open?repHTML(w.open):''}
     </div>`;
+  }
+  /* раскрытие отчётов — общее для стола и пульсов */
+  function wireReports(root){
+    root.querySelectorAll('[data-rep]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation();
+      const item=b.closest('.mp-witem'); const box=item&&item.querySelector('.mp-rep'); if(!box) return;
+      const opening=box.hasAttribute('hidden');
+      if(opening) box.removeAttribute('hidden'); else box.setAttribute('hidden','');
+      b.textContent = opening?'Отчёт ▴':'Отчёт ▾';
+    });
   }
   function wireWait(root){
     root.querySelectorAll('[data-open]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); navTo('worker:'+b.dataset.open); });
     root.querySelectorAll('[data-accept]').forEach(b=>b.onclick=(e)=>{ e.stopPropagation();
-      const row=b.closest('.mp-row'); if(row){ row.style.transition='opacity .25s'; row.style.opacity='0'; setTimeout(()=>row.remove(),250); } toast('Готово — точка закрыта'); });
+      const row=b.closest('.mp-witem')||b.closest('.mp-row'); if(row){ row.style.transition='opacity .25s'; row.style.opacity='0'; setTimeout(()=>row.remove(),250); } toast('Готово — точка закрыта'); });
+    wireReports(root);
   }
   const fNode = (emoji,label,tone)=>`<div class="mp-node"><div class="mp-nb ${tone||'acc'}">${emoji}</div><span>${escHtml(label)}</span></div>`;
   const fSyn  = (kind)=> kind==='gate' ? `<div class="mp-syn red"><span class="lk">🔒</span></div>` : `<div class="mp-syn ok"></div>`;
@@ -455,25 +552,53 @@
   const leadsCount = (dept,name)=>{ const first=String(name||'').split(' ')[0]; if(!first) return 0;
     return digitalOf(dept).filter(d=>String(d.lead||'').indexOf(first)>=0).length; };
 
+  /* маршрут отдела: кто принимает входящее и на каком гейте стоит исходящее */
+  const routeOf  = (d) => ROUTES[d] || { in:[], out:[] };
+  const acceptor = (dept,id) => { const w = id && allDigital().find(x=>x.id===id); if(w) return w.name;
+    const f = digitalOf(dept)[0]; return f ? f.name : 'отдел'; };
+  const GREEN_ST = 'background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green)';
+  function gateLabel(g){   /* гейты берём из конструктора: снятый гейт меняет маршрут */
+    if (g==='sign')   return gateOn('санкция') ? { t:'после вашей подписи', style:'background:color-mix(in srgb,var(--red) 14%,transparent);color:var(--red)' }
+                                               : { t:'ассистент отправляет сам', style:GREEN_ST };
+    if (g==='accept') return gateOn('приёмка') ? { t:'после вашей приёмки', style:'background:color-mix(in srgb,var(--amber) 16%,transparent);color:var(--amber)' }
+                                               : { t:'ассистент принимает сам', style:GREEN_ST };
+    return { t:'уходит автоматически', style:GREEN_ST };
+  }
+
   /* ── экран: Пульс «Отдел» (текущего пользователя) ── */
   function renderDeptPulse(root){
     const dept=hero().dept;
-    const ppl=peopleOf(dept), dig=digitalOf(dept);
+    const ppl=peopleOf(dept), dig=digitalOf(dept), rt=routeOf(dept);
     const firstDig = dig[0] || { name:'Цифровой сотрудник', emoji:'🤖' };
     const wait = udata().waiting.slice(0,2);
     root.innerHTML = `
       <div class="mp-metarow"><span class="meta">Пульс отдела «${dLabel(dept)}» · ${weekday()}, утро</span>${segHTML('dept')}</div>
       <div class="mp-sec">Ждёт отдел <span class="cnt mp-pill red">${wait.length}</span></div>
       ${wait.map(waitRowHTML).join('')}
-      <div class="mp-sec">Передачи сейчас</div>
+      <div class="mp-sec">Путь взаимодействия отдела</div>
+      <div class="mp-flowcap" style="margin-top:0">Кто передаёт работу в отдел, где она проходит через вас и куда уходит дальше.</div>
+      ${rt.in.map(([from,what,by])=>`<div class="mp-row">
+        <span class="mp-emoji">📥</span>
+        <span class="mp-txt" style="flex:none;min-width:190px;color:var(--txt)">${dIcon(from)} ${escHtml(dLabel(from))}</span>
+        <span class="mp-txt" style="flex:1;color:var(--muted);font-size:13px">передают: ${escHtml(what)}</span>
+        <span class="mp-pill" style="background:var(--acc-soft);color:var(--acc)">принимает ${escHtml(acceptor(dept,by))}</span></div>`).join('')}
+      <div class="mp-flowcap" style="margin:14px 0 6px">Внутри отдела</div>
       <div class="mp-flow">
         ${fNode(firstDig.emoji||'🤖', firstDig.name,'acc')}
         ${fSyn('ok')}
         ${fNode('🧑‍💼',hero().first,'acc')}
-        ${fSyn('gate')}
+        ${fSyn(gateOn('приёмка')?'gate':'ok')}
         ${fNode('🏛️','Руководство','mut')}
       </div>
-      <div class="mp-flowcap"><span style="color:var(--red)">🔒 Передача застряла на гейте: результат ждёт вашей приёмки — дальше не уходит.</span></div>
+      <div class="mp-flowcap">${gateOn('приёмка')
+        ? '<span style="color:var(--red)">🔒 Гейт приёмки включён: результат ждёт вас — дальше не уходит.</span>'
+        : '<span style="color:var(--green)">✓ Гейт приёмки снят: ассистент принимает работу сам и передаёт дальше.</span>'}</div>
+      <div class="mp-flowcap" style="margin:14px 0 6px">Исходящие передачи</div>
+      ${rt.out.map(([to,what,gate])=>{ const g=gateLabel(gate); return `<div class="mp-row">
+        <span class="mp-emoji">📤</span>
+        <span class="mp-txt" style="flex:none;min-width:190px;color:var(--txt)">${dIcon(to)} ${escHtml(dLabel(to))}</span>
+        <span class="mp-txt" style="flex:1;color:var(--muted);font-size:13px">передаём: ${escHtml(what)}</span>
+        <span class="mp-pill" style="${g.style}">${g.t}</span></div>`; }).join('')}
       <div class="mp-sec">Кто над чем работает <span class="cnt mp-pill" style="background:var(--acc-soft);color:var(--acc)">${ppl.length+dig.length}</span></div>
       ${ppl.map(p=>{ const n=leadsCount(dept,p.name); return `<div class="mp-row">
         <span class="mp-emoji">🧑‍💼</span>
@@ -503,13 +628,18 @@
       <div class="mp-sec">Межотделовые передачи <span class="cnt mp-pill" style="background:var(--acc-soft);color:var(--acc)">${feed.length}</span></div>
       ${feed.map(f=>`<div class="mp-row"><span class="mp-emoji">🔄</span><span class="mp-txt" style="flex:none;min-width:230px;color:var(--txt)">${escHtml(f[1])}</span><span class="mp-txt" style="color:var(--muted);font-size:13px">${escHtml(f[2])}</span></div>`).join('')}
       <div class="mp-sec">Отделы <span class="cnt mp-pill" style="background:var(--acc-soft);color:var(--acc)">${vis.length}</span>${hid.length?`<span class="mp-pill" style="background:var(--panel-hover);color:var(--muted);margin-left:6px">+${hid.length} скрыто</span>`:''}</div>
-      ${vis.length?vis.map(id=>`<div class="mp-row" data-dept="${id}" style="cursor:pointer">
-        <span class="mp-emoji">${dIcon(id)}</span>
-        <span class="mp-txt" style="flex:none;min-width:170px;color:var(--txt)">${escHtml(dLabel(id))}</span>
-        <span class="mp-mb" style="min-width:104px">${hc(id)} чел · ${dhc(id)} ЦС</span>
-        <span class="mp-bar"><i style="width:${dLoad(id)}%;background:${loadCol(dLoad(id))}"></i></span>
-        <span class="mp-pct">${dLoad(id)}%</span>
-        <button class="mp-ic" data-hide="${id}" title="Скрыть отдел из пульса" aria-label="Скрыть ${escHtml(dLabel(id))}">×</button></div>`).join('')
+      ${vis.length?vis.map(id=>{ const r=routeOf(id);
+        const from=r.in.map(x=>dLabel(x[0])).join(', ')||'—', to=r.out.map(x=>dLabel(x[0])).join(', ')||'—';
+        return `<div class="mp-deptcard">
+        <div class="mp-row" data-dept="${id}" style="cursor:pointer">
+          <span class="mp-emoji">${dIcon(id)}</span>
+          <span class="mp-txt" style="flex:none;min-width:170px;color:var(--txt)">${escHtml(dLabel(id))}</span>
+          <span class="mp-mb" style="min-width:104px">${hc(id)} чел · ${dhc(id)} ЦС</span>
+          <span class="mp-bar"><i style="width:${dLoad(id)}%;background:${loadCol(dLoad(id))}"></i></span>
+          <span class="mp-pct">${dLoad(id)}%</span>
+          <button class="mp-ic" data-hide="${id}" title="Скрыть отдел из пульса" aria-label="Скрыть ${escHtml(dLabel(id))}">×</button>
+        </div>
+        <div class="mp-routeline"><span>📥 принимает от: ${escHtml(from)}</span><span>📤 передаёт в: ${escHtml(to)}</span></div></div>`; }).join('')
         :'<div class="mp-empty" style="text-align:left">Все отделы скрыты — верните нужные ниже.</div>'}
       ${hid.length?`<div class="mp-hidrow"><span class="mp-mb" style="min-width:0">Скрыты:</span>
         ${hid.map(id=>`<button class="mp-btn" data-show="${id}">${dIcon(id)} ${escHtml(dLabel(id))} ＋</button>`).join('')}
