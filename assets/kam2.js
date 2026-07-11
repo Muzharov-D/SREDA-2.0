@@ -35,46 +35,46 @@
   /* ---------------------------------------------------------------- опрос   */
   /* Каждый ответ добавляет веса по осям. Вопросы — про симптомы, не про хотелки. */
   const SURVEY = [
-    { q:'Что сейчас съедает больше всего вашего рабочего времени?',
+    { q:'На что уходит время, которое вы не хотели бы на это тратить?',
       opts:[
-        { t:'Рутина, которую в принципе можно кому-то передать',   w:{do:2} },
-        { t:'Разбираюсь, что происходит у команды и в отделах',    w:{watch:2} },
-        { t:'Держу в голове десятки мелких дел и всех дёргаю',      w:{help:2} },
-        { t:'Настраиваю, как всё вообще должно быть устроено',      w:{build:2} },
+        { t:'На рутину, которую по-хорошему пора кому-то отдать',      g:'Среда возьмёт это на себя', w:{do:2} },
+        { t:'На выяснение, кто чем занят и что где застряло',          g:'Среда покажет, где горит',  w:{watch:2} },
+        { t:'На то, чтобы всё помнить и никого не забыть дёрнуть',     g:'Среда станет вашей памятью',w:{help:2} },
+        { t:'На настройку того, как это вообще должно работать',       g:'Среда даст конструктор',    w:{build:2} },
       ]},
-    { q:'Когда что-то идёт не так, вы обычно узнаёте об этом…',
+    { q:'О том, что что-то пошло не так, вы узнаёте…',
       opts:[
-        { t:'Первым — держу руку на пульсе',                       w:{watch:2} },
-        { t:'Слишком поздно — хочу узнавать раньше',               w:{watch:1, help:1} },
-        { t:'Никак заранее — просто иду и разгребаю сам',          w:{do:2} },
-        { t:'И сразу меняю процесс, чтобы не повторялось',         w:{build:2} },
+        { t:'Раньше всех — я чувствую, когда что-то не так',          g:'включит Пульс',             w:{watch:2} },
+        { t:'Позже, чем хотелось бы — новости доходят с опозданием',  g:'включит ранние сигналы',    w:{watch:1, help:1} },
+        { t:'Когда уже пора тушить — и тушу сам',                     g:'даст задачи «под ключ»',    w:{do:2} },
+        { t:'И сразу переделываю процесс, чтобы не повторялось',      g:'откроет настройку процессов',w:{build:2} },
       ]},
-    { q:'Сколько людей по работе зависит от вас?',
+    { q:'Вы уехали на неделю без связи. Что будет с работой?',
       opts:[
-        { t:'Только я сам',                                        w:{do:2, help:1} },
-        { t:'Небольшая команда',                                   w:{help:1, watch:1} },
-        { t:'Несколько отделов',                                   w:{watch:2} },
-        { t:'Вся компания — я её, по сути, и собираю',             w:{build:2, watch:1} },
+        { t:'Встанет — почти всё держится на мне лично',             g:'Среда подставит руки',      w:{do:2, help:1} },
+        { t:'Замедлится — команда справится, но не без меня',        g:'Среда прикроет день',       w:{help:1, watch:1} },
+        { t:'Пойдёт по инерции — процессы держат',                   g:'Среда даст обзор сверху',   w:{watch:2} },
+        { t:'Ничего — я как раз строю так, чтобы шло само',          g:'Среда даст платформу',      w:{build:2, watch:1} },
       ]},
-    { q:'Идеальному помощнику вы бы в первую очередь доверили…',
+    { q:'Идеальному сотруднику вы бы первым делом отдали…',
       opts:[
-        { t:'Делать задачи за меня целиком',                       w:{do:2} },
-        { t:'Следить и вовремя докладывать',                       w:{watch:2} },
-        { t:'Вести мой день и ничего не забывать',                 w:{help:2} },
-        { t:'Собрать под меня команду и процессы',                 w:{build:2} },
+        { t:'Саму работу — пусть делает вместо меня',               g:'→ Поставить задачу',        w:{do:2} },
+        { t:'Наблюдение — пусть следит и вовремя сигналит',         g:'→ Пульс и санкции',         w:{watch:2} },
+        { t:'Мою голову — пусть помнит и напоминает',               g:'→ Мой день',                w:{help:2} },
+        { t:'Стройку — пусть соберёт команду и процессы',           g:'→ Команда и агенты',        w:{build:2} },
       ]},
-    { q:'«Хороший рабочий день» — это когда…',
+    { q:'Вечер. День удался, если…',
       opts:[
-        { t:'Много всего сделано руками',                          w:{do:2} },
-        { t:'Ничего не сгорело, всё под контролем',                w:{watch:2} },
-        { t:'Разгрёб всё, что висело',                             w:{help:2} },
-        { t:'Настроил так, что дальше идёт само',                  w:{build:2} },
+        { t:'Сделано много и руками',                               g:'усилит «Делаю»',            w:{do:2} },
+        { t:'Нигде не полыхнуло, всё под контролем',                g:'усилит «Слежу»',            w:{watch:2} },
+        { t:'Разгрёб всё, что висело на мне',                       g:'усилит «Помогает»',         w:{help:2} },
+        { t:'Настроил так, что дальше пошло само',                  g:'усилит «Строю»',            w:{build:2} },
       ]},
-    { q:'Насколько вам важно видеть, КАК именно всё было сделано?',
+    { q:'Насколько вам важно видеть, КАК именно всё сделано?',
       depth:true,
       opts:[
-        { t:'Дайте результат — в кухню я не полезу',               w:{}, depth:0 },
-        { t:'Хочу видеть, кто сделал и на чём основано',           w:{}, depth:1 },
+        { t:'Дайте результат — под капот не полезу',                g:'Среда спрячет кухню',       w:{}, depth:0 },
+        { t:'Хочу видеть, кто сделал и на чём основано',            g:'Среда покажет авторов и источники', w:{}, depth:1 },
       ]},
   ];
 
@@ -143,19 +143,66 @@
     .k2-survey{ position:fixed; inset:0; z-index:120; background:radial-gradient(1200px 600px at 70% -10%, #1c1f18 0%, #121310 60%);
       display:flex; align-items:center; justify-content:center; padding:24px; overflow:auto; }
     .k2-card{ width:min(680px,94vw); background:var(--k-panel); border:1px solid var(--k-line); border-radius:20px;
-      padding:34px 34px 28px; box-shadow:0 30px 80px rgba(0,0,0,.5); }
+      padding:34px 34px 28px; box-shadow:0 30px 80px rgba(0,0,0,.5); animation:k2rise .5s cubic-bezier(.22,1,.36,1); }
     .k2-eyebrow{ color:var(--k-gold); font-size:12px; letter-spacing:.14em; text-transform:uppercase; font-weight:700; }
     .k2-q{ font-size:23px; line-height:1.28; font-weight:700; margin:12px 0 22px; letter-spacing:-.01em; }
     .k2-opts{ display:flex; flex-direction:column; gap:11px; }
     .k2-opt{ text-align:left; background:var(--k-panel2); border:1px solid var(--k-line); color:var(--k-txt);
-      border-radius:13px; padding:16px 18px; font-size:15.5px; line-height:1.35; cursor:pointer; transition:.14s; }
+      border-radius:13px; padding:16px 18px; font-size:15.5px; line-height:1.35; cursor:pointer; transition:.14s; position:relative; }
     .k2-opt:hover{ border-color:var(--k-gold); background:#262a20; transform:translateY(-1px); }
+    .k2-opt .gain{ display:block; margin-top:6px; font-size:12px; color:var(--k-dim); }
+    .k2-opt:hover .gain{ color:var(--k-gold); }
+    .k2-opt.chosen{ border-color:var(--k-gold); background:#2a2e22; }
     .k2-progress{ display:flex; gap:6px; margin-top:24px; }
-    .k2-dot{ flex:1; height:4px; border-radius:2px; background:var(--k-line); }
+    .k2-dot{ flex:1; height:4px; border-radius:2px; background:var(--k-line); transition:background .3s; }
     .k2-dot.on{ background:var(--k-gold); }
     .k2-sub{ color:var(--k-dim); font-size:13.5px; margin-top:16px; }
-    .k2-back{ background:none; border:none; color:var(--k-dim); font-size:13px; cursor:pointer; padding:6px 0; }
+    .k2-back{ background:none; border:none; color:var(--k-dim); font-size:13px; cursor:pointer; padding:6px 0; margin-top:14px; }
     .k2-back:hover{ color:var(--k-txt); }
+    @keyframes k2rise{ 0%{transform:translateY(14px);opacity:0} 100%{transform:translateY(0);opacity:1} }
+
+    /* ---- опрос: живая двухпанельная сборка ---- */
+    .k2-survey.two{ align-items:stretch; justify-content:center; padding:0; }
+    .k2-stage2{ display:grid; grid-template-columns:1.12fr .88fr; width:100%; max-width:1120px; margin:auto; }
+    .k2-left{ padding:min(8vh,68px) clamp(24px,4vw,52px); display:flex; flex-direction:column; justify-content:center; }
+    .k2-right{ background:linear-gradient(180deg,#191b15,#15170f); border-left:1px solid var(--k-line);
+      padding:clamp(28px,5vh,46px) clamp(22px,2.6vw,34px); display:flex; flex-direction:column; min-height:100vh; }
+    @media(max-width:860px){ .k2-stage2{ grid-template-columns:1fr; } .k2-right{ min-height:auto; border-left:none; border-top:1px solid var(--k-line); } .k2-left{ padding:30px 22px; } }
+    .k2-right-h{ display:flex; align-items:center; justify-content:space-between; font-size:12px; letter-spacing:.14em;
+      text-transform:uppercase; color:var(--k-dim); font-weight:700; }
+    .k2-right-h .ttl{ color:var(--k-txt); }
+    .k2-live{ display:inline-flex; align-items:center; gap:6px; color:var(--k-gold); font-size:10.5px; }
+    .k2-live b{ width:7px; height:7px; border-radius:50%; background:var(--k-gold); animation:k2blink 1.4s infinite; }
+    @keyframes k2blink{ 0%,100%{opacity:1} 50%{opacity:.25} }
+    .k2-axes{ display:flex; flex-direction:column; gap:13px; margin:20px 0 26px; }
+    .k2-ax{ position:relative; }
+    .k2-ax .t{ display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px; align-items:center; }
+    .k2-ax .t .lab{ display:flex; gap:7px; align-items:center; }
+    .k2-ax .t .p{ color:var(--k-dim); font-variant-numeric:tabular-nums; font-size:12px; transition:color .3s; }
+    .k2-ax.hot .t .p{ color:var(--k-gold); font-weight:700; }
+    .k2-ax .track{ height:8px; border-radius:5px; background:var(--k-line); overflow:visible; position:relative; }
+    .k2-ax .track i{ display:block; height:100%; width:0; background:linear-gradient(90deg,#c9a545,#f0d78a);
+      border-radius:5px; transition:width .65s cubic-bezier(.22,1,.36,1); }
+    .k2-ax.bump .track i{ box-shadow:0 0 14px rgba(232,196,104,.65); }
+    .k2-axbadge{ position:absolute; right:0; top:-24px; background:var(--k-gold); color:#191309; font-size:11px;
+      font-weight:800; padding:2px 8px; border-radius:999px; animation:k2pop .55s ease; pointer-events:none; }
+    @keyframes k2pop{ 0%{transform:translateY(10px) scale(.5);opacity:0} 45%{transform:translateY(-3px) scale(1.15);opacity:1} 100%{transform:translateY(0) scale(1);opacity:1} }
+    .k2-tray-h{ font-size:11.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--k-dim); margin-bottom:12px; font-weight:700; }
+    .k2-tray-h b{ color:var(--k-gold); }
+    .k2-tray{ display:flex; flex-direction:column; gap:9px; }
+    .k2-tray-empty{ color:var(--k-dim); font-size:13px; line-height:1.45; padding:16px; border:1px dashed var(--k-line);
+      border-radius:12px; text-align:center; }
+    .k2-tcard{ display:flex; align-items:center; gap:12px; background:var(--k-panel); border:1px solid var(--k-line);
+      border-radius:12px; padding:11px 13px; overflow:hidden; animation:k2card .5s cubic-bezier(.22,1,.36,1); }
+    .k2-tcard.leaving{ animation:k2out .32s ease forwards; }
+    .k2-tcard .ci{ font-size:19px; width:22px; text-align:center; }
+    .k2-tcard .cn{ font-weight:600; font-size:14px; }
+    .k2-tcard .ch{ color:var(--k-dim); font-size:11.5px; margin-top:1px; }
+    @keyframes k2card{ 0%{transform:scale(.82) translateY(8px);opacity:0} 60%{transform:scale(1.04)} 100%{transform:scale(1) translateY(0);opacity:1} }
+    @keyframes k2out{ to{opacity:0;transform:scale(.9);height:0;padding-top:0;padding-bottom:0;margin-top:-9px} }
+    .k2-toast{ margin-top:auto; padding-top:18px; color:var(--k-gold); font-size:13px; line-height:1.4; min-height:22px;
+      opacity:0; transform:translateY(6px); transition:opacity .32s, transform .32s; }
+    .k2-toast.show{ opacity:1; transform:translateY(0); }
     /* ---- результат сборки ---- */
     .k2-result h2{ font-size:26px; font-weight:800; letter-spacing:-.01em; margin:2px 0 4px; }
     .k2-axis-row{ display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px; }
@@ -225,53 +272,165 @@
   }
 
   /* ================================================================ ОПРОС  */
+  /* Живой сборщик: каждый ответ на глазах достраивает Среду в правой панели. */
   function runSurvey(){
     injectStyles();
     let step = 0;
     const raw = {}; AX.forEach(a=> raw[a]=0);
     let depth = 1;
+    let liveChosen = [];            // что уже «materialized» в панели
+    const history = [];             // [{w, depth}] по шагам — для честного «назад»
+    let locked = false;             // защита от двойного клика во время анимации
 
     const layer = el('div','k2-survey'); layer.id='k2Survey';
     document.body.appendChild(layer);
 
-    function apply(w){ for(const a in w){ raw[a]=(raw[a]||0)+w[a]; } }
-
+    /* ---- интро ---- */
     function drawIntro(){
+      layer.classList.remove('two');
       layer.innerHTML='';
       const c = el('div','k2-card');
       c.innerHTML = `
         <div class="k2-eyebrow">Среда собирается под вас</div>
         <div class="k2-q">Никто заранее не знает, что ему нужно от Среды.<br>Поэтому мы не спросим «что вы хотите».</div>
-        <div class="k2-sub">Ответьте на 6 коротких вопросов про вашу работу — и Среда соберёт себя сама. Лишнего не покажем: остальное всегда можно добрать.</div>
-        <div style="margin-top:26px"><button class="k2-cta" id="k2Start">Начать · 6 вопросов ▶</button></div>`;
+        <div class="k2-sub">6 коротких вопросов про вашу работу — и вы увидите, как Среда собирается прямо у вас на глазах. Лишнего не покажем: остальное всегда можно добрать.</div>
+        <div style="margin-top:26px"><button class="k2-cta" id="k2Start">Собрать мою Среду ▶</button></div>`;
       layer.appendChild(c);
-      $('#k2Start').onclick = ()=>{ step=0; drawStep(); };
+      $('#k2Start').onclick = ()=>{ step=0; buildShell(); drawLeft(); };
     }
 
-    function drawStep(){
+    /* ---- двухпанельная оболочка (строится один раз, панель справа живёт) --- */
+    function buildShell(){
+      layer.classList.add('two');
+      layer.innerHTML = `
+        <div class="k2-stage2">
+          <div class="k2-left" id="k2Left"></div>
+          <aside class="k2-right">
+            <div class="k2-right-h"><span class="ttl">Ваша Среда</span>
+              <span class="k2-live"><b></b> собирается</span></div>
+            <div class="k2-axes" id="k2Axes"></div>
+            <div class="k2-tray-h">Модули · <b id="k2Cnt">0</b></div>
+            <div class="k2-tray" id="k2Tray">
+              <div class="k2-tray-empty" id="k2Empty">пока пусто — отвечайте, и Среда начнёт собираться под вас</div>
+            </div>
+            <div class="k2-toast" id="k2Toast"></div>
+          </aside>
+        </div>`;
+      const axes = $('#k2Axes', layer);
+      AX.forEach(a=>{
+        const row = el('div','k2-ax'); row.dataset.a = a;
+        row.innerHTML = `<div class="t"><span class="lab">${AXES[a].icon} ${AXES[a].label}</span>
+          <span class="p">0%</span></div><div class="track"><i></i></div>`;
+        axes.appendChild(row);
+      });
+    }
+
+    /* ---- левая колонка: вопрос + ответы ---- */
+    function drawLeft(){
       const s = SURVEY[step];
-      layer.innerHTML='';
-      const c = el('div','k2-card');
       const dots = SURVEY.map((_,i)=>`<div class="k2-dot ${i<=step?'on':''}"></div>`).join('');
-      c.innerHTML = `
+      const left = $('#k2Left', layer);
+      left.innerHTML = `
         <div class="k2-eyebrow">Вопрос ${step+1} из ${SURVEY.length}</div>
         <div class="k2-q">${esc(s.q)}</div>
         <div class="k2-opts" id="k2Opts"></div>
         <div class="k2-progress">${dots}</div>
         ${step>0?'<button class="k2-back" id="k2Back">← назад</button>':''}`;
-      layer.appendChild(c);
-      const box = $('#k2Opts', c);
+      const box = $('#k2Opts', left);
       s.opts.forEach(o=>{
-        const b = el('button','k2-opt', esc(o.t));
-        b.onclick = ()=>{
-          apply(o.w||{});
-          if (s.depth) depth = o.depth;
-          if (step < SURVEY.length-1){ step++; drawStep(); }
-          else finish();
-        };
+        const b = el('button','k2-opt', `${esc(o.t)}${o.g?`<span class="gain">${esc(o.g)}</span>`:''}`);
+        b.onclick = ()=> answer(o, s, b);
         box.appendChild(b);
       });
-      if (step>0) $('#k2Back',c).onclick = ()=>{ step--; drawStep(); };
+      if (step>0) $('#k2Back',left).onclick = goBack;
+    }
+
+    /* ---- ответ: применяем веса и оживляем панель ---- */
+    function answer(o, s, btn){
+      if (locked) return; locked = true;
+      btn.classList.add('chosen');
+      const w = o.w || {};
+      for (const a in w) raw[a] = (raw[a]||0) + w[a];
+      if (s.depth) depth = o.depth;
+      history[step] = { w, depth: s.depth ? o.depth : null };
+      updateRight(w);
+      setTimeout(()=>{
+        locked = false;
+        if (step < SURVEY.length-1){ step++; drawLeft(); }
+        else finish();
+      }, 560);
+    }
+
+    function goBack(){
+      if (locked || step===0) return;
+      step--;
+      const h = history[step];
+      if (h && h.w){ for (const a in h.w) raw[a] = (raw[a]||0) - h.w[a]; }
+      history.length = step;
+      drawLeft();
+      updateRight(null);   // панель честно «схлопывается» назад
+    }
+
+    /* ---- сердце: пересчёт осей и материализация модулей ---- */
+    function countUp(node, to){
+      const from = parseInt(node.textContent) || 0;
+      const t0 = performance.now(), dur = 560;
+      (function tick(t){
+        const k = Math.min(1, (t - t0)/dur);
+        node.textContent = Math.round(from + (to-from)*k) + '%';
+        if (k < 1) requestAnimationFrame(tick);
+      })(performance.now());
+      // страховка: если rAF не тикает — гарантированно доводим до финального значения
+      setTimeout(()=>{ node.textContent = to + '%'; }, dur + 140);
+    }
+    function updateRight(changedW){
+      const norm = normalize(raw);
+      const prim = primaryAxis(norm);
+      AX.forEach(a=>{
+        const row = layer.querySelector('.k2-ax[data-a="'+a+'"]'); if(!row) return;
+        const pct = Math.round((norm[a]||0)*100);
+        row.querySelector('i').style.width = pct + '%';
+        countUp(row.querySelector('.p'), pct);
+        row.classList.toggle('hot', a===prim && pct>0);
+        if (changedW && changedW[a]){
+          row.classList.add('bump');
+          const bdg = el('div','k2-axbadge','+'+changedW[a]);
+          row.querySelector('.track').appendChild(bdg);
+          setTimeout(()=>{ bdg.remove(); row.classList.remove('bump'); }, 950);
+        }
+      });
+      // модули
+      const tray = $('#k2Tray', layer);
+      const nc = assemble(norm);
+      const added   = nc.filter(id=>!liveChosen.includes(id));
+      const removed = liveChosen.filter(id=>!nc.includes(id));
+      removed.forEach(id=>{
+        const card = tray.querySelector('[data-m="'+id+'"]');
+        if (card){ card.classList.add('leaving'); setTimeout(()=>card.remove(), 320); }
+      });
+      added.forEach(id=>{
+        const m = MODULES.find(x=>x.id===id); if(!m) return;
+        const card = el('div','k2-tcard'); card.dataset.m = id;
+        card.innerHTML = `<span class="ci">${m.icon}</span>
+          <div><div class="cn">${esc(m.name)}</div><div class="ch">${esc(m.hint)}</div></div>`;
+        tray.appendChild(card);
+      });
+      liveChosen = nc.slice();
+      $('#k2Cnt', layer).textContent = nc.length;
+      const emp = $('#k2Empty', layer); if (emp) emp.style.display = nc.length ? 'none' : '';
+      // подсказка «что добавилось»
+      let msg = '';
+      if (added.length){ const m = MODULES.find(x=>x.id===added[0]); msg = `▲ Среда добавила «${m.name}» — ${m.hint}`; }
+      else if (removed.length){ msg = '▽ Среда убрала лишнее — держим только нужное'; }
+      else if (changedW){ const a = Object.keys(changedW)[0]; if (a && AXES[a]) msg = `▲ усилилась ось «${AXES[a].label}»`; }
+      if (msg) showToast(msg);
+    }
+    let toastTimer = null;
+    function showToast(msg){
+      const t = $('#k2Toast', layer); if(!t) return;
+      t.textContent = msg; t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(()=> t.classList.remove('show'), 2600);
     }
 
     function finish(){
@@ -282,6 +441,7 @@
     }
 
     function drawResult(){
+      layer.classList.remove('two');
       layer.innerHTML='';
       const c = el('div','k2-card k2-result');
       const prim = primaryAxis(profile.norm);
