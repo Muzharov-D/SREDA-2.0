@@ -1890,6 +1890,13 @@ ${a.prompt}
     },
   };
 
+  /* ---- данные наружу для kam2 (опрос → сборка Среды) ---------------------- */
+  window.__ORG.depts   = KAM_DEPTS;   // [{id,icon,label,persona,d}]
+  window.__ORG.team    = KAM_TEAM;    // {dept:[{name,surname,role,task,emoji,fn,acc,lead?}]}
+  window.__ORG.digital = KAM_DIGITAL; // {dept:[{id,name,emoji,title,fn,lead,model,now,ji}]}
+  window.__ORG.hc      = KAM_HC;      // {dept:кол-во людей}
+  window.__ORG.dhc     = KAM_DHC;     // {dept:кол-во цифровых}
+
   /* ---- дашборд руководителя: синтез и очередь решений под KAM ------------ */
   if (typeof DASHBOARD !== 'undefined'){
     DASHBOARD.synthesis = [
