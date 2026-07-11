@@ -497,6 +497,26 @@
     .k2-kpi{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
     .k2-kpi span{ background:var(--k-panel2); border:1px solid var(--k-line); border-radius:8px; padding:5px 9px; font-size:11.5px; }
     .k2-kpi b{ color:var(--k-gold); }
+    /* ---- личный ассистент: ядро, present на каждом экране кабинета ---- */
+    .k2-shell{ display:flex; gap:18px; align-items:flex-start; }
+    .k2-main{ flex:1; min-width:0; }
+    .k2-asst{ width:312px; flex-shrink:0; position:sticky; top:14px; align-self:flex-start;
+      background:var(--k-panel); border:1px solid var(--k-line); border-radius:16px; padding:16px; box-shadow:var(--k-sh-md); }
+    @media(max-width:1024px){ .k2-shell{ flex-direction:column; } .k2-asst{ width:100%; position:static; } }
+    .k2-asst-h{ display:flex; align-items:center; gap:11px; padding-bottom:13px; border-bottom:1px solid var(--k-line); }
+    .k2-asst-h .av{ width:38px; height:38px; border-radius:11px; background:var(--k-soft); display:flex; align-items:center; justify-content:center; font-size:20px; }
+    .k2-asst-h b{ font-size:14.5px; color:var(--k-txt); } .k2-asst-h small{ display:block; color:var(--k-dim); font-size:11.5px; }
+    .k2-asst-ctx{ font-size:13.5px; line-height:1.5; color:var(--k-txt2); margin:13px 0; }
+    .k2-asst-sec{ font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--k-dim); font-weight:700; margin:15px 0 8px; }
+    .k2-asst-rem{ display:flex; gap:9px; align-items:flex-start; width:100%; text-align:left; background:var(--k-panel2);
+      border:1px solid var(--k-line); border-radius:11px; padding:10px 12px; margin-bottom:7px; color:var(--k-txt2); font-size:12.5px; line-height:1.35; cursor:pointer; transition:.15s; }
+    .k2-asst-rem:hover{ border-color:var(--k-gold); color:var(--k-txt); }
+    .k2-asst-chips{ display:flex; flex-wrap:wrap; gap:6px; }
+    .k2-asst-input{ display:flex; gap:7px; margin-top:15px; }
+    .k2-asst-input input{ flex:1; min-width:0; background:var(--k-panel2); border:1px solid var(--k-line); border-radius:10px; color:var(--k-txt); padding:10px 12px; font-size:13.5px; font-family:inherit; }
+    .k2-asst-input input:focus{ outline:none; border-color:var(--k-gold); box-shadow:0 0 0 3px var(--k-soft); }
+    .k2-asst-input button{ background:var(--k-gold); color:var(--k-on); border:none; border-radius:10px; width:42px; font-size:16px; font-weight:800; cursor:pointer; }
+    .k2-asst-out{ font-size:12.5px; color:var(--k-gold); margin-top:11px; line-height:1.45; }
     `;
     document.head.appendChild(s);
   }
@@ -745,11 +765,79 @@
   function renderActive(){
     const stage = $('#stage'); if(!stage) return;
     const m = MODULES.find(x=>x.id===active); if(!m) return;
-    stage.innerHTML=''; const w = el('div','k2-wrap'); stage.appendChild(w);
+    stage.innerHTML='';
+    const shell = el('div','k2-shell');
+    const main  = el('div','k2-main'); const w = el('div','k2-wrap'); main.appendChild(w);
+    const aside = el('aside','k2-asst');
+    shell.appendChild(main); shell.appendChild(aside); stage.appendChild(shell);
     m.render(w);
+    renderAssistant(aside);
     const ann = $('#routeAnnounce'); if(ann) ann.textContent = m.name;
   }
   function head(title, sub){ return `<div class="k2-head"><h1>${esc(title)}</h1><span class="sub">${esc(sub||'')}</span></div>`; }
+
+  /* ---- личный ассистент: ядро, знает контекст каждого экрана ------------- */
+  function plural(n, one, few, many){ const a=n%10, b=n%100; if(a===1&&b!==11)return one; if(a>=2&&a<=4&&(b<10||b>=20))return few; return many; }
+  function goModule(id){ if(!MODULES.find(x=>x.id===id))return; addModule(id); active=id; renderNav2(); renderActive(); }
+  function assistantObs(id, m){
+    const OBS = {
+      today:'Собрал ваш день. Начните с того, что ждёт решения — остальное держу под контролем.',
+      task:'Опишите задачу словами — разберу на подзадачи и подберу под неё исполнителей.',
+      intake:'Готовые результаты жду вашей приёмки. Подсказать, что срочнее?',
+      pulse:'Вижу загрузку всех направлений. Подсветить, где выше нормы?',
+      sanctions:'Здесь только то, где нужно ваше слово — по каждому пункту подготовил основания.',
+      team:'Весь штат — люди и их цифровые двойники. Кого показать подробнее?',
+      agents:'Ваши цифровые сотрудники и их инструкции. Могу перенастроить любого.',
+    };
+    return OBS[id] || `Вы на экране «${m.name}». Я на связи с этим блоком — напомню о сроках и подготовлю черновики.`;
+  }
+  function assistantChips(id){
+    const chips = [];
+    if (id!=='today') chips.push({ label:'Мой день', go:'today' });
+    if (profile.level>=3) chips.push({ label:'Что ждёт решения', go:'sanctions' });
+    else chips.push({ label:'Что принять', go:'intake' });
+    const m = MODULES.find(x=>x.id===id);
+    if (m && m.domains!=='*') chips.push({ label:'Собрать черновик', q:'собрать черновик' });
+    if (id!=='task') chips.push({ label:'Поставить задачу', go:'task' });
+    return chips.slice(0,4);
+  }
+  function askAssistant(text){
+    const t = String(text).toLowerCase();
+    const map = [['пульс','pulse'],['перегруз','pulse'],['санкц','sanctions'],['реш','sanctions'],['день','today'],
+      ['принять','intake'],['приём','intake'],['приемк','intake'],['команд','team'],['агент','agents'],['задач','task'],
+      ['смет','est-calc'],['тендер','est-tender'],['сверк','fin-recon'],['отчёт','fin-report'],['отчет','fin-report'],
+      ['договор','leg-contracts'],['лид','sal-leads'],['воронк','sal-funnel'],['кампан','mkt-camp'],['найм','hr-hire']];
+    const hit = map.find(([k])=> t.indexOf(k)>=0);
+    if (hit && MODULES.find(x=>x.id===hit[1])){ goModule(hit[1]); return; }
+    const out = $('#k2AsstOut'); if(out) out.textContent = `Принял: «${text}». Разберу на подзадачи и верну черновик в «Приёмку».`;
+  }
+  function renderAssistant(box){
+    const m = MODULES.find(x=>x.id===active);
+    const obs = assistantObs(active, m);
+    const appr = (DASH.approvals||[]).length;
+    const drafts = feed().filter(f=>f[0]==='d').length;
+    const rem = [];
+    if (profile.level>=3 && appr) rem.push({ icon:'🔐', text:`${appr} ${plural(appr,'решение','решения','решений')} ждут вашего слова`, go:'sanctions' });
+    if (drafts) rem.push({ icon:'📥', text:`${drafts} ${plural(drafts,'черновик','черновика','черновиков')} готовы к приёмке`, go:'intake' });
+    if (!rem.length) rem.push({ icon:'🗓️', text:'На сегодня всё под контролем — открыть мой день?', go:'today' });
+    const chips = assistantChips(active);
+    box.innerHTML = `
+      <div class="k2-asst-h"><div class="av">🗓️</div>
+        <div><b>Ассистент</b><small>видит все ваши экраны и напоминает</small></div></div>
+      <div class="k2-asst-ctx">${esc(obs)}</div>
+      <div class="k2-asst-sec">Ждёт вас</div>
+      ${rem.map(r=>`<button class="k2-asst-rem" data-go="${r.go}"><span>${r.icon}</span><span>${esc(r.text)}</span></button>`).join('')}
+      <div class="k2-asst-sec">Могу прямо сейчас</div>
+      <div class="k2-asst-chips">${chips.map(c=>`<button class="k2-chip" data-go="${c.go||''}" data-q="${c.q?esc(c.q):''}">${esc(c.label)}</button>`).join('')}</div>
+      <div class="k2-asst-input"><input id="k2AsstIn" placeholder="Поручите ассистенту…" aria-label="Поручить ассистенту"/><button id="k2AsstGo" aria-label="Отправить">→</button></div>
+      <div class="k2-asst-out" id="k2AsstOut"></div>`;
+    box.querySelectorAll('[data-go]').forEach(b=>{ const go=b.dataset.go; if(go) b.addEventListener('click', ()=>goModule(go)); });
+    box.querySelectorAll('.k2-chip[data-q]').forEach(b=>{ const q=b.dataset.q; if(q) b.addEventListener('click', ()=>askAssistant(q)); });
+    const inp = $('#k2AsstIn', box), gob = $('#k2AsstGo', box);
+    const submit = ()=>{ const v=inp.value.trim(); if(v) askAssistant(v); };
+    if(gob) gob.onclick = submit;
+    if(inp) inp.onkeydown = (e)=>{ if(e.key==='Enter') submit(); };
+  }
 
   /* ================================================================ РЕНДЕР  */
   const feed = () => (ORG.pulseFeed || []);
