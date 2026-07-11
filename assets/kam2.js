@@ -86,59 +86,59 @@
   /* ============================================================ ОПРОС      */
   /* Q1–Q3 нащупывают ДОМЕН (по материалу/боли/результату), Q4–Q5 — УРОВЕНЬ. */
   const SURVEY = [
-    { kind:'dom', q:'Что чаще всего открыто у вас на экране в разгар работы?',
+    { kind:'dom', q:'С чем вы работаете больше всего?',
       opts:[
-        { t:'Таблицы с деньгами и суммами',          g:'Деньги и цифры',   dom:{finance:2} },
-        { t:'Сметы, расценки, спецификации',          g:'Сметы и расчёты',  dom:{estimate:2} },
-        { t:'Код, консоль, системы',                  g:'Инженерия',        dom:{eng:2} },
-        { t:'Переписка и звонки с клиентами',          g:'Продажи',          dom:{sales:2} },
-        { t:'Договоры и документы',                    g:'Право и документы',dom:{legal:2} },
-        { t:'Графики, сроки, заявки',                  g:'Производство',     dom:{ops:1, project:1} },
-        { t:'Дашборды и отчёты',                       g:'Данные / обзор',   dom:{analytics:1, exec:1} },
-        { t:'Календарь, задачи, переписка команды',    g:'Операционка',      dom:{assist:1, hr:1} },
+        { t:'Таблицы, суммы, расчёты',            dom:{finance:2} },
+        { t:'Сметы, расценки, спецификации',      dom:{estimate:2} },
+        { t:'Код, консоль, системы',              dom:{eng:2} },
+        { t:'Клиенты, сделки, переговоры',        dom:{sales:2} },
+        { t:'Договоры и документы',               dom:{legal:2} },
+        { t:'Графики, объекты, поставки',         dom:{ops:1, project:1} },
+        { t:'Данные, метрики, отчёты',            dom:{analytics:1, exec:1} },
+        { t:'Задачи команды и календарь',         dom:{assist:1, hr:1} },
       ]},
-    { kind:'dom', q:'За что вам прилетит сильнее всего, если ошибётесь?',
+    { kind:'dom', q:'Что для вас — сделанная работа?',
       opts:[
-        { t:'Неверная цифра или расчёт',               g:'цена ошибки — деньги', dom:{finance:2, estimate:1} },
-        { t:'Упавшая система, сломанный релиз',         g:'цена ошибки — прод',   dom:{eng:2} },
-        { t:'Сорванная сделка, потерянный клиент',      g:'цена ошибки — выручка',dom:{sales:2} },
-        { t:'Юридический риск, штраф',                  g:'цена ошибки — право',  dom:{legal:2} },
-        { t:'Сорванный срок, простой',                  g:'цена ошибки — сроки',  dom:{ops:2, project:1} },
-        { t:'Не тот вывод в отчёте',                    g:'цена ошибки — решение',dom:{analytics:2} },
-        { t:'Не тот человек нанят / ушёл',              g:'цена ошибки — люди',   dom:{hr:2} },
-        { t:'Стратегический промах компании',           g:'цена ошибки — курс',   dom:{exec:2} },
+        { t:'Точный расчёт или смета',            dom:{estimate:1, finance:1} },
+        { t:'Работающая система',                 dom:{eng:2} },
+        { t:'Закрытая сделка',                    dom:{sales:2} },
+        { t:'Оформленный документ',               dom:{legal:2} },
+        { t:'Сданный этап или запуск',            dom:{project:1, marketing:1, ops:1} },
+        { t:'Отчёт с выводом',                    dom:{analytics:2} },
+        { t:'Принятое решение',                   dom:{exec:2} },
+        { t:'Разгруженный руководитель',          dom:{assist:2} },
       ]},
-    { kind:'dom', q:'Ваш готовый результат — это чаще…',
+    { kind:'dom', q:'Где ошибка обойдётся вам дороже всего?',
       opts:[
-        { t:'Рассчитанное число / смета',              g:'', dom:{estimate:1, finance:1} },
-        { t:'Работающая функция или система',          g:'', dom:{eng:2} },
-        { t:'Закрытая сделка или договорённость',       g:'', dom:{sales:2} },
-        { t:'Готовый документ',                         g:'', dom:{legal:2} },
-        { t:'Сданный этап / запущенная кампания',       g:'', dom:{project:1, marketing:1, ops:1} },
-        { t:'Инсайт из данных',                         g:'', dom:{analytics:2} },
-        { t:'Принятое решение / заданный курс',         g:'', dom:{exec:2} },
-        { t:'Разгруженный день другого человека',       g:'', dom:{assist:2} },
+        { t:'В цифре или расчёте',                dom:{finance:2, estimate:1} },
+        { t:'В работе системы',                   dom:{eng:2} },
+        { t:'В сделке с клиентом',                dom:{sales:2} },
+        { t:'В правовом вопросе',                 dom:{legal:2} },
+        { t:'В сроке или поставке',               dom:{ops:2, project:1} },
+        { t:'В выводе по данным',                 dom:{analytics:2} },
+        { t:'В подборе людей',                    dom:{hr:2} },
+        { t:'В стратегии',                        dom:{exec:2} },
       ]},
-    { kind:'lvl', q:'Сколько людей отвечают по работе перед вами?',
+    { kind:'lvl', q:'Кто отвечает за результат перед вами?',
       opts:[
-        { t:'Никто — я сам исполнитель',               g:'', lvl:1 },
-        { t:'Один-два человека',                        g:'', lvl:2 },
-        { t:'Команда или отдел',                        g:'', lvl:3 },
-        { t:'Несколько отделов',                        g:'', lvl:4 },
-        { t:'Вся компания',                             g:'', lvl:5 },
+        { t:'Только я',                           lvl:1 },
+        { t:'Один-два человека',                  lvl:2 },
+        { t:'Отдел',                              lvl:3 },
+        { t:'Несколько отделов',                  lvl:4 },
+        { t:'Вся компания',                       lvl:5 },
       ]},
-    { kind:'lvl', q:'Ваше слово в рабочих вопросах обычно…',
+    { kind:'lvl', q:'Как принимаются решения в вашей зоне?',
       opts:[
-        { t:'Предлагаю — решают другие',               g:'', lvl:1 },
-        { t:'Решаю в своей зоне',                       g:'', lvl:2 },
-        { t:'Утверждаю за команду',                     g:'', lvl:3 },
-        { t:'Задаю направление отделу',                 g:'', lvl:4 },
-        { t:'Последнее слово за мной',                  g:'', lvl:5 },
+        { t:'Предлагаю — решают выше',            lvl:1 },
+        { t:'Решаю сам в своей зоне',             lvl:2 },
+        { t:'Утверждаю за команду',               lvl:3 },
+        { t:'Задаю правила отделу',               lvl:4 },
+        { t:'Финальное слово за мной',            lvl:5 },
       ]},
-    { kind:'depth', q:'Насколько вам важно видеть, КАК именно всё сделано?',
+    { kind:'depth', q:'Насколько важно видеть, как именно всё сделано?',
       opts:[
-        { t:'Дайте результат — под капот не полезу',    g:'спрячем кухню',            depth:0 },
-        { t:'Хочу видеть, кто сделал и на чём основано',g:'покажем авторов и источники', depth:1 },
+        { t:'Достаточно результата',              depth:0 },
+        { t:'Хочу видеть исполнителя и источники',depth:1 },
       ]},
   ];
 
@@ -363,32 +363,36 @@
     if ($('#kam2Style')) return;
     const s = el('style'); s.id='kam2Style';
     s.textContent = `
-    :root{ --k-bg:#121310; --k-panel:#1a1c17; --k-panel2:#20231c; --k-line:#2c3026;
-      --k-txt:#e9e7de; --k-dim:#9a9b8f; --k-gold:#e8c468; --k-gold2:#f0d78a; }
+    :root{ --k-bg:var(--bg,#121310); --k-panel:var(--panel,#1a1c18); --k-panel2:var(--panel2,#20231e);
+      --k-line:var(--line,#2a2e27); --k-line2:var(--line2,#363b33); --k-txt:var(--txt,#f1f0ea); --k-txt2:var(--txt2,#c9cac1);
+      --k-dim:var(--muted,#9ca093); --k-gold:var(--acc,#36c994); --k-gold2:var(--acc-hover,#2db886);
+      --k-soft:var(--acc-soft,rgba(54,201,148,.1)); --k-on:var(--on-acc,#03130d);
+      --k-sh:var(--shadow-sm,0 1px 2px rgba(0,0,0,.35)); --k-sh-md:var(--shadow-md,0 6px 14px rgba(0,0,0,.42));
+      --k-sh-xl:var(--shadow-xl,0 24px 56px rgba(0,0,0,.55)); }
     .k2-wrap{ display:flex; flex-direction:column; gap:18px; padding:22px 26px 60px; color:var(--k-txt); }
     /* ---- база опроса ---- */
     .k2-survey{ position:fixed; inset:0; z-index:120; background:radial-gradient(1200px 600px at 70% -10%, #1c1f18 0%, #121310 60%);
       display:flex; align-items:center; justify-content:center; padding:24px; overflow:auto; }
-    .k2-card{ width:min(700px,94vw); background:var(--k-panel); border:1px solid var(--k-line); border-radius:20px;
-      padding:34px 34px 28px; box-shadow:0 30px 80px rgba(0,0,0,.5); animation:k2rise .5s cubic-bezier(.22,1,.36,1); }
-    .k2-eyebrow{ color:var(--k-gold); font-size:12px; letter-spacing:.14em; text-transform:uppercase; font-weight:700; }
-    .k2-q{ font-size:22px; line-height:1.28; font-weight:700; margin:12px 0 20px; letter-spacing:-.01em; }
+    .k2-card{ width:min(720px,94vw); background:var(--k-panel); border:1px solid var(--k-line); border-radius:18px;
+      padding:38px 40px 30px; box-shadow:var(--k-sh-xl); animation:k2rise .5s cubic-bezier(.22,1,.36,1); }
+    .k2-eyebrow{ color:var(--k-gold); font-size:11px; letter-spacing:.16em; text-transform:uppercase; font-weight:700; }
+    .k2-q{ font-size:24px; line-height:1.26; font-weight:750; margin:14px 0 22px; letter-spacing:-.015em; color:var(--k-txt); }
     .k2-opts{ display:flex; flex-direction:column; gap:9px; }
-    .k2-opt{ text-align:left; background:var(--k-panel2); border:1px solid var(--k-line); color:var(--k-txt);
-      border-radius:12px; padding:13px 16px; font-size:15px; line-height:1.3; cursor:pointer; transition:.14s; position:relative;
-      display:flex; justify-content:space-between; align-items:center; gap:12px; }
-    .k2-opt:hover{ border-color:var(--k-gold); background:#262a20; transform:translateY(-1px); }
-    .k2-opt .gain{ color:var(--k-dim); font-size:11.5px; white-space:nowrap; }
-    .k2-opt:hover .gain{ color:var(--k-gold); }
-    .k2-opt.chosen{ border-color:var(--k-gold); background:#2a2e22; }
-    .k2-progress{ display:flex; gap:6px; margin-top:22px; }
-    .k2-dot{ flex:1; height:4px; border-radius:2px; background:var(--k-line); transition:background .3s; }
+    .k2-opts.grid2{ display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+    @media(max-width:560px){ .k2-opts.grid2{ grid-template-columns:1fr; } }
+    .k2-opt{ text-align:left; background:var(--k-panel2); border:1px solid var(--k-line); color:var(--k-txt2);
+      border-radius:12px; padding:14px 16px; font-size:14.5px; line-height:1.32; cursor:pointer; transition:.15s cubic-bezier(.4,0,.2,1); }
+    .k2-opt:hover{ border-color:var(--k-gold); background:var(--k-soft); color:var(--k-txt); transform:translateY(-1px); box-shadow:var(--k-sh); }
+    .k2-opt.chosen{ border-color:var(--k-gold); background:var(--k-soft); color:var(--k-txt); box-shadow:0 0 0 1px var(--k-gold) inset; }
+    .k2-progress{ display:flex; gap:6px; margin-top:24px; }
+    .k2-dot{ flex:1; height:3px; border-radius:2px; background:var(--k-line); transition:background .3s; }
     .k2-dot.on{ background:var(--k-gold); }
-    .k2-sub{ color:var(--k-dim); font-size:13.5px; margin-top:16px; line-height:1.5; }
-    .k2-back{ background:none; border:none; color:var(--k-dim); font-size:13px; cursor:pointer; padding:6px 0; margin-top:12px; }
+    .k2-sub{ color:var(--k-dim); font-size:14px; margin-top:16px; line-height:1.55; }
+    .k2-back{ background:none; border:none; color:var(--k-dim); font-size:13px; cursor:pointer; padding:6px 0; margin-top:14px; }
     .k2-back:hover{ color:var(--k-txt); }
-    .k2-cta{ background:var(--k-gold); color:#1a1a12; border:none; font-weight:800; font-size:15px; border-radius:12px; padding:14px 26px; cursor:pointer; }
-    .k2-cta:hover{ background:var(--k-gold2); }
+    .k2-cta{ background:var(--k-gold); color:var(--k-on); border:none; font-weight:750; font-size:15px; border-radius:12px;
+      padding:14px 28px; cursor:pointer; transition:.15s; box-shadow:var(--k-sh-md); }
+    .k2-cta:hover{ background:var(--k-gold2); transform:translateY(-1px); }
     @keyframes k2rise{ 0%{transform:translateY(14px);opacity:0} 100%{transform:translateY(0);opacity:1} }
     /* ---- двухпанельная живая сборка ---- */
     .k2-survey.two{ align-items:stretch; justify-content:center; padding:0; }
@@ -413,15 +417,15 @@
     .k2-dom.lead .t .lab{ color:var(--k-gold); font-weight:700; }
     .k2-dom .t .p{ color:var(--k-dim); font-size:11px; font-variant-numeric:tabular-nums; }
     .k2-dom .track{ height:7px; border-radius:5px; background:var(--k-line); overflow:hidden; }
-    .k2-dom .track i{ display:block; height:100%; width:0; border-radius:5px; background:linear-gradient(90deg,#5a5e4c,#7d8264); transition:width .6s cubic-bezier(.22,1,.36,1); }
-    .k2-dom.lead .track i{ background:linear-gradient(90deg,#c9a545,#f0d78a); box-shadow:0 0 12px rgba(232,196,104,.5); }
+    .k2-dom .track i{ display:block; height:100%; width:0; border-radius:5px; background:var(--k-line2); transition:width .6s cubic-bezier(.22,1,.36,1); }
+    .k2-dom.lead .track i{ background:linear-gradient(90deg,var(--k-gold2),var(--k-gold)); box-shadow:0 0 14px var(--k-soft); }
     .k2-lvlbox{ margin-top:16px; }
     .k2-lvlbox .t{ display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:6px; }
     .k2-lvlbox .t b{ color:var(--k-gold); }
     .k2-lvlbox .track{ height:7px; border-radius:5px; background:var(--k-line); overflow:hidden; }
-    .k2-lvlbox .track i{ display:block; height:100%; width:0; background:linear-gradient(90deg,#c9a545,#f0d78a); border-radius:5px; transition:width .6s cubic-bezier(.22,1,.36,1); }
-    .k2-role{ margin-top:16px; padding:13px 15px; border:1px solid var(--k-line); border-radius:12px; background:var(--k-panel);
-      font-size:14px; }
+    .k2-lvlbox .track i{ display:block; height:100%; width:0; background:linear-gradient(90deg,var(--k-gold2),var(--k-gold)); border-radius:5px; transition:width .6s cubic-bezier(.22,1,.36,1); }
+    .k2-role{ margin-top:16px; padding:14px 16px; border:1px solid var(--k-line); border-radius:12px; background:var(--k-panel);
+      font-size:14px; box-shadow:var(--k-sh); }
     .k2-role .rt{ color:var(--k-gold); font-weight:800; font-size:16px; }
     .k2-role .rs{ color:var(--k-dim); font-size:12px; margin-top:2px; }
     .k2-role.pop{ animation:k2pop .5s ease; }
@@ -432,7 +436,7 @@
     .k2-tray{ display:flex; flex-direction:column; gap:9px; }
     .k2-tray-empty{ color:var(--k-dim); font-size:13px; line-height:1.45; padding:16px; border:1px dashed var(--k-line); border-radius:12px; text-align:center; }
     .k2-tcard{ display:flex; align-items:center; gap:12px; background:var(--k-panel); border:1px solid var(--k-line);
-      border-radius:12px; padding:10px 13px; overflow:hidden; animation:k2card .5s cubic-bezier(.22,1,.36,1); }
+      border-radius:12px; padding:11px 13px; overflow:hidden; box-shadow:var(--k-sh); animation:k2card .5s cubic-bezier(.22,1,.36,1); }
     .k2-tcard.leaving{ animation:k2out .32s ease forwards; }
     .k2-tcard .ci{ font-size:19px; width:22px; text-align:center; }
     .k2-tcard .cn{ font-weight:600; font-size:14px; }
@@ -448,8 +452,8 @@
     .k2-pill{ display:flex; align-items:center; gap:7px; background:var(--k-panel2); border:1px solid var(--k-line); border-radius:999px; padding:7px 13px; font-size:13px; }
     .k2-pill b{ color:var(--k-gold); }
     .k2-picked{ display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px; margin:18px 0; }
-    .k2-mod{ background:var(--k-panel); border:1px solid var(--k-line); border-radius:14px; padding:16px; }
-    .k2-mod .i{ font-size:22px; } .k2-mod .n{ font-weight:700; margin:8px 0 3px; } .k2-mod .h{ color:var(--k-dim); font-size:13px; line-height:1.4; }
+    .k2-mod{ background:var(--k-panel); border:1px solid var(--k-line); border-radius:14px; padding:16px; box-shadow:var(--k-sh); transition:.15s; }
+    .k2-mod .i{ font-size:22px; } .k2-mod .n{ font-weight:700; margin:8px 0 3px; color:var(--k-txt); } .k2-mod .h{ color:var(--k-dim); font-size:13px; line-height:1.4; }
     /* ---- кабинет ---- */
     .k2-nav{ display:flex; flex-direction:column; gap:4px; padding:10px; }
     .k2-nav-lbl{ color:var(--k-dim); font-size:11px; letter-spacing:.1em; text-transform:uppercase; padding:12px 12px 4px; }
@@ -465,7 +469,7 @@
     .k2-head h1{ font-size:22px; font-weight:800; letter-spacing:-.01em; }
     .k2-head .sub{ color:var(--k-dim); font-size:14px; }
     .k2-grid{ display:grid; gap:12px; }
-    .k2-panel{ background:var(--k-panel); border:1px solid var(--k-line); border-radius:14px; padding:16px 18px; }
+    .k2-panel{ background:var(--k-panel); border:1px solid var(--k-line); border-radius:14px; padding:16px 18px; box-shadow:var(--k-sh); }
     .k2-panel h3{ font-size:14px; font-weight:700; margin-bottom:12px; color:var(--k-txt); }
     .k2-item{ display:flex; align-items:flex-start; gap:12px; padding:11px 0; border-bottom:1px solid var(--k-line); }
     .k2-item:last-child{ border-bottom:none; }
@@ -476,7 +480,8 @@
     .k2-tag{ display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--k-line); color:var(--k-dim); }
     .k2-loadbar{ height:7px; border-radius:4px; background:var(--k-line); overflow:hidden; margin-top:6px; }
     .k2-loadbar i{ display:block; height:100%; }
-    .k2-btn{ background:var(--k-gold); color:#1a1a12; border:none; font-weight:700; border-radius:10px; padding:11px 18px; cursor:pointer; }
+    .k2-btn{ background:var(--k-gold); color:var(--k-on); border:none; font-weight:700; border-radius:10px; padding:11px 18px; cursor:pointer; box-shadow:var(--k-sh-md); transition:.15s; }
+    .k2-btn:hover{ background:var(--k-gold2); }
     .k2-ta{ width:100%; min-height:120px; background:var(--k-panel2); border:1px solid var(--k-line); border-radius:12px; color:var(--k-txt); padding:14px; font-size:15px; resize:vertical; font-family:inherit; }
     .k2-chip{ display:inline-flex; gap:6px; align-items:center; background:var(--k-panel2); border:1px solid var(--k-line); border-radius:999px; padding:6px 12px; font-size:12.5px; margin:4px 6px 0 0; cursor:pointer; }
     .k2-chip:hover{ border-color:var(--k-gold); }
@@ -555,12 +560,12 @@
       left.innerHTML = `
         <div class="k2-eyebrow">Вопрос ${step+1} из ${SURVEY.length}</div>
         <div class="k2-q">${esc(s.q)}</div>
-        <div class="k2-opts" id="k2Opts"></div>
+        <div class="k2-opts${s.opts.length>=6?' grid2':''}" id="k2Opts"></div>
         <div class="k2-progress">${dots}</div>
         ${step>0?'<button class="k2-back" id="k2Back">← назад</button>':''}`;
       const box = $('#k2Opts', left);
       s.opts.forEach(o=>{
-        const b = el('button','k2-opt', `<span>${esc(o.t)}</span>${o.g?`<span class="gain">${esc(o.g)}</span>`:''}`);
+        const b = el('button','k2-opt', esc(o.t));
         b.onclick = ()=> answer(o, s, b);
         box.appendChild(b);
       });
