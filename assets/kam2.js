@@ -16,6 +16,7 @@
   const ORG = window.__ORG || {};
   const DASH = (typeof DASHBOARD !== 'undefined') ? DASHBOARD : {};
   const LS_KEY = 'sreda_kam2_profile_v2';
+  const LS_STATE = 'sreda_kam2_state_v1';   // состояние кокпита переживает перезагрузку (готовый продукт, не демка)
 
   /* ---------------------------------------------------------------- утилиты */
   const $  = (s, r) => (r||document).querySelector(s);
@@ -822,9 +823,29 @@
   }
   const canCompany = () => profile.level>=4;   // высота «Компания» = Оркестратор (§2, §6)
 
+  /* ---- персистентность: продукт помнит состояние между сессиями ---- */
+  function persist(){
+    if(!profile) return;
+    try{ localStorage.setItem(LS_STATE, JSON.stringify({ domain:profile.domain, k2Live, csStore, staff:myStaffCache, myAdditions })); }catch(e){}
+  }
+  function loadState(){
+    try{ const s=JSON.parse(localStorage.getItem(LS_STATE)||'null');
+      if(s && s.domain===profile.domain){
+        if(s.k2Live) k2Live=s.k2Live;
+        if(Array.isArray(s.staff)) myStaffCache=s.staff;
+        if(Array.isArray(s.myAdditions)) myAdditions=s.myAdditions;
+        if(s.csStore) Object.assign(csStore, s.csStore);
+      }
+    }catch(e){}
+  }
+
   function enterCabinet(){
-    injectStyles(); initLive(); firstEnter=true; myStaffCache=null; myAdditions=[];
+    injectStyles(); firstEnter=true; myStaffCache=null; myAdditions=[]; k2Live=null;
     cockpit.height='me'; cockpit.view='pulse'; cockpit.csId=null;
+    loadState();   // восстановить состояние роли, если было
+    initLive();    // добить k2Live, если чистый вход
+    // топбар когерентен продукту: профиль = распознанная роль
+    const who=$('#who'); if(who && profile.roleTitle){ who.innerHTML=`<span style="font-size:15px">${DOMAINS[profile.domain]?DOMAINS[profile.domain].icon:''}</span> <span>${esc(profile.roleTitle)}</span>`; who.title='Ваша роль в Среде'; }
     renderStaffRail(); renderCockpit();
     const tf=$('#tourFab'); if(tf) tf.style.display='none';   // §9: без захардкоженного тура — только реальный помощник
     const brand = $('#brandHome'); if (brand){ brand.onclick = (e)=>{ e.preventDefault(); goView('pulse'); }; }
@@ -832,7 +853,7 @@
     const cmd = $('#cmdBtn'); if (cmd){ cmd.onclick = (e)=>{ e.preventDefault(); goView('pulse'); const i=$('#k2AsstIn'); if(i){ i.focus(); i.scrollIntoView({block:'center'}); } }; }
     if (!$('#k2Reset')){
       const r = el('button','k2-reset','↺ пересобрать Среду'); r.id='k2Reset';
-      r.onclick = ()=>{ localStorage.removeItem(LS_KEY); profile=null; active=null;
+      r.onclick = ()=>{ localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_STATE); profile=null; active=null;
         k2Live=null; myStaffCache=null; myAdditions=[]; Object.keys(specDone).forEach(k=>delete specDone[k]); Object.keys(csStore).forEach(k=>delete csStore[k]);
         location.hash=''; runSurvey(); };
       document.body.appendChild(r);
@@ -886,6 +907,7 @@
     }
     renderAssistant(aside);
     const ann=$('#routeAnnounce'); if(ann) ann.textContent='Пульс';
+    persist();   // готовый продукт помнит состояние
   }
   function heightBar(){
     const bar = el('div','k2-heights');
