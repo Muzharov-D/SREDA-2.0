@@ -231,11 +231,7 @@
 
     /* --- продажи --- */
     { id:'sal-funnel', icon:'🫙', name:'Воронка и КП', hint:'сделки, КП, статусы',
-      domains:['sales'], levels:[1,3], render:specRender({ title:'Воронка и КП', sub:'Что двойник менеджера собрал по клиентам', who:'двойник менеджера продаж', items:[
-        ['📄','КП для банка «Гамма» — собрано за 10 минут','на отправку'],
-        ['🔥','6 «горячих» сделок в воронке',''],
-        ['🎯','Тендер 44-ФЗ подан в срок',''],
-      ]}) },
+      domains:['sales'], levels:[1,3], render:renderFunnel },
     { id:'sal-leads', icon:'🧲', name:'Лиды и скоринг', hint:'MQL, сегменты',
       domains:['sales','marketing'], levels:[1,3], render:specRender({ title:'Лиды и скоринг', sub:'Кого греть в первую очередь', items:[
         ['🧲','18 MQL проскорены — 6 горячих',''],
@@ -369,6 +365,7 @@
   /* ---------------------------------------------------------------- состояние */
   let profile = null;   // { domain, level, roleTitle, depth, chosen:[ids] }
   let active  = null;
+  let firstEnter = false;   // одноразовая анимация проявления кабинета
 
   /* ---------------------------------------------------------------- стили   */
   function injectStyles(){
@@ -383,8 +380,15 @@
       --k-sh-xl:var(--shadow-xl,0 24px 56px rgba(0,0,0,.55)); }
     .k2-wrap{ display:flex; flex-direction:column; gap:18px; padding:22px 26px 60px; color:var(--k-txt); }
     /* ---- база опроса ---- */
-    .k2-survey{ position:fixed; inset:0; z-index:120; background:radial-gradient(1200px 600px at 70% -10%, #1c1f18 0%, #121310 60%);
-      display:flex; align-items:center; justify-content:center; padding:24px; overflow:auto; }
+    .k2-survey{ position:fixed; inset:0; z-index:120; display:flex; align-items:center; justify-content:center; padding:24px; overflow:auto;
+      background:
+        linear-gradient(180deg, rgba(18,19,16,.90), rgba(18,19,16,.965)),
+        radial-gradient(1100px 560px at 72% -12%, rgba(54,201,148,.09), transparent 62%),
+        var(--k-bg) url(assets/hero-bg.png) center/cover no-repeat fixed; }
+    .k2-survey.leaving{ animation:k2materialize .5s cubic-bezier(.4,0,.2,1) forwards; pointer-events:none; }
+    @keyframes k2materialize{ 0%{opacity:1; transform:scale(1)} 100%{opacity:0; transform:scale(1.05)} }
+    @keyframes k2fadein{ from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
+    .k2-shell.k2-enter{ animation:k2fadein .55s cubic-bezier(.22,1,.36,1); }
     .k2-card{ width:min(720px,94vw); background:var(--k-panel); border:1px solid var(--k-line); border-radius:18px;
       padding:38px 40px 30px; box-shadow:var(--k-sh-xl); animation:k2rise .5s cubic-bezier(.22,1,.36,1); }
     .k2-eyebrow{ color:var(--k-gold); font-size:11px; letter-spacing:.16em; text-transform:uppercase; font-weight:700; }
@@ -483,8 +487,8 @@
     .k2-nav-item small{ display:block; color:var(--k-dim); font-size:11.5px; }
     .k2-add{ margin-top:8px; color:var(--k-gold); font-size:13px; cursor:pointer; padding:11px 12px; border:1px dashed var(--k-line); border-radius:11px; }
     .k2-add:hover{ background:var(--k-panel2); }
-    .k2-head{ display:flex; align-items:baseline; gap:12px; margin-bottom:4px; flex-wrap:wrap; }
-    .k2-head h1{ font-size:22px; font-weight:800; letter-spacing:-.01em; }
+    .k2-head{ display:flex; align-items:baseline; gap:12px; margin-bottom:10px; flex-wrap:wrap; }
+    .k2-head h1{ font-size:25px; font-weight:800; letter-spacing:-.02em; }
     .k2-head .sub{ color:var(--k-dim); font-size:14px; }
     .k2-grid{ display:grid; gap:12px; }
     .k2-panel{ background:var(--k-panel); border:1px solid var(--k-line); border-radius:14px; padding:16px 18px; box-shadow:var(--k-sh); }
@@ -535,9 +539,25 @@
     .k2-asst-input input:focus{ outline:none; border-color:var(--k-gold); box-shadow:0 0 0 3px var(--k-soft); }
     .k2-asst-input button{ background:var(--k-gold); color:var(--k-on); border:none; border-radius:10px; width:42px; font-size:16px; font-weight:800; cursor:pointer; }
     .k2-asst-out{ font-size:12.5px; color:var(--k-gold); margin-top:11px; line-height:1.45; }
+    /* ---- живые действия в модулях ---- */
+    .k2-tag.act{ cursor:pointer; font-family:inherit; transition:.14s; }
+    .k2-tag.act:hover{ background:var(--k-panel2); color:var(--k-txt); border-color:var(--k-line2); }
+    .k2-tag.act.ok{ border-color:var(--k-gold); color:var(--k-gold); }
+    .k2-tag.act.ok:hover{ background:var(--k-soft); }
+    .k2-item.k2-rowout{ animation:k2rowout .26s ease forwards; }
+    @keyframes k2rowout{ to{ opacity:0; transform:translateX(14px); } }
+    .k2-empty{ color:var(--k-dim); font-size:13.5px; line-height:1.5; padding:14px 2px; }
+    .k2-cabtoast{ position:fixed; left:50%; bottom:22px; transform:translateX(-50%) translateY(12px); z-index:80;
+      background:var(--k-panel); border:1px solid var(--k-gold); color:var(--k-txt); font-size:13.5px; font-weight:600;
+      padding:11px 18px; border-radius:12px; box-shadow:var(--k-sh-xl); opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; }
+    .k2-cabtoast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+    /* ---- A11y: фокус-кольца на клавиатуре ---- */
+    .k2-opt:focus-visible,.k2-cta:focus-visible,.k2-btn:focus-visible,.k2-nav-item:focus-visible,.k2-chip:focus-visible,
+    .k2-tag.act:focus-visible,.k2-asst-rem:focus-visible,.k2-add:focus-visible,.k2-back:focus-visible,.k2-asst-input input:focus-visible{
+      outline:2px solid var(--k-gold); outline-offset:2px; }
     /* ---- A11y: уважение к reduced-motion ---- */
     @media (prefers-reduced-motion: reduce){
-      .k2-echo-line,.k2-verdict,.k2-tcard,.k2-card,.k2-role,.k2-axbadge{ animation:none !important; opacity:1 !important; transform:none !important; }
+      .k2-echo-line,.k2-verdict,.k2-tcard,.k2-card,.k2-role,.k2-axbadge,.k2-shell,.k2-survey.leaving,.k2-item{ animation:none !important; opacity:1 !important; transform:none !important; }
     }
     `;
     document.head.appendChild(s);
@@ -657,12 +677,13 @@
             <span class="p">${i===0?'вы — сюда':''}</span></div>
             <div class="track"><i style="width:${pct}%"></i></div></div>`;
         }).join('');
-      }
+      } else { domsBox.innerHTML = `<div class="k2-tray-empty">ответьте на первый вопрос — и Среда начнёт вас узнавать</div>`; }
       // уровень
       const level = detectLevel(lvlSamples);
       const lb = $('#k2LvlBox', layer);
       if (level){ lb.style.display=''; $('#k2LvlName',layer).textContent=LEVELS[level];
         $('#k2LvlBar',layer).style.width = (level/5*100)+'%'; }
+      else { lb.style.display='none'; }
       // роль
       const domain = detectDomain(domScore);
       const role = resolveRole(domain, level);
@@ -672,7 +693,7 @@
         roleBox.innerHTML = `<div class="rt">${esc(role.t)}</div>
           <div class="rs">${DOMAINS[role.d].icon} ${esc(DOMAINS[role.d].label)} · ${esc(LEVELS[role.l])}</div>`;
         roleBox.classList.remove('pop'); void roleBox.offsetWidth; roleBox.classList.add('pop');
-      }
+      } else { roleBox.style.display='none'; }
       // модули
       const tray = $('#k2Tray', layer);
       const nc = assembleModules(domain, level);
@@ -741,7 +762,14 @@
           <button class="k2-cta" id="k2Enter">Войти в мою Среду ▶</button>
         </div>`;
       layer.appendChild(c);
-      $('#k2Enter').onclick = ()=>{ layer.remove(); enterCabinet(); };
+      let entering = false;
+      $('#k2Enter').onclick = ()=>{
+        if (entering) return; entering = true;
+        const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduce){ layer.remove(); enterCabinet(); return; }
+        layer.classList.add('leaving');
+        setTimeout(()=>{ layer.remove(); enterCabinet(); }, 480);
+      };
     }
 
     drawIntro();
@@ -750,6 +778,8 @@
   /* ================================================================ КАБИНЕТ */
   function enterCabinet(){
     injectStyles();
+    initLive();
+    firstEnter = true;
     active = profile.chosen[0];
     renderNav2();
     renderActive();
@@ -757,7 +787,9 @@
     const cmd = $('#cmdBtn'); if (cmd){ cmd.onclick = (e)=>{ e.preventDefault(); if(!profile.chosen.includes('task')) addModule('task'); active='task'; renderNav2(); renderActive(); }; }
     if (!$('#k2Reset')){
       const r = el('button','k2-reset','↺ пересобрать Среду'); r.id='k2Reset';
-      r.onclick = ()=>{ localStorage.removeItem(LS_KEY); profile=null; location.hash=''; runSurvey(); };
+      r.onclick = ()=>{ localStorage.removeItem(LS_KEY); profile=null; active=null;
+        k2Live=null; Object.keys(specDone).forEach(k=>delete specDone[k]); // сброс живого состояния под новую роль
+        location.hash=''; runSurvey(); };
       document.body.appendChild(r);
     }
   }
@@ -772,7 +804,10 @@
       const m = MODULES.find(x=>x.id===id); if(!m) return;
       const item = el('div','k2-nav-item'+(id===active?' on':''),
         `<span class="ni">${m.icon}</span><div><div>${esc(m.name)}</div><small>${esc(m.hint)}</small></div>`);
-      item.onclick = ()=>{ active=id; renderNav2(); renderActive(); };
+      item.tabIndex=0; item.setAttribute('role','button'); item.setAttribute('aria-current', id===active?'true':'false');
+      const activate = ()=>{ active=id; renderNav2(); renderActive(); };
+      item.onclick = activate;
+      item.onkeydown = (e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); activate(); } };
       wrap.appendChild(item);
     });
     const rest = MODULES.filter(m=>!profile.chosen.includes(m.id));
@@ -805,7 +840,7 @@
     const stage = $('#stage'); if(!stage) return;
     const m = MODULES.find(x=>x.id===active); if(!m) return;
     stage.innerHTML='';
-    const shell = el('div','k2-shell');
+    const shell = el('div','k2-shell'+(firstEnter?' k2-enter':'')); firstEnter=false;
     const main  = el('div','k2-main'); const w = el('div','k2-wrap'); main.appendChild(w);
     const aside = el('aside','k2-asst');
     shell.appendChild(main); shell.appendChild(aside); stage.appendChild(shell);
@@ -853,12 +888,12 @@
   function renderAssistant(box){
     const m = MODULES.find(x=>x.id===active);
     const obs = assistantObs(active, m);
-    const appr = (DASH.approvals||[]).length;
-    const drafts = feed().filter(f=>f[0]==='d').length;
+    const appr = liveApprovals().length;
+    const drafts = liveDrafts().length;
     const rem = [];
     if (profile.level>=3 && appr) rem.push({ icon:'🔐', text:`${appr} ${plural(appr,'решение','решения','решений')} ждут вашего слова`, go:'sanctions' });
     if (drafts) rem.push({ icon:'📥', text:`${drafts} ${plural(drafts,'черновик','черновика','черновиков')} готовы к приёмке`, go:'intake' });
-    if (!rem.length) rem.push({ icon:'🗓️', text:'На сегодня всё под контролем — открыть мой день?', go:'today' });
+    if (!rem.length) rem.push({ icon:'✓', text:'Очередь чиста — на сегодня всё под контролем.', go:'today' });
     const chips = assistantChips(active);
     box.innerHTML = `
       <div class="k2-asst-h"><div class="av">🗓️</div>
@@ -883,28 +918,128 @@
   const deptLabel = id => { const d=(ORG.depts||[]).find(x=>x.id===id); return d?d.label:id; };
   const deptIcon  = id => { const d=(ORG.depts||[]).find(x=>x.id===id); return d?d.icon:'•'; };
 
-  /* --- доменные модули: общий рендер спеки --- */
+  /* --- сквозное живое состояние: очередь решений и черновиков ------------- */
+  /* модули РЕАЛЬНО меняют его (одобрил → ушло), ассистент видит те же числа.  */
+  let k2Live = null;
+  function initLive(){
+    if (k2Live) return;
+    k2Live = {
+      approvals: (DASH.approvals||[]).map((a,i)=>({ id:'ap'+i, task:a.task, dept:a.dept, cost:a.cost, risk:a.risk })),
+      drafts:    feed().filter(f=>f[0]==='d').map((f,i)=>({ id:'dr'+i, text:f[2], dept:f[3], who:f[1] })),
+    };
+  }
+  function liveApprovals(){ initLive(); return k2Live.approvals; }
+  function liveDrafts(){ initLive(); return k2Live.drafts; }
+  function resolveApproval(id, ok){ initLive(); k2Live.approvals = k2Live.approvals.filter(a=>a.id!==id); cabToast(ok?'✓ Одобрено — отправлено в работу':'✗ Отклонено — вернул на доработку'); refreshLive(); }
+  function acceptDraft(id){ initLive(); k2Live.drafts = k2Live.drafts.filter(d=>d.id!==id); cabToast('✓ Принято'); refreshLive(); }
+  let apSeq = 0;
+  function addApproval(obj){ initLive(); k2Live.approvals.unshift(Object.assign({ id:'apn'+(apSeq++) }, obj)); }
+  function refreshLive(){ renderActive(); }   // перерисовать модуль + панель ассистента
+
+  let cabToastTimer=null;
+  function cabToast(msg){
+    let t = $('#k2CabToast');
+    if(!t){ t = el('div','k2-cabtoast'); t.id='k2CabToast'; document.body.appendChild(t); }
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(cabToastTimer); cabToastTimer = setTimeout(()=>t.classList.remove('show'), 2400);
+  }
+
+  /* --- доменные модули: общий рендер спеки (интерактивный) ---------------- */
+  /* item = [emoji, title, meta] или [emoji, title, meta, actionLabel].       */
+  /* спеки помечаются как «сделанные» в session-множестве — не воскресают.     */
+  const specDone = {};
   function renderSpec(w, spec){
     w.innerHTML = head(spec.title, spec.sub||'');
     const p = el('div','k2-panel');
-    (spec.items||[]).forEach(it=>{
+    const doneKey = spec.title;
+    const done = specDone[doneKey] || (specDone[doneKey] = new Set());
+    let shown = 0;
+    (spec.items||[]).forEach((it, idx)=>{
+      if (done.has(idx)) return;
+      shown++;
       const [emoji, title, meta] = it;
+      // действие: явное (4-й элемент) или авто по маркерам в мете
+      let act = it[3];
+      if (!act && meta){
+        if (/ждут|нужно решение|на грани|на одобрен/i.test(meta)) act='решить';
+        else if (/на проверку|на вашу|на подтвержд|ждёт|на согласован|на выкатку|на отправку/i.test(meta)) act='принять';
+      }
       const row = el('div','k2-item');
-      row.innerHTML = `<div class="e">${emoji}</div><div><div class="b">${esc(title)}</div>
-        ${meta?`<div class="m">${esc(meta)}</div>`:''}${(spec.who && profile.depth)?`<div class="k2-who">подготовил: ${esc(spec.who)}</div>`:''}</div>`;
+      row.innerHTML = `<div class="e">${emoji}</div><div style="flex:1"><div class="b">${esc(title)}</div>
+        ${meta?`<div class="m">${esc(meta)}</div>`:''}${(spec.who && profile.depth)?`<div class="k2-who">подготовил: ${esc(spec.who)}</div>`:''}</div>
+        ${act?`<div><button class="k2-tag act ok">${esc(act)}</button></div>`:''}`;
+      if (act){ row.querySelector('.ok').onclick = ()=> animateOut(row, ()=>{ done.add(idx); cabToast('✓ '+act[0].toUpperCase()+act.slice(1)+' — готово'); renderActive(); }); }
       p.appendChild(row);
     });
+    if (!shown) p.innerHTML = `<div class="k2-empty">✓ Всё разобрано в этом блоке.</div>`;
     w.appendChild(p);
   }
 
-  /* --- Мой день --- */
+  /* --- Флагман-showcase: живая Воронка и КП (домен sales) ----------------- */
+  function renderFunnel(w){
+    w.innerHTML = head('Воронка и КП', 'соберите КП цифровым сотрудником → отправьте на решение → одобрите');
+    const deals = [
+      { c:'Банк «Гамма»',      s:'на КП',      hot:true },
+      { c:'ПАО «Дельта»',      s:'переговоры', hot:true },
+      { c:'ООО «Ориент»',      s:'квалификация', hot:false },
+    ];
+    const grid = el('div','k2-grid'); grid.style.gridTemplateColumns='1.2fr .8fr';
+    const p1 = el('div','k2-panel'); p1.innerHTML='<h3>Ваши сделки</h3>';
+    deals.forEach(d=>{
+      const it = el('div','k2-item');
+      it.innerHTML = `<div class="e">${d.hot?'🔥':'•'}</div><div style="flex:1"><div class="b">${esc(d.c)}</div><div class="m">этап: ${esc(d.s)}</div></div>
+        <div><button class="k2-tag act ok">собрать КП</button></div>`;
+      const btn = it.querySelector('.ok');
+      btn.onclick = ()=>{
+        if (btn.disabled) return; btn.disabled = true; btn.textContent = 'сборка…';
+        setTimeout(()=>{
+          addApproval({ task:`Отправка КП: ${d.c}`, dept:'Продажи', cost:'₽12 / задача', risk:'low' });
+          cabToast(`✓ КП для «${d.c}» собрано за 10 мин → ушло на ваше решение`);
+          renderActive();
+        }, 550);
+      };
+      p1.appendChild(it);
+    });
+    const p2 = el('div','k2-panel'); p2.innerHTML=`<h3>На вашем решении · ${liveApprovals().length}</h3>`;
+    const mine = liveApprovals();
+    if(!mine.length) p2.innerHTML += `<div class="k2-empty">соберите КП — оно появится здесь на одобрение</div>`;
+    mine.slice(0,5).forEach(a=>{
+      const it = el('div','k2-item'); it.dataset.id=a.id;
+      it.innerHTML = `<div class="e">🔐</div><div style="flex:1"><div class="b">${esc(a.task)}</div><div class="m">${esc(a.dept)} · ${esc(a.cost)}</div></div>
+        <div><button class="k2-tag act ok">одобрить</button></div>`;
+      it.querySelector('.ok').onclick = ()=> animateOut(it, ()=> resolveApproval(a.id, true));
+      p2.appendChild(it);
+    });
+    grid.appendChild(p1); grid.appendChild(p2); w.appendChild(grid);
+  }
+
+  /* --- Мой день (живой: числа те же, что у ассистента; под уровень) --- */
   function renderToday(w){
+    const drafts = liveDrafts();
     w.innerHTML = head('Мой день', 'что ждёт именно вас — не вся компания, а ваш стол');
     const grid = el('div','k2-grid'); grid.style.gridTemplateColumns='1fr 1fr';
-    const p1 = el('div','k2-panel'); p1.innerHTML='<h3>Ждёт вашего слова</h3>';
-    (DASH.approvals||[]).slice(0,4).forEach(a=> p1.appendChild(rowEl('🔐', a.task, `${a.dept} · ${a.cost}`, null)));
-    const p2 = el('div','k2-panel'); p2.innerHTML='<h3>Черновики от ваших цифровых сотрудников</h3>';
-    feed().filter(f=>f[0]==='d').slice(0,4).forEach(f=> p2.appendChild(rowEl(deptIcon(f[3]), f[2], deptLabel(f[3]), profile.depth?f[1]:null)));
+    // левая панель зависит от сениорити: руководитель решает, исполнитель принимает
+    const p1 = el('div','k2-panel');
+    if (profile.level>=3){
+      const appr = liveApprovals();
+      p1.innerHTML=`<h3>Ждёт вашего слова · ${appr.length}</h3>`;
+      if(!appr.length) p1.innerHTML += `<div class="k2-empty">всё решено ✓</div>`;
+      appr.slice(0,4).forEach(a=>{ const r=rowEl('🔐', a.task, `${a.dept} · ${a.cost}`, null); r.style.cursor='pointer'; r.onclick=()=>goModule('sanctions'); p1.appendChild(r); });
+    } else {
+      p1.innerHTML=`<h3>Готово к приёмке · ${drafts.length}</h3>`;
+      if(!drafts.length) p1.innerHTML += `<div class="k2-empty">всё принято ✓</div>`;
+      drafts.slice(0,4).forEach(d=>{ const r=rowEl(deptIcon(d.dept), d.text, deptLabel(d.dept), profile.depth?d.who:null); r.style.cursor='pointer'; r.onclick=()=>goModule('intake'); p1.appendChild(r); });
+    }
+    // правая панель
+    const p2 = el('div','k2-panel');
+    if (profile.level>=3){
+      p2.innerHTML=`<h3>Черновики от цифровых сотрудников · ${drafts.length}</h3>`;
+      if(!drafts.length) p2.innerHTML += `<div class="k2-empty">всё принято ✓</div>`;
+      drafts.slice(0,4).forEach(d=>{ const r=rowEl(deptIcon(d.dept), d.text, deptLabel(d.dept), profile.depth?d.who:null); r.style.cursor='pointer'; r.onclick=()=>goModule('intake'); p2.appendChild(r); });
+    } else {
+      p2.innerHTML=`<h3>Быстрое действие</h3><div class="k2-empty">опишите задачу словами — Среда разберёт её и подберёт исполнителей.</div>`;
+      const b = el('button','k2-btn','Поставить задачу ▶'); b.style.marginTop='6px'; b.onclick=()=>goModule('task'); p2.appendChild(b);
+    }
     grid.appendChild(p1); grid.appendChild(p2); w.appendChild(grid);
   }
   function rowEl(emoji, title, meta, who){
@@ -932,15 +1067,21 @@
     p.appendChild(go); p.appendChild(out); w.appendChild(p);
   }
 
-  /* --- Приёмка --- */
+  /* --- Приёмка (живая: принял → ушло) --- */
   function renderIntake(w){
+    const q = liveDrafts();
     w.innerHTML = head('Приёмка результатов', 'что готово и держит вашу проверку');
     const p = el('div','k2-panel');
-    feed().filter(f=>f[0]==='d').forEach(f=>{
-      const it = el('div','k2-item');
-      it.innerHTML = `<div class="e">${deptIcon(f[3])}</div><div style="flex:1"><div class="b">${esc(f[2])}</div>
-        <div class="m">${esc(deptLabel(f[3]))}${profile.depth?` · ${esc(f[1])}`:''}</div></div>
-        <div><span class="k2-tag" style="border-color:var(--k-gold);color:var(--k-gold)">принять</span></div>`;
+    if (!q.length){
+      p.innerHTML = `<div class="k2-empty">✓ Всё принято — черновиков в очереди нет.</div>`;
+      w.appendChild(p); return;
+    }
+    q.forEach(d=>{
+      const it = el('div','k2-item'); it.dataset.id=d.id;
+      it.innerHTML = `<div class="e">${deptIcon(d.dept)}</div><div style="flex:1"><div class="b">${esc(d.text)}</div>
+        <div class="m">${esc(deptLabel(d.dept))}${profile.depth?` · ${esc(d.who)}`:''}</div></div>
+        <div><button class="k2-tag act ok">принять</button></div>`;
+      it.querySelector('.ok').onclick = ()=> animateOut(it, ()=> acceptDraft(d.id));
       p.appendChild(it);
     });
     w.appendChild(p);
@@ -960,23 +1101,31 @@
     grid.appendChild(p1); grid.appendChild(p2); w.appendChild(grid);
   }
 
-  /* --- Решения и санкции --- */
+  /* --- Решения и санкции (живые: одобрил → ушло из очереди) --- */
   function renderSanctions(w){
+    const q = liveApprovals();
     w.innerHTML = head('Решения и санкции', 'где нужно ваше слово — и кто подготовил материал');
     const p = el('div','k2-panel');
-    (DASH.approvals||[]).forEach(a=>{ const rc=a.risk==='med'?'#e8c468':a.risk==='high'?'#f0794a':'#6bbf6b';
-      const it=el('div','k2-item');
+    if (!q.length){
+      p.innerHTML = `<div class="k2-empty">✓ Очередь пуста — вы приняли все решения. Новые появятся, как только цифровые сотрудники подготовят материал.</div>`;
+      w.appendChild(p); return;
+    }
+    q.forEach(a=>{ const rc=a.risk==='med'?'#e8c468':a.risk==='high'?'#f0794a':'#6bbf6b';
+      const it=el('div','k2-item'); it.dataset.id=a.id;
       it.innerHTML=`<div class="e">🔐</div><div style="flex:1"><div class="b">${esc(a.task)}</div><div class="m">${esc(a.dept)} · ${esc(a.cost)} · <span style="color:${rc}">риск ${esc(a.risk)}</span></div></div>
-        <div style="display:flex;gap:6px"><span class="k2-tag" style="border-color:var(--k-gold);color:var(--k-gold)">одобрить</span><span class="k2-tag">отклонить</span></div>`;
+        <div style="display:flex;gap:6px"><button class="k2-tag act ok">одобрить</button><button class="k2-tag act">отклонить</button></div>`;
+      it.querySelector('.ok').onclick = ()=> animateOut(it, ()=> resolveApproval(a.id, true));
+      it.querySelectorAll('.act')[1].onclick = ()=> animateOut(it, ()=> resolveApproval(a.id, false));
       p.appendChild(it); });
     w.appendChild(p);
   }
+  function animateOut(node, then){ node.classList.add('k2-rowout'); setTimeout(then, 260); }
 
   /* --- Команда --- */
   function renderTeam(w){
     w.innerHTML = head('Команда и отделы', 'люди и их цифровые двойники — весь штат');
     const grid = el('div','k2-grid'); grid.style.gridTemplateColumns='repeat(auto-fill,minmax(300px,1fr))';
-    (ORG.depts||[]).forEach(d=>{ const p=el('div','k2-panel'); const people=(ORG.team&&ORG.team[d.id])||[];
+    (ORG.depts||[]).forEach(d=>{ const p=el('div','k2-panel'); const people=(ORG.team&&Array.isArray(ORG.team[d.id])?ORG.team[d.id]:[]);
       const hc=(ORG.hc&&ORG.hc[d.id])||people.length; const dhc=(ORG.dhc&&ORG.dhc[d.id])||0;
       p.innerHTML=`<h3>${d.icon} ${esc(d.label)} <span class="k2-tag">${hc} чел · ${dhc} ЦС</span></h3>`;
       people.slice(0,3).forEach(pe=> p.appendChild(rowEl(pe.emoji||'🧑', `${esc(pe.name)} ${esc(pe.surname)}`, `${esc(pe.role)}${pe.acc?' · '+esc(pe.acc):''}`, null)));
@@ -988,7 +1137,7 @@
   function renderAgents(w){
     w.innerHTML = head('Цифровые сотрудники', 'штат агентов Среды и их должностные инструкции');
     const digital = ORG.digital||{};
-    Object.keys(digital).forEach(dep=>{ digital[dep].slice(0,2).forEach(a=>{ const c=el('div','k2-agent'); const ji=a.ji||{};
+    Object.keys(digital).forEach(dep=>{ (Array.isArray(digital[dep])?digital[dep]:[]).slice(0,2).forEach(a=>{ const c=el('div','k2-agent'); const ji=a.ji||{};
       const duties=(ji.duties||[]).slice(0,3).map(d=>`<li>${esc(d)}</li>`).join('');
       const kpi=(ji.kpi||[]).map(k=>`<span>${esc(k[0])} <b>${esc(k[1])}</b></span>`).join('');
       c.innerHTML=`<div class="ah"><div class="e">${a.emoji||'🤖'}</div><div><b>${esc(a.title||a.name)}</b><small>${esc(a.fn||'')} · модель ${esc(a.model||'')} · ${esc(deptLabel(dep))}</small></div></div>
@@ -1000,8 +1149,12 @@
   function boot(){
     if (!$('#stage')) return;
     profile = load();
+    // защита от устаревшего профиля: оставляем только существующие модули
+    if (profile && Array.isArray(profile.chosen)){
+      profile.chosen = profile.chosen.filter(id => MODULES.some(m=>m.id===id));
+    }
     if (profile && profile.chosen && profile.chosen.length){ injectStyles(); enterCabinet(); }
-    else { runSurvey(); }
+    else { profile=null; runSurvey(); }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ()=> setTimeout(boot,0));
   else setTimeout(boot, 0);
