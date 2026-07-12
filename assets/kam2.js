@@ -434,7 +434,7 @@
     .k2-dom.lead .t .lab{ color:var(--k-gold); font-weight:700; }
     .k2-dom .t .p{ color:var(--k-dim); font-size:11px; font-variant-numeric:tabular-nums; }
     .k2-dom .track{ height:7px; border-radius:5px; background:var(--k-line); overflow:hidden; }
-    .k2-dom .track i{ display:block; height:100%; width:0; border-radius:5px; background:var(--k-line2); transition:width .6s cubic-bezier(.22,1,.36,1); }
+    .k2-dom .track i{ display:block; height:100%; width:0; border-radius:5px; background:var(--k-dim); transition:width .6s cubic-bezier(.22,1,.36,1); }
     .k2-dom.lead .track i{ background:linear-gradient(90deg,var(--k-gold2),var(--k-gold)); box-shadow:0 0 14px var(--k-soft); }
     .k2-lvlbox{ margin-top:16px; }
     .k2-lvlbox .t{ display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:6px; }
@@ -483,7 +483,9 @@
     .k2-nav-role{ color:var(--k-gold); font-size:12px; padding:0 12px 8px; font-weight:700; }
     .k2-nav-item{ display:flex; align-items:center; gap:11px; padding:11px 12px; border-radius:11px; cursor:pointer; color:var(--k-txt); font-size:14.5px; border:1px solid transparent; }
     .k2-nav-item:hover{ background:var(--k-panel2); }
-    .k2-nav-item.on{ background:var(--k-panel2); border-color:var(--k-line); }
+    .k2-nav-item.on{ background:var(--k-soft); border-color:var(--k-gold); }
+    .k2-nav-item.on .ni{ filter:none; }
+    .k2-item[style*="pointer"]:hover{ background:var(--k-panel2); }
     .k2-nav-item .ni{ font-size:17px; width:22px; text-align:center; }
     .k2-nav-item small{ display:block; color:var(--k-dim); font-size:11.5px; }
     .k2-add{ margin-top:8px; color:var(--k-gold); font-size:13px; cursor:pointer; padding:11px 12px; border:1px dashed var(--k-line); border-radius:11px; }
@@ -571,7 +573,7 @@
     .k2-life-step{ font-size:12.5px; color:var(--k-dim); }
     .k2-life-step.done{ color:var(--k-txt2); }
     .k2-life-step.now{ color:var(--k-gold); font-weight:700; }
-    .k2-life-arr{ color:var(--k-line2); font-size:12px; }
+    .k2-life-arr{ color:var(--k-dim); font-size:12px; }
     /* ---- A11y: фокус-кольца на клавиатуре ---- */
     .k2-opt:focus-visible,.k2-cta:focus-visible,.k2-btn:focus-visible,.k2-nav-item:focus-visible,.k2-chip:focus-visible,
     .k2-tag.act:focus-visible,.k2-asst-rem:focus-visible,.k2-add:focus-visible,.k2-back:focus-visible,.k2-asst-input input:focus-visible{
@@ -628,7 +630,7 @@
               </div>
               <div class="k2-role" id="k2Role" style="display:none"></div>
             </div>
-            <div class="k2-tray-h">Ваши модули · <b id="k2Cnt">0</b></div>
+            <div class="k2-tray-h">Ваши инструменты · <b id="k2Cnt">0</b></div>
             <div class="k2-tray" id="k2Tray"><div class="k2-tray-empty" id="k2Empty">пока пусто — Среда наполнит его под вашу работу</div></div>
             <div class="k2-toast" id="k2Toast"></div>
           </aside>
@@ -734,7 +736,7 @@
       let msg='';
       if (s && s.kind==='dom' && domain){ msg = `▲ Среда распознаёт: ${DOMAINS[domain].label}`; }
       else if (s && s.kind==='lvl' && level){ msg = `▲ Уровень: ${LEVELS[level]}`; }
-      else if (added.length){ const m=MODULES.find(x=>x.id===added[0]); msg=`▲ добавлен модуль «${m.name}»`; }
+      else if (added.length){ const m=MODULES.find(x=>x.id===added[0]); msg=`▲ готов инструмент «${m.name}»`; }
       if (msg) showToast(msg);
     }
     let toastTimer=null;
@@ -742,8 +744,9 @@
 
     function finish(){
       const domain = detectDomain(domScore);
-      const level = detectLevel(lvlSamples) || 2;
-      const role = resolveRole(domain, level);
+      const rawLevel = detectLevel(lvlSamples) || 2;
+      const role = resolveRole(domain, rawLevel);
+      const level = role ? role.l : rawLevel;   // уровень = уровень найденной роли (иначе титул и плашка/гейтинг противоречат)
       // эхо-портрет: возвращаем ответы человека его же словами
       const echo = history.filter(h=>h && h.kind==='dom' && h.text).sort((a,b)=>a.qi-b.qi).map(h=>{
         const t = lowerFirst(h.text);
@@ -884,7 +887,8 @@
   /* ---- персистентность: продукт помнит состояние между сессиями ---- */
   function persist(){
     if(!profile) return;
-    try{ localStorage.setItem(LS_STATE, JSON.stringify({ domain:profile.domain, apSeq, k2Live, csStore, staff:myStaffCache, myAdditions })); }catch(e){}
+    try{ localStorage.setItem(LS_STATE, JSON.stringify({ domain:profile.domain, apSeq, k2Live, csStore, staff:myStaffCache, myAdditions,
+      cockpit:{ view:cockpit.view, height:cockpit.height, csId:cockpit.csId } })); }catch(e){}
   }
   function loadState(){
     try{ const s=JSON.parse(localStorage.getItem(LS_STATE)||'null');
@@ -893,6 +897,15 @@
         if(Array.isArray(s.staff)) myStaffCache=s.staff;
         if(Array.isArray(s.myAdditions)) myAdditions=s.myAdditions;
         if(s.csStore) Object.assign(csStore, s.csStore);
+        // восстановить позицию в кокпите с валидацией прав/наличия
+        const cp=s.cockpit;
+        if(cp){
+          if(cp.height==='company' && canCompany()) cockpit.height='company';
+          else if(cp.height==='dept') cockpit.height='dept';
+          if(cp.view==='cs' && cp.csId && (myStaffCache||[]).some(c=>c.id===cp.csId)){ cockpit.view='cs'; cockpit.csId=cp.csId; }
+          else if(cp.view==='constructor') cockpit.view='constructor';
+          else if(cp.view==='onboard' && canCompany()) cockpit.view='onboard';
+        }
         // восстановить счётчик id выше сохранённого max, иначе новые id столкнутся с восстановленными
         let mx = (typeof s.apSeq==='number') ? s.apSeq : 0;
         const scan = arr => (arr||[]).forEach(o=>{ const m=/(\d+)$/.exec(o&&o.id||''); if(m) mx=Math.max(mx, +m[1]+1); });
@@ -990,7 +1003,7 @@
     const staff = myStaff();
     const mins = minsSince(8);
     const ago = mins<60 ? `${mins} мин назад` : `${Math.floor(mins/60)} ч назад`;
-    const when = mins>0 ? `собрал день в 08:00 по вашему времени · обновлён ${nowHM()} (${ago})` : `готовит ваш день к 08:00 по вашему времени · сейчас ${nowHM()}`;
+    const when = mins>0 ? `собрал ваш день в 08:00 по вашему времени · ${ago}` : `готовит ваш день к 08:00 по вашему времени · сейчас ${nowHM()}`;
     w.innerHTML = head('Пульс · сегодня', `${esc(profile.roleTitle||'')} · помощник ${when}`);
     w.appendChild(sysStrip());
     // 1. Ждёт меня — точки участия
@@ -1017,7 +1030,7 @@
     const s4 = section('Предложено помощником','');
     const cand = el('div','k2-panel');
     if (k2Live.candDone){
-      cand.innerHTML = `<div class="k2-item"><div class="e">✓</div><div><div class="b">Роздано ЦС</div><div class="m">задачи из звонка ушли в работу, встреча — в календаре</div></div></div>`;
+      cand.innerHTML = `<div class="k2-item"><div class="e">✓</div><div><div class="b">Роздано ЦС</div><div class="m">задачи из звонка ушли в работу</div></div></div>`;
     } else {
       cand.innerHTML = `<div class="k2-item"><div class="e">🎧</div><div style="flex:1"><div class="b">${esc(dc.cand.text)}</div>
         <div class="m">помощник разобрал транскрипт — подтвердите или поправьте, прежде чем я раздам ЦС</div></div></div>
@@ -1026,9 +1039,13 @@
     }
     s4.appendChild(cand); w.appendChild(s4);
     const dispatchCand = ()=>{ if(k2Live.candDone) return;
-      addApproval({task:dc.cand.task, dept:dc.dept, cost:'₽12 / задача', risk:'low'});
-      k2Live.drafts.unshift({id:'drc'+(apSeq++), text:dc.cand.draft, dept:(staff[0]&&staff[0].dep)||profile.domain, who:'помощник'});
-      k2Live.candDone=true; cabToast('✓ Задачи розданы ЦС, встреча — в календаре'); renderCockpit(); };
+      const dep=(staff[0]&&staff[0].dep)||profile.domain;
+      const inp=[...w.querySelectorAll('#candBreak input')].map(i=>i.value.trim()).filter(Boolean);
+      const items = inp.length ? inp : [dc.cand.task, dc.cand.draft.replace(/^Черновик\s*/,'')];  // читаем правки, если раскрыт разбор
+      addApproval({task:items[0], dept:dep, cost:'₽12 / задача', risk:'low'});
+      items.slice(1).forEach(t=> k2Live.drafts.unshift({id:'drc'+(apSeq++), text:'Черновик: '+t, dept:dep, who:'помощник'}));
+      k2Live.candDone=true;
+      cabToast(`✓ ${items.length} ${plural(items.length,'задача роздана','задачи розданы','задач роздано')} ЦС`); renderCockpit(); };
     const ok=$('#candOk',w); if(ok) ok.onclick=dispatchCand;
     const fix=$('#candFix',w); if(fix) fix.onclick=()=>{   // честно: раскрыть разбор, а не врать тостом
       const items=[dc.cand.task, 'Подготовить: '+dc.cand.draft.replace('Черновик ',''), 'Назначить встречу по итогам', 'Обновить статус в системе'];
@@ -1081,7 +1098,7 @@
   }
   function pointEl(p){
     const it=el('div','k2-item k2-point k2-'+p.kind); it.dataset.id=p.id;
-    const canReject = (p.kind==='sanction' || p.kind==='coord');
+    const canReject = (p.kind==='sanction' || p.kind==='coord' || p.kind==='intake');
     it.innerHTML=`<div class="e">${p.icon}</div><div style="flex:1"><div class="b">${esc(p.title)}</div><div class="m">${esc(p.meta||'')}</div></div>
       <div style="display:flex;gap:6px"><button class="k2-tag act ok">${esc(p.label)}</button>${canReject?'<button class="k2-tag act">отклонить</button>':''}</div>`;
     const ok=it.querySelector('.ok');
@@ -1093,6 +1110,7 @@
     });
     if(p.kind==='sanction'){ it.querySelectorAll('.act')[1].onclick=()=> animateOut(it, ()=> resolveApproval(p.id,false)); }
     else if(p.kind==='coord'){ it.querySelectorAll('.act')[1].onclick=()=> animateOut(it, ()=>{ k2Live.coord=(k2Live.coord||[]).filter(c=>c.id!==p.id); cabToast('✗ Отклонено — ваш ЦС не подключён'); refreshLive(); }); }
+    else if(p.kind==='intake'){ it.querySelectorAll('.act')[1].onclick=()=> animateOut(it, ()=> rejectDraft(p.id)); }
     return it;
   }
 
@@ -1106,7 +1124,7 @@
     myStaff().forEach(cs=> s1.appendChild(rowEl(cs.e, cs.t, cs.now, null)));
     w.appendChild(s1);
     const s2=section('Передачи между ролями','');
-    const x=feed().filter(f=>f[0]==='x'); if(!x.length) s2.appendChild(emptyEl('передач сейчас нет'));
+    const x=feed().filter(f=>f[0]==='x' && (canCompany() || f[3]===dep)); if(!x.length) s2.appendChild(emptyEl('передач в вашем отделе сейчас нет'));
     x.forEach(f=> s2.appendChild(rowEl('🔗', f[2], f[1], null)));
     w.appendChild(s2);
   }
@@ -1172,7 +1190,7 @@
     ];
   }
   function csMemory(cs){
-    const ji=cs.ji||{}; const f=[]; const dc=dcontent();
+    const ji=cs.ji||{}; const f=[]; const dc=DCONTENT[cs.dep]||dcontent();   // память — из домена САМОГО ЦС (нанятый из чужого домена не путает правила)
     if(ji.duties) ji.duties.slice(0,2).forEach(d=> f.push('умеет: '+d));
     else f.push('умеет: '+cs.now);
     (dc.mem||[]).forEach(m=> f.push(m));   // контекст + правило под домен роли
@@ -1217,10 +1235,10 @@
     const go=el('button','k2-btn','Поручить ▶'); p.appendChild(go); w.appendChild(p);
     $('#csBack',w).onclick=()=>goView('pulse');
     go.onclick=()=>{ const t=ta.value.trim(); if(!t){ta.focus();return;} if(go.disabled)return;
-      if(kind==='now'){ go.disabled=true; go.textContent='ставлю…'; cs.busy=true; cs.now='выполняет: '+t; cs.stageIdx=2;
+      if(kind==='now'){ go.disabled=true; go.textContent='ставлю…'; if(!cs._idle) cs._idle=cs.now; cs.busy=true; cs.now='выполняет: '+t; cs.stageIdx=2;
         st.journal.unshift({text:'Взял задачу: '+t, prov:['поставлено РЦС · '+nowHM(),'проверка допустимости (ИБ/комплаенс): пройдена','контекст роли']});
         setTimeout(()=>{ if(!k2Live) return;   // гард: пользователь мог «пересобрать» за эти 650мс
-          k2Live.drafts.unshift({id:'drt'+(apSeq++), text:'Черновик: '+t, dept:cs.dep, who:cs.t});
+          k2Live.drafts.unshift({id:'drt'+(apSeq++), text:'Черновик: '+t, dept:cs.dep, who:cs.t, csId:cs.id});
           cabToast(`✓ ${cs.t} взял задачу — черновик придёт на приёмку`); goView('pulse'); }, 650);
       } else {
         const when = kind==='regular'?'ежедневно 09:00':'завтра 09:00';
@@ -1261,7 +1279,9 @@
           <div class="m">уровень: <b style="color:var(--k-gold)">${esc(STAGES[a.stage])}</b> · телеметрия спроса: ещё ${a.demand} компаний просили похожее</div></div>
           <div>${atCompany?'<span class="k2-tag">в дефолте роли ✓</span>':'<button class="k2-tag act ok">поднять выше</button>'}</div>`;
         if(!atCompany){ it.querySelector('.ok').onclick=()=>{
-          if(a.stage===1 && !canCompany()){ cabToast('Подъём в «компанию» = новый дефолт роли для всех — санкция Оркестратора'); return; }
+          // §7.2/§4.3: подъём в дефолт роли/компании — только с санкцией владельца контекста
+          if(a.stage===0 && profile.level<3){ cabToast('Подъём в дефолт отдела — санкция руководителя/владельца отдела'); return; }
+          if(a.stage===1 && !canCompany()){ cabToast('Подъём в дефолт компании = новый дефолт роли для всех — санкция Оркестратора'); return; }
           a.stage++; cabToast(`✓ «${a.t}» поднят до «${STAGES[a.stage]}» с провенансом — ${a.stage>=2?'стал дефолтом роли для всех компаний СРЕДЫ':'виден всему отделу'}`); renderCockpit();
         }; }
         up.appendChild(it);
@@ -1276,7 +1296,7 @@
     p.innerHTML=`<div class="k2-empty">Опишите, какого ЦС, навыка или инструмента не хватает — уйдёт эскалацией на ЦС администратора платформы. Он провижинит (MCP-инструмент / навык / «найм») со статусом.</div>`;
     const ta=el('textarea','k2-ta'); ta.placeholder='Напр.: нужен ЦС для работы с 1С…'; ta.style.minHeight='70px'; p.appendChild(ta);
     const b=el('button','k2-btn','Эскалировать админ-ЦС ▶'); b.style.marginTop='8px'; p.appendChild(b);
-    b.onclick=()=>{ if(!ta.value.trim())return; cabToast('✓ Эскалация ушла админ-ЦС — соберёт и вернёт со статусом'); ta.value=''; };
+    b.onclick=()=>{ if(!ta.value.trim()){ ta.focus(); cabToast('Опишите, чего не хватает — тогда эскалирую'); return; } cabToast('✓ Эскалация ушла админ-ЦС — соберёт и вернёт со статусом'); ta.value=''; };
     esc2.appendChild(p); w.appendChild(esc2);
     $('#ctorBack',w).onclick=()=>goView('pulse');
   }
@@ -1350,10 +1370,17 @@
   function liveApprovals(){ initLive(); return k2Live.approvals; }
   function liveDrafts(){ initLive(); return k2Live.drafts; }
   function resolveApproval(id, ok){ initLive(); k2Live.approvals = k2Live.approvals.filter(a=>a.id!==id); cabToast(ok?'✓ Одобрено — отправлено в работу':'✗ Отклонено — вернул на доработку'); refreshLive(); }
-  function acceptDraft(id){ initLive(); k2Live.drafts = k2Live.drafts.filter(d=>d.id!==id); cabToast('✓ Принято'); refreshLive(); }
+  function freeCs(csId){ const cs=(myStaffCache||[]).find(c=>c.id===csId); if(cs){ cs.busy=false; cs.stageIdx=3; cs.now=cs._idle||'на связи'; } }   // §7.2: приёмка завершает цикл — ЦС освобождается
+  function acceptDraft(id){ initLive(); const d=(k2Live.drafts||[]).find(x=>x.id===id);
+    k2Live.drafts = k2Live.drafts.filter(x=>x.id!==id); if(d&&d.csId) freeCs(d.csId);
+    cabToast('✓ Принято'); refreshLive(); }
+  function rejectDraft(id){ initLive(); const d=(k2Live.drafts||[]).find(x=>x.id===id);
+    k2Live.drafts = k2Live.drafts.filter(x=>x.id!==id);   // §4: приёмка = принять/отклонить; отклонён → ЦС дорабатывает
+    if(d&&d.csId){ const cs=(myStaffCache||[]).find(c=>c.id===d.csId); if(cs){ cs.busy=true; cs.stageIdx=2; cs.now='дорабатывает: '+String(d.text||'').replace(/^Черновик:\s*/,''); } }
+    cabToast('↩ Возвращено на доработку'); refreshLive(); }
   let apSeq = 0;
   function addApproval(obj){ initLive(); k2Live.approvals.unshift(Object.assign({ id:'apn'+(apSeq++) }, obj)); }
-  function refreshLive(){ renderCockpit(); }   // перерисовать кокпит + панель помощника
+  function refreshLive(){ renderStaffRail(); renderCockpit(); }   // рейл штата (занятость ЦС) + кокпит + помощник
 
   let cabToastTimer=null;
   function cabToast(msg){
