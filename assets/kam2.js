@@ -21,6 +21,7 @@
   const $  = (s, r) => (r||document).querySelector(s);
   const el = (tag, cls, html) => { const n=document.createElement(tag); if(cls)n.className=cls; if(html!=null)n.innerHTML=html; return n; };
   const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const lowerFirst = s => s ? s.charAt(0).toLowerCase()+s.slice(1) : s;
   const load = () => { try { return JSON.parse(localStorage.getItem(LS_KEY)||'null'); } catch(e){ return null; } };
   const save = p  => { try { localStorage.setItem(LS_KEY, JSON.stringify(p)); } catch(e){} };
   const clamp = (x,a,b) => Math.max(a, Math.min(b, x));
@@ -45,42 +46,53 @@
   const LEVELS = ['—','Исполнитель','Специалист','Руководитель','Директор','Владелец'];
 
   /* ---- база ролей: {title, domain, level}. Расширяется одной строкой. ---- */
-  /* Это seed ~48; структура держит 100+ — добавление роли не трогает код.    */
+  /* ~100 ролей — цель: любой из спектра находит себя. Добавление не трогает код. */
   const ROLES = [
-    // finance
-    {t:'Бухгалтер', d:'finance', l:2}, {t:'Старший бухгалтер', d:'finance', l:2},
-    {t:'Финансовый аналитик', d:'finance', l:2}, {t:'Казначей', d:'finance', l:3},
-    {t:'Финансовый контролёр', d:'finance', l:3}, {t:'Финансовый директор', d:'finance', l:4},
-    // estimate
-    {t:'Сметчик', d:'estimate', l:2}, {t:'Инженер-сметчик', d:'estimate', l:2},
-    {t:'Тендерный специалист', d:'estimate', l:2}, {t:'Руководитель сметного отдела', d:'estimate', l:3},
-    // eng
-    {t:'Разработчик', d:'eng', l:2}, {t:'QA-инженер', d:'eng', l:2}, {t:'DevOps-инженер', d:'eng', l:2},
-    {t:'Архитектор', d:'eng', l:3}, {t:'Техлид', d:'eng', l:3}, {t:'Технический директор', d:'eng', l:4},
-    // sales
-    {t:'Менеджер по продажам', d:'sales', l:2}, {t:'Ключевой менеджер (KAM)', d:'sales', l:2},
-    {t:'Руководитель отдела продаж', d:'sales', l:3}, {t:'Коммерческий директор', d:'sales', l:4},
-    // marketing
-    {t:'Контент-менеджер', d:'marketing', l:1}, {t:'Маркетолог', d:'marketing', l:2},
-    {t:'Продукт-маркетолог', d:'marketing', l:2}, {t:'Глава маркетинга', d:'marketing', l:4},
-    // ops
-    {t:'Мастер участка', d:'ops', l:2}, {t:'Прораб', d:'ops', l:2}, {t:'Снабженец', d:'ops', l:2},
+    // finance (деньги и цифры)
+    {t:'Помощник бухгалтера', d:'finance', l:1}, {t:'Бухгалтер', d:'finance', l:2}, {t:'Бухгалтер по первичке', d:'finance', l:2},
+    {t:'Старший бухгалтер', d:'finance', l:2}, {t:'Экономист', d:'finance', l:2}, {t:'Финансовый аналитик', d:'finance', l:2},
+    {t:'Инвестиционный аналитик', d:'finance', l:3}, {t:'Казначей', d:'finance', l:3}, {t:'Аудитор', d:'finance', l:3},
+    {t:'Финансовый контролёр', d:'finance', l:3}, {t:'Главный бухгалтер', d:'finance', l:3}, {t:'Финансовый директор', d:'finance', l:4},
+    // estimate (сметы и расчёты)
+    {t:'Помощник сметчика', d:'estimate', l:1}, {t:'Сметчик', d:'estimate', l:2}, {t:'Инженер-сметчик', d:'estimate', l:2},
+    {t:'Специалист по ценообразованию', d:'estimate', l:2}, {t:'Тендерный специалист', d:'estimate', l:2}, {t:'Руководитель сметного отдела', d:'estimate', l:3},
+    // eng (инженерия и продукт)
+    {t:'Стажёр-разработчик', d:'eng', l:1}, {t:'Разработчик', d:'eng', l:2}, {t:'Frontend-разработчик', d:'eng', l:2},
+    {t:'Backend-разработчик', d:'eng', l:2}, {t:'Мобильный разработчик', d:'eng', l:2}, {t:'QA-инженер', d:'eng', l:2},
+    {t:'DevOps-инженер', d:'eng', l:2}, {t:'Системный администратор', d:'eng', l:2}, {t:'Дата-инженер', d:'eng', l:3},
+    {t:'Архитектор', d:'eng', l:3}, {t:'Техлид', d:'eng', l:3}, {t:'Технический директор', d:'eng', l:4}, {t:'CTO', d:'eng', l:5},
+    // sales (продажи и клиенты)
+    {t:'Ассистент отдела продаж', d:'sales', l:1}, {t:'Менеджер по продажам', d:'sales', l:2}, {t:'Ключевой менеджер (KAM)', d:'sales', l:2},
+    {t:'Менеджер по работе с клиентами', d:'sales', l:2}, {t:'Пресейл-инженер', d:'sales', l:2}, {t:'Руководитель отдела продаж', d:'sales', l:3},
+    {t:'Директор по развитию', d:'sales', l:4}, {t:'Коммерческий директор', d:'sales', l:4},
+    // marketing (маркетинг)
+    {t:'Контент-менеджер', d:'marketing', l:1}, {t:'SMM-специалист', d:'marketing', l:1}, {t:'Маркетолог', d:'marketing', l:2},
+    {t:'Performance-маркетолог', d:'marketing', l:2}, {t:'Продукт-маркетолог', d:'marketing', l:2}, {t:'Маркетинг-аналитик', d:'marketing', l:2},
+    {t:'Бренд-менеджер', d:'marketing', l:3}, {t:'Глава маркетинга', d:'marketing', l:4},
+    // ops (производство и сроки)
+    {t:'Оператор', d:'ops', l:1}, {t:'Диспетчер', d:'ops', l:1}, {t:'Мастер участка', d:'ops', l:2}, {t:'Прораб', d:'ops', l:2},
+    {t:'Снабженец', d:'ops', l:2}, {t:'Логист', d:'ops', l:2}, {t:'Технолог', d:'ops', l:2}, {t:'Контролёр качества', d:'ops', l:2},
     {t:'Начальник производства', d:'ops', l:3}, {t:'Директор по производству', d:'ops', l:4},
-    // hr
-    {t:'Рекрутер', d:'hr', l:2}, {t:'HR-специалист', d:'hr', l:2},
-    {t:'HR бизнес-партнёр', d:'hr', l:3}, {t:'HR-директор', d:'hr', l:4},
-    // legal
-    {t:'Делопроизводитель', d:'legal', l:1}, {t:'Юрист', d:'legal', l:2}, {t:'Юридический директор', d:'legal', l:4},
-    // project
-    {t:'Координатор проектов', d:'project', l:1}, {t:'Проектный менеджер', d:'project', l:2},
-    {t:'Руководитель проектов', d:'project', l:3}, {t:'Директор PMO', d:'project', l:4},
-    // analytics
-    {t:'Аналитик', d:'analytics', l:2}, {t:'BI-аналитик', d:'analytics', l:2}, {t:'Руководитель аналитики', d:'analytics', l:3},
-    // exec
-    {t:'Руководитель отдела', d:'exec', l:3}, {t:'Директор', d:'exec', l:4},
-    {t:'Генеральный директор', d:'exec', l:5}, {t:'Владелец', d:'exec', l:5}, {t:'Стратег', d:'exec', l:4},
-    // assist
-    {t:'Личный ассистент', d:'assist', l:2}, {t:'Офис-менеджер', d:'assist', l:2}, {t:'Операционный менеджер', d:'assist', l:3},
+    // hr (люди и найм)
+    {t:'Ресёчер', d:'hr', l:1}, {t:'Рекрутер', d:'hr', l:2}, {t:'HR-специалист', d:'hr', l:2}, {t:'Специалист по кадрам', d:'hr', l:2},
+    {t:'HR-генералист', d:'hr', l:2}, {t:'Тренинг-менеджер', d:'hr', l:2}, {t:'HR бизнес-партнёр', d:'hr', l:3}, {t:'HR-директор', d:'hr', l:4},
+    // legal (документы и право)
+    {t:'Помощник юриста', d:'legal', l:1}, {t:'Делопроизводитель', d:'legal', l:1}, {t:'Юрист', d:'legal', l:2},
+    {t:'Корпоративный юрист', d:'legal', l:2}, {t:'Комплаенс-менеджер', d:'legal', l:3}, {t:'Юридический директор', d:'legal', l:4},
+    // project (проекты)
+    {t:'Координатор проектов', d:'project', l:1}, {t:'Проектный менеджер', d:'project', l:2}, {t:'Scrum-мастер', d:'project', l:2},
+    {t:'Продакт-менеджер', d:'project', l:3}, {t:'Руководитель проектов', d:'project', l:3}, {t:'Директор PMO', d:'project', l:4},
+    // analytics (данные и аналитика)
+    {t:'Ассистент аналитика', d:'analytics', l:1}, {t:'Аналитик', d:'analytics', l:2}, {t:'BI-аналитик', d:'analytics', l:2},
+    {t:'Веб-аналитик', d:'analytics', l:2}, {t:'Продуктовый аналитик', d:'analytics', l:2}, {t:'Data Scientist', d:'analytics', l:3},
+    {t:'Руководитель аналитики', d:'analytics', l:3},
+    // exec (руководство и стратегия)
+    {t:'Тимлид', d:'exec', l:3}, {t:'Руководитель отдела', d:'exec', l:3}, {t:'Директор направления', d:'exec', l:4},
+    {t:'Операционный директор', d:'exec', l:4}, {t:'Стратег', d:'exec', l:4}, {t:'Генеральный директор', d:'exec', l:5},
+    {t:'Владелец', d:'exec', l:5}, {t:'Основатель', d:'exec', l:5},
+    // assist (ассистент и операционка)
+    {t:'Секретарь', d:'assist', l:1}, {t:'Личный ассистент', d:'assist', l:2}, {t:'Ассистент руководителя', d:'assist', l:2},
+    {t:'Офис-менеджер', d:'assist', l:2}, {t:'Бизнес-ассистент', d:'assist', l:2}, {t:'Операционный менеджер', d:'assist', l:3},
   ];
 
   /* ============================================================ ОПРОС      */
@@ -91,32 +103,32 @@
         { t:'Таблицы, суммы, расчёты',            dom:{finance:2} },
         { t:'Сметы, расценки, спецификации',      dom:{estimate:2} },
         { t:'Код, консоль, системы',              dom:{eng:2} },
-        { t:'Клиенты, сделки, переговоры',        dom:{sales:2} },
         { t:'Договоры и документы',               dom:{legal:2} },
-        { t:'Графики, объекты, поставки',         dom:{ops:1, project:1} },
-        { t:'Данные, метрики, отчёты',            dom:{analytics:1, exec:1} },
-        { t:'Задачи команды и календарь',         dom:{assist:1, hr:1} },
+        { t:'Объекты, склад, поставки',           dom:{ops:2} },
+        { t:'Кампании, контент, соцсети',         dom:{marketing:2} },
+        { t:'Данные, метрики, дашборды',          dom:{analytics:2} },
+        { t:'Календарь, задачи, переписка',       dom:{assist:2} },
       ]},
     { kind:'dom', q:'Что для вас — сделанная работа?',
       opts:[
-        { t:'Точный расчёт или смета',            dom:{estimate:1, finance:1} },
+        { t:'Точный расчёт или смета',            dom:{estimate:2} },
         { t:'Работающая система',                 dom:{eng:2} },
         { t:'Закрытая сделка',                    dom:{sales:2} },
-        { t:'Оформленный документ',               dom:{legal:2} },
-        { t:'Сданный этап или запуск',            dom:{project:1, marketing:1, ops:1} },
-        { t:'Отчёт с выводом',                    dom:{analytics:2} },
+        { t:'Запущенная кампания',                dom:{marketing:2} },
+        { t:'Закрытая вакансия',                  dom:{hr:2} },
+        { t:'Сданный проект или этап',            dom:{project:2} },
         { t:'Принятое решение',                   dom:{exec:2} },
         { t:'Разгруженный руководитель',          dom:{assist:2} },
       ]},
     { kind:'dom', q:'Где ошибка обойдётся вам дороже всего?',
       opts:[
-        { t:'В цифре или расчёте',                dom:{finance:2, estimate:1} },
-        { t:'В работе системы',                   dom:{eng:2} },
+        { t:'В цифре или расчёте',                dom:{finance:2} },
         { t:'В сделке с клиентом',                dom:{sales:2} },
         { t:'В правовом вопросе',                 dom:{legal:2} },
-        { t:'В сроке или поставке',               dom:{ops:2, project:1} },
-        { t:'В выводе по данным',                 dom:{analytics:2} },
+        { t:'В сроке или поставке',               dom:{ops:2} },
         { t:'В подборе людей',                    dom:{hr:2} },
+        { t:'В сорванном проекте',                dom:{project:2} },
+        { t:'В выводе по данным',                 dom:{analytics:2} },
         { t:'В стратегии',                        dom:{exec:2} },
       ]},
     { kind:'lvl', q:'Кто отвечает за результат перед вами?',
@@ -445,8 +457,14 @@
     @keyframes k2out{ to{opacity:0;transform:scale(.9);height:0;padding-top:0;padding-bottom:0;margin-top:-9px} }
     .k2-toast{ margin-top:auto; padding-top:16px; color:var(--k-gold); font-size:13px; line-height:1.4; min-height:20px; opacity:0; transform:translateY(6px); transition:opacity .32s, transform .32s; }
     .k2-toast.show{ opacity:1; transform:translateY(0); }
-    /* ---- результат ---- */
-    .k2-result h2{ font-size:24px; font-weight:800; letter-spacing:-.01em; margin:6px 0 2px; }
+    /* ---- результат: драматургия узнавания ---- */
+    .k2-echo{ margin:16px 0 4px; display:flex; flex-direction:column; gap:9px; }
+    .k2-echo-line{ font-size:16px; line-height:1.45; color:var(--k-txt2); padding-left:22px; position:relative; opacity:0; animation:k2echo .55s cubic-bezier(.22,1,.36,1) forwards; }
+    .k2-echo-line:before{ content:'“'; position:absolute; left:3px; top:1px; color:var(--k-gold); font-size:22px; line-height:1; }
+    @keyframes k2echo{ 0%{opacity:0; transform:translateY(9px)} 100%{opacity:1; transform:translateY(0)} }
+    .k2-verdict{ opacity:0; animation:k2echo .6s cubic-bezier(.22,1,.36,1) forwards; margin-top:20px; padding-top:18px; border-top:1px solid var(--k-line); }
+    .k2-verdict-lead{ color:var(--k-dim); font-size:13px; margin-bottom:2px; }
+    .k2-result h2{ font-size:29px; font-weight:800; letter-spacing:-.02em; margin:2px 0 2px; }
     .k2-result h2 .role{ color:var(--k-gold); }
     .k2-meta{ display:flex; gap:9px; flex-wrap:wrap; margin:12px 0 4px; }
     .k2-pill{ display:flex; align-items:center; gap:7px; background:var(--k-panel2); border:1px solid var(--k-line); border-radius:999px; padding:7px 13px; font-size:13px; }
@@ -517,6 +535,10 @@
     .k2-asst-input input:focus{ outline:none; border-color:var(--k-gold); box-shadow:0 0 0 3px var(--k-soft); }
     .k2-asst-input button{ background:var(--k-gold); color:var(--k-on); border:none; border-radius:10px; width:42px; font-size:16px; font-weight:800; cursor:pointer; }
     .k2-asst-out{ font-size:12.5px; color:var(--k-gold); margin-top:11px; line-height:1.45; }
+    /* ---- A11y: уважение к reduced-motion ---- */
+    @media (prefers-reduced-motion: reduce){
+      .k2-echo-line,.k2-verdict,.k2-tcard,.k2-card,.k2-role,.k2-axbadge{ animation:none !important; opacity:1 !important; transform:none !important; }
+    }
     `;
     document.head.appendChild(s);
   }
@@ -596,7 +618,7 @@
     function answer(o, s, btn){
       if (locked) return; locked = true;
       btn.classList.add('chosen');
-      const rec = { kind:s.kind };
+      const rec = { kind:s.kind, qi:step, text:o.t };
       if (s.kind==='dom'){ for(const d in o.dom){ domScore[d]=(domScore[d]||0)+o.dom[d]; } rec.dom=o.dom; }
       else if (s.kind==='lvl'){ lvlSamples.push(o.lvl); rec.lvl=o.lvl; }
       else if (s.kind==='depth'){ depth=o.depth; rec.depth=o.depth; }
@@ -680,7 +702,16 @@
       const domain = detectDomain(domScore);
       const level = detectLevel(lvlSamples) || 2;
       const role = resolveRole(domain, level);
-      profile = { domain, level, roleTitle: role?role.t:null, depth, chosen: assembleModules(domain, level) };
+      // эхо-портрет: возвращаем ответы человека его же словами
+      const echo = history.filter(h=>h && h.kind==='dom' && h.text).sort((a,b)=>a.qi-b.qi).map(h=>{
+        const t = lowerFirst(h.text);
+        if (h.qi===0) return `в работе у вас — ${t}`;
+        if (h.qi===1) return `сделанная работа для вас — это ${t}`;
+        if (h.qi===2) return `дороже всего ошибиться ${t}`;
+        return t;
+      });
+      profile = { domain, level, roleTitle: role?role.t:null, depth,
+        chosen: assembleModules(domain, level), echo, baseCount: ROLES.length };
       save(profile);
       drawResult();
     }
@@ -689,18 +720,26 @@
       layer.classList.remove('two'); layer.innerHTML='';
       const c = el('div','k2-card k2-result');
       const dom = profile.domain;
+      const echoHtml = (profile.echo||[]).map((line,i)=>
+        `<div class="k2-echo-line" style="animation-delay:${(0.2+i*0.55).toFixed(2)}s">${esc(line)}</div>`).join('');
+      const vDelay = (0.2 + (profile.echo||[]).length*0.55 + 0.25).toFixed(2);
       const mods = profile.chosen.map(id=>{ const m=MODULES.find(x=>x.id===id);
         return `<div class="k2-mod"><div class="i">${m.icon}</div><div class="n">${esc(m.name)}</div><div class="h">${esc(m.hint)}</div></div>`; }).join('');
       c.innerHTML = `
-        <div class="k2-eyebrow">Среда вас узнала</div>
-        <h2>Вы — <span class="role">${esc(profile.roleTitle||'специалист')}</span></h2>
-        <div class="k2-meta">
-          ${dom?`<div class="k2-pill">${DOMAINS[dom].icon} <b>${esc(DOMAINS[dom].label)}</b></div>`:''}
-          <div class="k2-pill">🎚️ уровень: <b>${esc(LEVELS[profile.level])}</b></div>
-        </div>
-        <div class="k2-sub">Под вашу работу Среда собрала ${profile.chosen.length} модуля. Не тот человек? Всё меняется — «↺ пересобрать» внизу. Не хватает — «Добавить в Среду».</div>
-        <div class="k2-picked">${mods}</div>
-        <button class="k2-cta" id="k2Enter">Войти в мою Среду ▶</button>`;
+        <div class="k2-eyebrow">Среда прочитала ваши ответы</div>
+        <div class="k2-echo">${echoHtml}</div>
+        <div class="k2-verdict" style="animation-delay:${vDelay}s">
+          <div class="k2-verdict-lead">Складывается один человек:</div>
+          <h2>Вы — <span class="role">${esc(profile.roleTitle||'специалист')}</span></h2>
+          <div class="k2-meta">
+            ${dom?`<div class="k2-pill">${DOMAINS[dom].icon} <b>${esc(DOMAINS[dom].label)}</b></div>`:''}
+            <div class="k2-pill">🎚️ <b>${esc(LEVELS[profile.level])}</b></div>
+            <div class="k2-pill">🧬 одна из <b>${profile.baseCount}</b> ролей, что различает Среда</div>
+          </div>
+          <div class="k2-sub">Под вашу работу Среда собрала ${profile.chosen.length} модуля. Не вы? «↺ пересобрать» внизу. Не хватает — «Добавить в Среду».</div>
+          <div class="k2-picked">${mods}</div>
+          <button class="k2-cta" id="k2Enter">Войти в мою Среду ▶</button>
+        </div>`;
       layer.appendChild(c);
       $('#k2Enter').onclick = ()=>{ layer.remove(); enterCabinet(); };
     }
