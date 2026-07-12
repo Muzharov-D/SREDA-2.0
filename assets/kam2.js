@@ -551,6 +551,17 @@
       background:var(--k-panel); border:1px solid var(--k-gold); color:var(--k-txt); font-size:13.5px; font-weight:600;
       padding:11px 18px; border-radius:12px; box-shadow:var(--k-sh-xl); opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; }
     .k2-cabtoast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+    /* ---- кокпит РЦС: высоты, секции Пульса, точки участия ---- */
+    .k2-heights{ display:inline-flex; gap:4px; background:var(--k-panel2); border:1px solid var(--k-line); border-radius:11px; padding:4px; margin-bottom:16px; }
+    .k2-height{ font-family:inherit; font-size:13.5px; font-weight:600; color:var(--k-dim); background:none; border:none; border-radius:8px; padding:7px 15px; cursor:pointer; transition:.14s; }
+    .k2-height:hover{ color:var(--k-txt); }
+    .k2-height.on{ background:var(--k-panel); color:var(--k-txt); box-shadow:var(--k-sh); }
+    .k2-height.locked{ color:var(--k-faint,#7f847a); cursor:not-allowed; }
+    .k2-sec-h{ font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--k-dim); font-weight:700; margin:4px 0 9px; }
+    .k2-sec-h b{ color:var(--k-gold); }
+    .k2-point{ border-left:3px solid var(--k-line); padding-left:11px; }
+    .k2-point.k2-sanction, .k2-point.k2-intake{ border-left-color:#f0794a; }
+    .k2-point.k2-clarify{ border-left-color:var(--amber,#fbbf24); }
     /* ---- A11y: фокус-кольца на клавиатуре ---- */
     .k2-opt:focus-visible,.k2-cta:focus-visible,.k2-btn:focus-visible,.k2-nav-item:focus-visible,.k2-chip:focus-visible,
     .k2-tag.act:focus-visible,.k2-asst-rem:focus-visible,.k2-add:focus-visible,.k2-back:focus-visible,.k2-asst-input input:focus-visible{
@@ -775,142 +786,281 @@
     drawIntro();
   }
 
-  /* ================================================================ КАБИНЕТ */
+  /* ================================================================ КОКПИТ РЦС */
+  /* По concept-interface-v1 §10: слева мой цифровой штат, в центре Пульс на    */
+  /* высоте (Я/Отдел/Компания), точки участия = где нужен человек, ассистент    */
+  /* как движок Пульса. Интерфейс = проекция модели «штат + контексты».         */
+  const cockpit = { height:'me', view:'pulse', csId:null };
+  const DOMAIN_DEPT = { sales:'sales', eng:'dev', marketing:'marketing', hr:'hr', exec:'mgmt', analytics:'strategy', project:'prod', ops:'prod' };
+  const SYNTH_STAFF = {
+    finance:[{e:'🧾',t:'Двойник бухгалтера',now:'сверка актов · утро'},{e:'📑',t:'Агент отчётности',now:'сбор ДДС за квартал'},{e:'🎛️',t:'Агент контроля расходов',now:'скан отклонений бюджета'}],
+    estimate:[{e:'📐',t:'Сметный агент',now:'пересчёт сметы «ЖК Ривер»'},{e:'🎯',t:'Агент тендерных расчётов',now:'НМЦК по 44-ФЗ'}],
+    legal:[{e:'📄',t:'Юридический агент',now:'правки договора «Гамма»'},{e:'🛡️',t:'Агент комплаенса',now:'проверка 152-ФЗ'}],
+    assist:[{e:'🗓️',t:'Двойник ассистента',now:'подготовка к встрече 14:00'},{e:'✉️',t:'Агент входящих',now:'разбор почты за ночь'}],
+  };
+  let myStaffCache = null;
+  function myStaff(){
+    if (myStaffCache) return myStaffCache;
+    const dep = DOMAIN_DEPT[profile.domain];
+    if (dep && ORG.digital && Array.isArray(ORG.digital[dep])){
+      myStaffCache = ORG.digital[dep].slice(0,4).map((a,i)=>({ id:'cs'+i, e:a.emoji||'🤖', t:a.title||a.name, now:a.now||'на связи', ji:a.ji, busy:false, dep }));
+    } else {
+      const syn = SYNTH_STAFF[profile.domain] || [{e:'🤖',t:'Цифровой двойник',now:'на связи'}];
+      myStaffCache = syn.map((s,i)=>({ id:'cs'+i, e:s.e, t:s.t, now:s.now, busy:false, dep }));
+    }
+    return myStaffCache;
+  }
+  const canCompany = () => profile.level>=4;   // высота «Компания» = Оркестратор (§2, §6)
+
   function enterCabinet(){
-    injectStyles();
-    initLive();
-    firstEnter = true;
-    active = profile.chosen[0];
-    renderNav2();
-    renderActive();
-    const brand = $('#brandHome'); if (brand){ brand.onclick = (e)=>{ e.preventDefault(); active=profile.chosen[0]; renderNav2(); renderActive(); }; }
-    const cmd = $('#cmdBtn'); if (cmd){ cmd.onclick = (e)=>{ e.preventDefault(); if(!profile.chosen.includes('task')) addModule('task'); active='task'; renderNav2(); renderActive(); }; }
+    injectStyles(); initLive(); firstEnter=true; myStaffCache=null;
+    cockpit.height='me'; cockpit.view='pulse'; cockpit.csId=null;
+    renderStaffRail(); renderCockpit();
+    const brand = $('#brandHome'); if (brand){ brand.onclick = (e)=>{ e.preventDefault(); goView('pulse'); }; }
+    const cmd = $('#cmdBtn'); if (cmd){ cmd.onclick = (e)=>{ e.preventDefault(); const s=myStaff()[0]; if(s){ cockpit.view='cs'; cockpit.csId=s.id; renderStaffRail(); renderCockpit(); } }; }
     if (!$('#k2Reset')){
       const r = el('button','k2-reset','↺ пересобрать Среду'); r.id='k2Reset';
       r.onclick = ()=>{ localStorage.removeItem(LS_KEY); profile=null; active=null;
-        k2Live=null; Object.keys(specDone).forEach(k=>delete specDone[k]); // сброс живого состояния под новую роль
+        k2Live=null; myStaffCache=null; Object.keys(specDone).forEach(k=>delete specDone[k]);
         location.hash=''; runSurvey(); };
       document.body.appendChild(r);
     }
   }
+  function goView(view, csId){ cockpit.view=view; cockpit.csId=csId||null; renderStaffRail(); renderCockpit(); }
+  /* совместимость: старые модульные функции (не в навигации кокпита) деградируют мягко */
+  function renderActive(){ renderCockpit(); }
+  function goModule(){ goView('pulse'); }
+  function addModule(){}
 
-  function renderNav2(){
-    const nav = $('#nav'); if(!nav) return;
-    nav.innerHTML='';
+  /* ---- левая колонка: мой цифровой штат (§10) ---- */
+  function renderStaffRail(){
+    const nav = $('#nav'); if(!nav) return; nav.innerHTML='';
     const wrap = el('div','k2-nav');
-    wrap.innerHTML = `<div class="k2-nav-lbl">Моя Среда</div>
+    wrap.innerHTML = `<div class="k2-nav-lbl">Мой цифровой штат</div>
       ${profile.roleTitle?`<div class="k2-nav-role">${DOMAINS[profile.domain]?DOMAINS[profile.domain].icon:''} ${esc(profile.roleTitle)}</div>`:''}`;
-    profile.chosen.forEach(id=>{
-      const m = MODULES.find(x=>x.id===id); if(!m) return;
-      const item = el('div','k2-nav-item'+(id===active?' on':''),
-        `<span class="ni">${m.icon}</span><div><div>${esc(m.name)}</div><small>${esc(m.hint)}</small></div>`);
-      item.tabIndex=0; item.setAttribute('role','button'); item.setAttribute('aria-current', id===active?'true':'false');
-      const activate = ()=>{ active=id; renderNav2(); renderActive(); };
-      item.onclick = activate;
-      item.onkeydown = (e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); activate(); } };
+    myStaff().forEach(cs=>{
+      const on = (cockpit.view==='cs' && cockpit.csId===cs.id);
+      const item = el('div','k2-nav-item'+(on?' on':''),
+        `<span class="ni">${cs.e}</span><div><div>${esc(cs.t)}</div><small>${cs.busy?'⏳ '+esc(cs.now):esc(cs.now)}</small></div>`);
+      item.tabIndex=0; item.setAttribute('role','button');
+      const act=()=>goView('cs', cs.id);
+      item.onclick=act; item.onkeydown=(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); act(); } };
       wrap.appendChild(item);
     });
-    const rest = MODULES.filter(m=>!profile.chosen.includes(m.id));
-    if (rest.length){
-      const add = el('div','k2-add', `+ Добавить в Среду (${rest.length})`);
-      add.onclick = ()=> renderAddPanel(rest);
-      wrap.appendChild(add);
-    }
+    const add = el('div','k2-add','+ штат · чего не хватает');
+    add.tabIndex=0; add.setAttribute('role','button');
+    const ac=()=>goView('constructor'); add.onclick=ac; add.onkeydown=(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); ac(); } };
+    wrap.appendChild(add);
     nav.appendChild(wrap);
   }
-  function addModule(id){ if(!profile.chosen.includes(id)){ profile.chosen.push(id); save(profile); } }
 
-  function renderAddPanel(rest){
-    active='__add'; renderNav2();
+  /* ---- центр: кокпит (шапка высоты + Пульс/ЦС/конструктор + ассистент) ---- */
+  function renderCockpit(){
     const stage = $('#stage'); if(!stage) return; stage.innerHTML='';
-    const w = el('div','k2-wrap');
-    w.innerHTML = `<div class="k2-head"><h1>Добавить в Среду</h1><span class="sub">берите только нужное — Среда не навязывает</span></div>`;
-    const grid = el('div','k2-picked');
-    rest.forEach(m=>{
-      const card = el('div','k2-mod'); card.style.cursor='pointer';
-      card.innerHTML = `<div class="i">${m.icon}</div><div class="n">${esc(m.name)}</div><div class="h">${esc(m.hint)}</div>
-        <div style="margin-top:12px"><span class="k2-tag">+ добавить</span></div>`;
-      card.onclick = ()=>{ addModule(m.id); active=m.id; renderNav2(); renderActive(); };
-      grid.appendChild(card);
-    });
-    w.appendChild(grid); stage.appendChild(w);
-  }
-
-  function renderActive(){
-    const stage = $('#stage'); if(!stage) return;
-    const m = MODULES.find(x=>x.id===active); if(!m) return;
-    stage.innerHTML='';
     const shell = el('div','k2-shell'+(firstEnter?' k2-enter':'')); firstEnter=false;
-    const main  = el('div','k2-main'); const w = el('div','k2-wrap'); main.appendChild(w);
+    const main  = el('div','k2-main');
+    // шапка высоты (только для Пульса)
+    if (cockpit.view==='pulse') main.appendChild(heightBar());
+    const w = el('div','k2-wrap'); main.appendChild(w);
     const aside = el('aside','k2-asst');
     shell.appendChild(main); shell.appendChild(aside); stage.appendChild(shell);
-    m.render(w);
+    if (cockpit.view==='cs') renderCS(w);
+    else if (cockpit.view==='constructor') renderConstructorView(w);
+    else { // pulse
+      if (cockpit.height==='me') renderPulseMe(w);
+      else if (cockpit.height==='dept') renderPulseDept(w);
+      else renderPulseCompany(w);
+    }
     renderAssistant(aside);
-    const ann = $('#routeAnnounce'); if(ann) ann.textContent = m.name;
+    const ann=$('#routeAnnounce'); if(ann) ann.textContent='Пульс';
+  }
+  function heightBar(){
+    const bar = el('div','k2-heights');
+    const heights = [['me','Я'],['dept','Отдел'],['company','Компания']];
+    heights.forEach(([h,lab])=>{
+      const locked = (h==='company' && !canCompany());
+      const b = el('button','k2-height'+(cockpit.height===h?' on':'')+(locked?' locked':''), lab+(locked?' 🔒':''));
+      b.onclick = ()=>{ if(locked){ cabToast('Высота «Компания» — только Оркестратору (директор/владелец)'); return; } cockpit.height=h; renderCockpit(); };
+      bar.appendChild(b);
+    });
+    return bar;
+  }
+
+  /* ---- Пульс «Я»: собранный день (§3) с точками участия (§4) ---- */
+  function renderPulseMe(w){
+    const staff = myStaff();
+    w.innerHTML = head('Пульс · сегодня', `${esc(profile.roleTitle||'')} · собран к утру — не всё подряд, а ваш день`);
+    // 1. Ждёт меня — точки участия
+    const waits = participationPoints();
+    const s1 = section('Ждёт меня', waits.length?`${waits.length}`:'чисто');
+    if(!waits.length) s1.appendChild(emptyEl('✓ Всё, что можно, ЦС сделали сами — от вас сейчас ничего не нужно.'));
+    waits.forEach(p=> s1.appendChild(pointEl(p)));
+    w.appendChild(s1);
+    // 2. Встречи дня
+    const s2 = section('Встречи дня','');
+    [['10:00','Zoom с клиентом «Гамма»','бриф от помощника готов'],['15:30','Синк по проекту','повестка собрана']]
+      .forEach(m=> s2.appendChild(rowEl('📅', `${m[0]} · ${m[1]}`, m[2], null)));
+    w.appendChild(s2);
+    // 3. Мои ЦС в работе
+    const s3 = section('Мои ЦС в работе', `${staff.length}`);
+    staff.forEach((cs,i)=>{ const pct=cs.busy?45:[72,60,88,54][i%4];
+      const r=el('div','k2-item'); r.style.cursor='pointer';
+      r.innerHTML=`<div class="e">${cs.e}</div><div style="flex:1"><div class="b">${esc(cs.t)}</div><div class="m">${esc(cs.now)}</div>
+        <div class="k2-loadbar" style="max-width:220px"><i style="width:${pct}%;background:var(--k-gold)"></i></div></div>`;
+      r.onclick=()=>goView('cs', cs.id); s3.appendChild(r); });
+    w.appendChild(s3);
+    // 4. Предложено помощником — кандидаты из Zoom/почты (§6)
+    const s4 = section('Предложено помощником','');
+    const cand = el('div','k2-panel');
+    cand.innerHTML = `<div class="k2-item"><div class="e">🎧</div><div style="flex:1"><div class="b">Из вчерашнего звонка «Гамма» насчитал 4 задачи и 1 встречу</div>
+      <div class="m">помощник разобрал транскрипт — подтвердите, прежде чем я раздам ЦС</div></div></div>
+      <div style="display:flex;gap:8px;margin-top:8px"><button class="k2-btn" id="candOk">Подтвердить и раздать</button><button class="k2-tag act" id="candFix">Поправить</button></div>`;
+    s4.appendChild(cand); w.appendChild(s4);
+    const ok=$('#candOk',w); if(ok) ok.onclick=()=>{ addApproval({task:'Отправка КП «Гамма» (из звонка)',dept:'Продажи',cost:'₽12 / задача',risk:'low'});
+      k2Live.drafts.unshift({id:'drc'+(apSeq++),text:'Черновик протокола встречи «Гамма»',dept:staff[0]?.dep||'sales',who:'помощник'});
+      cabToast('✓ 4 задачи розданы ЦС, 1 встреча в календаре'); renderCockpit(); };
+    const fix=$('#candFix',w); if(fix) fix.onclick=()=>cabToast('Открыл разбор кандидатов на правку');
+  }
+  function section(title, badge){ const s=el('div'); s.style.marginBottom='14px';
+    s.innerHTML=`<div class="k2-sec-h">${esc(title)}${badge?` · <b>${esc(badge)}</b>`:''}</div>`; return s; }
+  function emptyEl(t){ const p=el('div','k2-panel'); p.innerHTML=`<div class="k2-empty">${esc(t)}</div>`; return p; }
+
+  /* ---- точки участия (§4): приёмка / санкция / уточнение ---- */
+  function participationPoints(){
+    const pts=[];
+    liveApprovals().forEach(a=> pts.push({ kind:'sanction', id:a.id, icon:'🔴', label:'Разрешить', title:a.task, meta:`${a.dept} · ${a.cost} · риск ${a.risk}` }));
+    liveDrafts().slice(0,6).forEach(d=> pts.push({ kind:'intake', id:d.id, icon:'🔴', label:'Принять', title:d.text, meta:`${deptLabel(d.dept)}${profile.depth?' · '+d.who:''}` }));
+    (k2Live.clarify||[]).forEach(c=> pts.push({ kind:'clarify', id:c.id, icon:'🟡', label:'Ответить', title:c.text, meta:c.who }));
+    return pts;
+  }
+  function pointEl(p){
+    const it=el('div','k2-item k2-point k2-'+p.kind); it.dataset.id=p.id;
+    it.innerHTML=`<div class="e">${p.icon}</div><div style="flex:1"><div class="b">${esc(p.title)}</div><div class="m">${esc(p.meta||'')}</div></div>
+      <div style="display:flex;gap:6px"><button class="k2-tag act ok">${esc(p.label)}</button>${p.kind==='sanction'?'<button class="k2-tag act">отклонить</button>':''}</div>`;
+    const ok=it.querySelector('.ok');
+    ok.onclick=()=> animateOut(it, ()=>{
+      if(p.kind==='intake') acceptDraft(p.id);
+      else if(p.kind==='sanction') resolveApproval(p.id,true);
+      else { k2Live.clarify=(k2Live.clarify||[]).filter(c=>c.id!==p.id); cabToast('✓ Ответ отправлен ЦС'); refreshLive(); }
+    });
+    if(p.kind==='sanction'){ it.querySelectorAll('.act')[1].onclick=()=> animateOut(it, ()=> resolveApproval(p.id,false)); }
+    return it;
+  }
+
+  /* ---- Пульс «Отдел» (§2): штат отдела + передачи ---- */
+  function renderPulseDept(w){
+    w.innerHTML = head('Пульс · отдел', 'мой основной контекст — штат отдела и передачи между людьми и ЦС');
+    const dep = DOMAIN_DEPT[profile.domain];
+    const people = (dep && ORG.hc && ORG.hc[dep])||0, dig=(dep && ORG.dhc && ORG.dhc[dep])||myStaff().length;
+    const s1=section('Штат отдела', `${people} чел · ${dig} ЦС`);
+    myStaff().forEach(cs=> s1.appendChild(rowEl(cs.e, cs.t, cs.now, null)));
+    w.appendChild(s1);
+    const s2=section('Передачи между ролями','');
+    const x=feed().filter(f=>f[0]==='x'); if(!x.length) s2.appendChild(emptyEl('передач сейчас нет'));
+    x.forEach(f=> s2.appendChild(rowEl('🔗', f[2], f[1], null)));
+    w.appendChild(s2);
+  }
+  /* ---- Пульс «Компания» (§2): только Оркестратору ---- */
+  function renderPulseCompany(w){
+    if(!canCompany()){
+      w.innerHTML = head('Пульс · компания','высота Оркестратора');
+      w.appendChild(emptyEl('🔒 Обзор всей компании доступен Оркестратору — директору или владельцу. На вашем уровне Среда показывает ваш стол и ваш отдел.'));
+      return;
+    }
+    renderPulse(w); // переиспользуем: загрузка направлений + живая лента
+  }
+
+  /* ---- ЦС: карточка + постановка задачи (§7.2) ---- */
+  function renderCS(w){
+    const cs = myStaff().find(x=>x.id===cockpit.csId); if(!cs){ goView('pulse'); return; }
+    w.innerHTML = `<button class="k2-back" id="csBack">← к Пульсу</button>`;
+    const card = el('div','k2-agent');
+    const ji=cs.ji||{}; const duties=(ji.duties||[]).slice(0,3).map(d=>`<li>${esc(d)}</li>`).join('');
+    card.innerHTML = `<div class="ah"><div class="e">${cs.e}</div><div><b>${esc(cs.t)}</b><small>${cs.busy?'⏳ ':''}${esc(cs.now)} · вы — его РЦС</small></div></div>
+      ${ji.mission?`<div class="mission">${esc(ji.mission)}</div>`:'<div class="mission">Цифровой сотрудник вашего штата. Ставьте задачу словами — сделает сам, вернёт на приёмку.</div>'}
+      ${duties?`<ul>${duties}</ul>`:''}`;
+    w.appendChild(card);
+    const p=el('div','k2-panel'); p.innerHTML='<h3>Поставить задачу</h3>';
+    const ta=el('textarea','k2-ta'); ta.placeholder=`Напр.: ${cs.now}…`; ta.style.minHeight='84px'; p.appendChild(ta);
+    const go=el('button','k2-btn','Поручить ▶'); p.appendChild(go); w.appendChild(p);
+    $('#csBack',w).onclick=()=>goView('pulse');
+    go.onclick=()=>{ const t=ta.value.trim(); if(!t){ta.focus();return;}
+      if(go.disabled) return; go.disabled=true; go.textContent='ставлю…';
+      cs.busy=true; cs.now='выполняет: '+t;
+      setTimeout(()=>{ k2Live.drafts.unshift({id:'drt'+(apSeq++), text:'Черновик: '+t, dep:cs.dep, dept:cs.dep, who:cs.t});
+        cabToast(`✓ ${cs.t} взял задачу — черновик придёт на приёмку`); goView('pulse'); }, 650);
+    };
+  }
+
+  /* ---- Конструктор: чего не хватает (§7) ---- */
+  function renderConstructorView(w){
+    w.innerHTML = `<button class="k2-back" id="ctorBack">← к Пульсу</button>` +
+      head('Чего вам не хватает?', 'дефолт роли — гипотеза Среды. Реальность правит её здесь.');
+    const cat = section('Добавить в штат из библиотеки', '');
+    const pool = Object.keys(SYNTH_STAFF).filter(d=>d!==profile.domain).slice(0,3)
+      .flatMap(d=> SYNTH_STAFF[d].slice(0,1).map(s=>({...s,d})));
+    pool.forEach(s=>{ const it=el('div','k2-item'); it.style.cursor='pointer';
+      it.innerHTML=`<div class="e">${s.e}</div><div style="flex:1"><div class="b">${esc(s.t)}</div><div class="m">${esc(DOMAINS[s.d].label)}</div></div><div><button class="k2-tag act ok">+ нанять</button></div>`;
+      it.querySelector('.ok').onclick=()=> animateOut(it, ()=>{ myStaff().push({id:'csx'+(apSeq++), e:s.e, t:s.t, now:'адаптация…', busy:false, dep:DOMAIN_DEPT[s.d]}); cabToast('✓ '+s.t+' добавлен в ваш штат'); renderStaffRail(); });
+      cat.appendChild(it); });
+    w.appendChild(cat);
+    const esc2=section('Нет нужного в библиотеке?','');
+    const p=el('div','k2-panel');
+    p.innerHTML=`<div class="k2-empty">Опишите, какого ЦС, навыка или инструмента не хватает — уйдёт как эскалация на ЦС администратора платформы. Он провижинит (MCP-инструмент/навык/«найм») со статусом.</div>`;
+    const ta=el('textarea','k2-ta'); ta.placeholder='Напр.: нужен ЦС для работы с 1С…'; ta.style.minHeight='70px'; p.appendChild(ta);
+    const b=el('button','k2-btn','Эскалировать админ-ЦС ▶'); b.style.marginTop='8px'; p.appendChild(b);
+    b.onclick=()=>{ if(!ta.value.trim())return; cabToast('✓ Эскалация ушла админ-ЦС — соберёт и вернёт со статусом'); ta.value=''; };
+    esc2.appendChild(p); w.appendChild(esc2);
+    $('#ctorBack',w).onclick=()=>goView('pulse');
   }
   function head(title, sub){ return `<div class="k2-head"><h1>${esc(title)}</h1><span class="sub">${esc(sub||'')}</span></div>`; }
 
-  /* ---- личный ассистент: ядро, знает контекст каждого экрана ------------- */
+  /* ---- личный помощник = движок Пульса, сквозной (§5) ---- */
   function plural(n, one, few, many){ const a=n%10, b=n%100; if(a===1&&b!==11)return one; if(a>=2&&a<=4&&(b<10||b>=20))return few; return many; }
-  function goModule(id){ if(!MODULES.find(x=>x.id===id))return; addModule(id); active=id; renderNav2(); renderActive(); }
-  function assistantObs(id, m){
-    const OBS = {
-      today:'Собрал ваш день. Начните с того, что ждёт решения — остальное держу под контролем.',
-      task:'Опишите задачу словами — разберу на подзадачи и подберу под неё исполнителей.',
-      intake:'Готовые результаты жду вашей приёмки. Подсказать, что срочнее?',
-      pulse:'Вижу загрузку всех направлений. Подсветить, где выше нормы?',
-      sanctions:'Здесь только то, где нужно ваше слово — по каждому пункту подготовил основания.',
-      team:'Весь штат — люди и их цифровые двойники. Кого показать подробнее?',
-      agents:'Ваши цифровые сотрудники и их инструкции. Могу перенастроить любого.',
-    };
-    return OBS[id] || `Вы на экране «${m.name}». Я на связи с этим блоком — напомню о сроках и подготовлю черновики.`;
-  }
-  function assistantChips(id){
-    const chips = [];
-    if (id!=='today') chips.push({ label:'Мой день', go:'today' });
-    if (profile.level>=3) chips.push({ label:'Что ждёт решения', go:'sanctions' });
-    else chips.push({ label:'Что принять', go:'intake' });
-    const m = MODULES.find(x=>x.id===id);
-    if (m && m.domains!=='*') chips.push({ label:'Собрать черновик', q:'собрать черновик' });
-    if (id!=='task') chips.push({ label:'Поставить задачу', go:'task' });
-    return chips.slice(0,4);
+  function assistantObsC(){
+    if (cockpit.view==='cs'){ const cs=myStaff().find(x=>x.id===cockpit.csId); return cs?`Вы смотрите на «${cs.t}». Поставить ему задачу или посмотреть очередь?`:''; }
+    if (cockpit.view==='constructor') return 'Скажите, чего не хватает — добавлю из библиотеки или эскалирую админ-ЦС.';
+    if (cockpit.height==='dept') return 'Высота отдела: вижу штат и передачи. Показать, у кого затык?';
+    if (cockpit.height==='company') return 'Высота компании: обзор всей организации.';
+    return 'Собрал ваш день к утру. Начните с того, что подсвечено — остальное ЦС держат сами.';
   }
   function askAssistant(text){
-    const t = String(text).toLowerCase();
-    const map = [['пульс','pulse'],['перегруз','pulse'],['санкц','sanctions'],['реш','sanctions'],['день','today'],
-      ['принять','intake'],['приём','intake'],['приемк','intake'],['команд','team'],['агент','agents'],['задач','task'],
-      ['смет','est-calc'],['тендер','est-tender'],['сверк','fin-recon'],['отчёт','fin-report'],['отчет','fin-report'],
-      ['договор','leg-contracts'],['лид','sal-leads'],['воронк','sal-funnel'],['кампан','mkt-camp'],['найм','hr-hire']];
-    const hit = map.find(([k])=> t.indexOf(k)>=0);
-    if (hit && MODULES.find(x=>x.id===hit[1])){ goModule(hit[1]); return; }
-    const out = $('#k2AsstOut'); if(out) out.textContent = `Принял: «${text}». Разберу на подзадачи и верну черновик в «Приёмку».`;
+    const t=String(text).toLowerCase();
+    if(/пульс|день/.test(t)){ goView('pulse'); return; }
+    if(/отдел/.test(t)){ cockpit.height='dept'; cockpit.view='pulse'; renderStaffRail(); renderCockpit(); return; }
+    if(/компан/.test(t)){ if(canCompany()){ cockpit.height='company'; cockpit.view='pulse'; renderStaffRail(); renderCockpit(); } else cabToast('Высота «Компания» — только Оркестратору'); return; }
+    if(/не хват|добав|штат|конструкт/.test(t)){ goView('constructor'); return; }
+    const cs = myStaff().find(x=> t.includes(x.t.toLowerCase().split(' ')[0]));
+    if(cs){ goView('cs', cs.id); return; }
+    const out=$('#k2AsstOut'); if(out) out.textContent=`Принял: «${text}». Разберу и подберу, кому из ЦС поручить.`;
   }
   function renderAssistant(box){
-    const m = MODULES.find(x=>x.id===active);
-    const obs = assistantObs(active, m);
-    const appr = liveApprovals().length;
-    const drafts = liveDrafts().length;
-    const rem = [];
-    if (profile.level>=3 && appr) rem.push({ icon:'🔐', text:`${appr} ${plural(appr,'решение','решения','решений')} ждут вашего слова`, go:'sanctions' });
-    if (drafts) rem.push({ icon:'📥', text:`${drafts} ${plural(drafts,'черновик','черновика','черновиков')} готовы к приёмке`, go:'intake' });
-    if (!rem.length) rem.push({ icon:'✓', text:'Очередь чиста — на сегодня всё под контролем.', go:'today' });
-    const chips = assistantChips(active);
+    const staff=myStaff();
+    const waits=participationPoints().length;
+    const rem=[];
+    if(waits) rem.push({icon:'🔴', text:`${waits} ${plural(waits,'точка','точки','точек')} ждут вас`, act:()=>goView('pulse')});
+    const busy=staff.filter(c=>c.busy).length;
+    if(busy) rem.push({icon:'⏳', text:`${busy} ${plural(busy,'ЦС выполняет','ЦС выполняют','ЦС выполняют')} вашу задачу`, act:()=>goView('pulse')});
+    if(!rem.length) rem.push({icon:'✓', text:'От вас сейчас ничего не ждут — день под контролем.', act:()=>goView('pulse')});
     box.innerHTML = `
       <div class="k2-asst-h"><div class="av">🗓️</div>
-        <div><b>Ассистент</b><small>видит все ваши экраны и напоминает</small></div></div>
-      <div class="k2-asst-ctx">${esc(obs)}</div>
+        <div><b>Личный помощник</b><small>ядро вашего дня · знает, на что вы смотрите</small></div></div>
+      <div class="k2-asst-ctx">${esc(assistantObsC())}</div>
       <div class="k2-asst-sec">Ждёт вас</div>
-      ${rem.map(r=>`<button class="k2-asst-rem" data-go="${r.go}"><span>${r.icon}</span><span>${esc(r.text)}</span></button>`).join('')}
+      <div id="asstRems"></div>
       <div class="k2-asst-sec">Могу прямо сейчас</div>
-      <div class="k2-asst-chips">${chips.map(c=>`<button class="k2-chip" data-go="${c.go||''}" data-q="${c.q?esc(c.q):''}">${esc(c.label)}</button>`).join('')}</div>
-      <div class="k2-asst-input"><input id="k2AsstIn" placeholder="Поручите ассистенту…" aria-label="Поручить ассистенту"/><button id="k2AsstGo" aria-label="Отправить">→</button></div>
+      <div class="k2-asst-chips" id="asstChips"></div>
+      <div class="k2-asst-input"><input id="k2AsstIn" placeholder="Поручите помощнику…" aria-label="Поручить помощнику"/><button id="k2AsstGo" aria-label="Отправить">→</button></div>
       <div class="k2-asst-out" id="k2AsstOut"></div>`;
-    box.querySelectorAll('[data-go]').forEach(b=>{ const go=b.dataset.go; if(go) b.addEventListener('click', ()=>goModule(go)); });
-    box.querySelectorAll('.k2-chip[data-q]').forEach(b=>{ const q=b.dataset.q; if(q) b.addEventListener('click', ()=>askAssistant(q)); });
-    const inp = $('#k2AsstIn', box), gob = $('#k2AsstGo', box);
-    const submit = ()=>{ const v=inp.value.trim(); if(v) askAssistant(v); };
-    if(gob) gob.onclick = submit;
-    if(inp) inp.onkeydown = (e)=>{ if(e.key==='Enter') submit(); };
+    const remBox=$('#asstRems',box);
+    rem.forEach(r=>{ const b=el('button','k2-asst-rem',`<span>${r.icon}</span><span>${esc(r.text)}</span>`); b.onclick=r.act; remBox.appendChild(b); });
+    const chips=[{l:'Мой день',a:()=>goView('pulse')},{l:'Штат отдела',a:()=>{cockpit.height='dept';cockpit.view='pulse';renderStaffRail();renderCockpit();}},{l:'Чего не хватает',a:()=>goView('constructor')}];
+    if(staff[0]) chips.splice(1,0,{l:'Поставить задачу '+staff[0].t.split(' ')[0].toLowerCase(),a:()=>goView('cs',staff[0].id)});
+    const chipBox=$('#asstChips',box);
+    chips.slice(0,4).forEach(c=>{ const b=el('button','k2-chip',esc(c.l)); b.onclick=c.a; chipBox.appendChild(b); });
+    const inp=$('#k2AsstIn',box), gob=$('#k2AsstGo',box);
+    const submit=()=>{ const v=inp.value.trim(); if(v) askAssistant(v); };
+    if(gob) gob.onclick=submit; if(inp) inp.onkeydown=(e)=>{ if(e.key==='Enter') submit(); };
   }
 
   /* ================================================================ РЕНДЕР  */
@@ -926,6 +1076,7 @@
     k2Live = {
       approvals: (DASH.approvals||[]).map((a,i)=>({ id:'ap'+i, task:a.task, dept:a.dept, cost:a.cost, risk:a.risk })),
       drafts:    feed().filter(f=>f[0]==='d').map((f,i)=>({ id:'dr'+i, text:f[2], dept:f[3], who:f[1] })),
+      clarify:   [{ id:'cl0', text:'ЦС спрашивает: применить скидку 12% сверх политики по сделке «Гамма»?', who:'цифровой сотрудник ждёт вашего слова' }],
     };
   }
   function liveApprovals(){ initLive(); return k2Live.approvals; }
@@ -934,7 +1085,7 @@
   function acceptDraft(id){ initLive(); k2Live.drafts = k2Live.drafts.filter(d=>d.id!==id); cabToast('✓ Принято'); refreshLive(); }
   let apSeq = 0;
   function addApproval(obj){ initLive(); k2Live.approvals.unshift(Object.assign({ id:'apn'+(apSeq++) }, obj)); }
-  function refreshLive(){ renderActive(); }   // перерисовать модуль + панель ассистента
+  function refreshLive(){ renderCockpit(); }   // перерисовать кокпит + панель помощника
 
   let cabToastTimer=null;
   function cabToast(msg){
