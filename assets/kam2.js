@@ -562,7 +562,14 @@
     .k2-sec-h b{ color:var(--k-gold); }
     .k2-point{ border-left:3px solid var(--k-line); padding-left:11px; }
     .k2-point.k2-sanction, .k2-point.k2-intake{ border-left-color:#f0794a; }
-    .k2-point.k2-clarify{ border-left-color:var(--amber,#fbbf24); }
+    .k2-point.k2-clarify, .k2-point.k2-coord{ border-left-color:var(--amber,#fbbf24); }
+    .k2-sys{ display:flex; flex-wrap:wrap; gap:14px; padding:9px 14px; margin-bottom:16px; background:var(--k-panel2); border:1px solid var(--k-line); border-radius:11px; font-size:12px; color:var(--k-dim); }
+    .k2-sys span{ display:inline-flex; align-items:center; gap:5px; }
+    .k2-life{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; background:var(--k-panel); border:1px solid var(--k-line); border-radius:11px; padding:11px 14px; box-shadow:var(--k-sh); }
+    .k2-life-step{ font-size:12.5px; color:var(--k-dim); }
+    .k2-life-step.done{ color:var(--k-txt2); }
+    .k2-life-step.now{ color:var(--k-gold); font-weight:700; }
+    .k2-life-arr{ color:var(--k-line2); font-size:12px; }
     /* ---- A11y: фокус-кольца на клавиатуре ---- */
     .k2-opt:focus-visible,.k2-cta:focus-visible,.k2-btn:focus-visible,.k2-nav-item:focus-visible,.k2-chip:focus-visible,
     .k2-tag.act:focus-visible,.k2-asst-rem:focus-visible,.k2-add:focus-visible,.k2-back:focus-visible,.k2-asst-input input:focus-visible{
@@ -819,8 +826,10 @@
     injectStyles(); initLive(); firstEnter=true; myStaffCache=null; myAdditions=[];
     cockpit.height='me'; cockpit.view='pulse'; cockpit.csId=null;
     renderStaffRail(); renderCockpit();
+    const tf=$('#tourFab'); if(tf) tf.style.display='none';   // §9: без захардкоженного тура — только реальный помощник
     const brand = $('#brandHome'); if (brand){ brand.onclick = (e)=>{ e.preventDefault(); goView('pulse'); }; }
-    const cmd = $('#cmdBtn'); if (cmd){ cmd.onclick = (e)=>{ e.preventDefault(); const s=myStaff()[0]; if(s){ cockpit.view='cs'; cockpit.csId=s.id; renderStaffRail(); renderCockpit(); } }; }
+    // ⌘K (§9): канал к помощнику — на Пульс и фокус в ввод помощника
+    const cmd = $('#cmdBtn'); if (cmd){ cmd.onclick = (e)=>{ e.preventDefault(); goView('pulse'); const i=$('#k2AsstIn'); if(i){ i.focus(); i.scrollIntoView({block:'center'}); } }; }
     if (!$('#k2Reset')){
       const r = el('button','k2-reset','↺ пересобрать Среду'); r.id='k2Reset';
       r.onclick = ()=>{ localStorage.removeItem(LS_KEY); profile=null; active=null;
@@ -895,7 +904,9 @@
     const staff = myStaff();
     const mins = minsSince(8);
     const ago = mins<60 ? `${mins} мин назад` : `${Math.floor(mins/60)} ч назад`;
-    w.innerHTML = head('Пульс · сегодня', `${esc(profile.roleTitle||'')} · помощник собрал день в 08:00 по вашему времени · обновлён ${nowHM()} (${ago})`);
+    const when = mins>0 ? `собрал день в 08:00 по вашему времени · обновлён ${nowHM()} (${ago})` : `готовит ваш день к 08:00 по вашему времени · сейчас ${nowHM()}`;
+    w.innerHTML = head('Пульс · сегодня', `${esc(profile.roleTitle||'')} · помощник ${when}`);
+    w.appendChild(sysStrip());
     // 1. Ждёт меня — точки участия
     const waits = participationPoints();
     const s1 = section('Ждёт меня', waits.length?`${waits.length}`:'чисто');
@@ -912,7 +923,7 @@
     staff.forEach((cs,i)=>{ const pct=cs.busy?45:[72,60,88,54][i%4];
       const sc=csState(cs).schedule[0];
       const r=el('div','k2-item'); r.style.cursor='pointer';
-      r.innerHTML=`<div class="e">${cs.e}</div><div style="flex:1"><div class="b">${esc(cs.t)}</div><div class="m">${esc(cs.now)}${sc?` · 🔁 ${esc(sc.text)} ${esc(sc.when)}`:''}</div>
+      r.innerHTML=`<div class="e">${cs.e}</div><div style="flex:1"><div class="b">${esc(cs.t)}${cs.busy?` · <span style="color:var(--k-gold)">этап: ${esc(TASK_STAGES[cs.stageIdx!=null?cs.stageIdx:2])}</span>`:''}</div><div class="m">${esc(cs.now)}${sc?` · 🔁 ${esc(sc.text)} ${esc(sc.when)}`:''}</div>
         <div class="k2-loadbar" style="max-width:220px"><i style="width:${pct}%;background:var(--k-gold)"></i></div></div>`;
       r.onclick=()=>goView('cs', cs.id); s3.appendChild(r); });
     w.appendChild(s3);
@@ -931,6 +942,26 @@
   function section(title, badge){ const s=el('div'); s.style.marginBottom='14px';
     s.innerHTML=`<div class="k2-sec-h">${esc(title)}${badge?` · <b>${esc(badge)}</b>`:''}</div>`; return s; }
   function emptyEl(t){ const p=el('div','k2-panel'); p.innerHTML=`<div class="k2-empty">${esc(t)}</div>`; return p; }
+  /* жизненный цикл задачи (§7.2): постановка → проверка допустимости → выполнение → приёмка */
+  const TASK_STAGES = ['постановка','проверка допустимости','выполнение','приёмка'];
+  function taskLifecycle(cur){
+    const box=el('div','k2-life');
+    box.innerHTML = TASK_STAGES.map((s,i)=>{
+      const cls = i<cur?'done':(i===cur?'now':'');
+      return `<span class="k2-life-step ${cls}">${i<cur?'✓':(i===cur?'⏳':'○')} ${esc(s)}</span>`;
+    }).join('<span class="k2-life-arr">→</span>');
+    return box;
+  }
+  /* системные агенты как фоновые индикаторы (§5.3): учёт/ИБ/аудит/знания */
+  function sysStrip(){
+    const meter = ($('#meterBtn')?.textContent||'').split('ИИ')[0].trim() || '₽384k';
+    const s=el('div','k2-sys');
+    s.innerHTML = `<span title="Агент учёта ресурсов">💰 ${esc(meter)} ИИ/нед</span>
+      <span title="Агент ИБ · карантин">🛡️ ИБ: 0 в карантине</span>
+      <span title="Агент аудита · след действий">📋 аудит-след: онлайн</span>
+      <span title="Агент знаний">📚 знания: актуальны</span>`;
+    return s;
+  }
 
   /* ---- точки участия (§4): приёмка / санкция / уточнение ---- */
   function participationPoints(){
@@ -938,19 +969,23 @@
     liveApprovals().forEach(a=> pts.push({ kind:'sanction', id:a.id, icon:'🔴', label:'Разрешить', title:a.task, meta:`${a.dept} · ${a.cost} · риск ${a.risk}` }));
     liveDrafts().slice(0,6).forEach(d=> pts.push({ kind:'intake', id:d.id, icon:'🔴', label:'Принять', title:d.text, meta:`${deptLabel(d.dept)}${profile.depth?' · '+d.who:''}` }));
     (k2Live.clarify||[]).forEach(c=> pts.push({ kind:'clarify', id:c.id, icon:'🟡', label:'Ответить', title:c.text, meta:c.who }));
+    (k2Live.coord||[]).forEach(c=> pts.push({ kind:'coord', id:c.id, icon:'🟡', label:'Согласовать', title:c.text, meta:c.who }));
     return pts;
   }
   function pointEl(p){
     const it=el('div','k2-item k2-point k2-'+p.kind); it.dataset.id=p.id;
+    const canReject = (p.kind==='sanction' || p.kind==='coord');
     it.innerHTML=`<div class="e">${p.icon}</div><div style="flex:1"><div class="b">${esc(p.title)}</div><div class="m">${esc(p.meta||'')}</div></div>
-      <div style="display:flex;gap:6px"><button class="k2-tag act ok">${esc(p.label)}</button>${p.kind==='sanction'?'<button class="k2-tag act">отклонить</button>':''}</div>`;
+      <div style="display:flex;gap:6px"><button class="k2-tag act ok">${esc(p.label)}</button>${canReject?'<button class="k2-tag act">отклонить</button>':''}</div>`;
     const ok=it.querySelector('.ok');
     ok.onclick=()=> animateOut(it, ()=>{
       if(p.kind==='intake') acceptDraft(p.id);
       else if(p.kind==='sanction') resolveApproval(p.id,true);
+      else if(p.kind==='coord'){ k2Live.coord=(k2Live.coord||[]).filter(c=>c.id!==p.id); cabToast('✓ Согласовано — ваш ЦС подключён к задаче'); refreshLive(); }
       else { k2Live.clarify=(k2Live.clarify||[]).filter(c=>c.id!==p.id); cabToast('✓ Ответ отправлен ЦС'); refreshLive(); }
     });
     if(p.kind==='sanction'){ it.querySelectorAll('.act')[1].onclick=()=> animateOut(it, ()=> resolveApproval(p.id,false)); }
+    else if(p.kind==='coord'){ it.querySelectorAll('.act')[1].onclick=()=> animateOut(it, ()=>{ k2Live.coord=(k2Live.coord||[]).filter(c=>c.id!==p.id); cabToast('✗ Отклонено — ваш ЦС не подключён'); refreshLive(); }); }
     return it;
   }
 
@@ -1049,6 +1084,8 @@
       ${ji.mission?`<div class="mission">${esc(ji.mission)}</div>`:'<div class="mission">Цифровой сотрудник вашего штата. Ставьте задачу словами — сделает сам, вернёт на приёмку.</div>'}
       ${duties?`<ul>${duties}</ul>`:''}`;
     w.appendChild(card);
+    // Этапы текущей задачи (§7.2)
+    if (cs.busy){ const lf=section('Этап текущей задачи',''); lf.appendChild(taskLifecycle(cs.stageIdx!=null?cs.stageIdx:2)); w.appendChild(lf); }
     // Память — что знает (§4.2)
     const mem=section('Что знает · память','');
     const mp=el('div','k2-panel'); csMemory(cs).forEach(f=> mp.appendChild(rowEl('🧠', f, '', null))); mem.appendChild(mp); w.appendChild(mem);
@@ -1073,8 +1110,8 @@
     const go=el('button','k2-btn','Поручить ▶'); p.appendChild(go); w.appendChild(p);
     $('#csBack',w).onclick=()=>goView('pulse');
     go.onclick=()=>{ const t=ta.value.trim(); if(!t){ta.focus();return;} if(go.disabled)return;
-      if(kind==='now'){ go.disabled=true; go.textContent='ставлю…'; cs.busy=true; cs.now='выполняет: '+t;
-        st.journal.unshift({text:'Взял задачу: '+t, prov:['поставлено РЦС · '+nowHM(),'контекст роли']});
+      if(kind==='now'){ go.disabled=true; go.textContent='ставлю…'; cs.busy=true; cs.now='выполняет: '+t; cs.stageIdx=2;
+        st.journal.unshift({text:'Взял задачу: '+t, prov:['поставлено РЦС · '+nowHM(),'проверка допустимости (ИБ/комплаенс): пройдена','контекст роли']});
         setTimeout(()=>{ k2Live.drafts.unshift({id:'drt'+(apSeq++), text:'Черновик: '+t, dept:cs.dep, who:cs.t});
           cabToast(`✓ ${cs.t} взял задачу — черновик придёт на приёмку`); goView('pulse'); }, 650);
       } else {
@@ -1196,6 +1233,7 @@
       approvals: (DASH.approvals||[]).map((a,i)=>({ id:'ap'+i, task:a.task, dept:a.dept, cost:a.cost, risk:a.risk })),
       drafts:    feed().filter(f=>f[0]==='d').map((f,i)=>({ id:'dr'+i, text:f[2], dept:f[3], who:f[1] })),
       clarify:   [{ id:'cl0', text:'ЦС спрашивает: применить скидку 12% сверх политики по сделке «Гамма»?', who:'цифровой сотрудник ждёт вашего слова' }],
+      coord:     [{ id:'co0', text:'Руководитель проектов РЖД просит подключить вашего ЦС к тендеру', who:'согласование как РЦС — привлечение вашего цифрового сотрудника' }],
     };
   }
   function liveApprovals(){ initLive(); return k2Live.approvals; }
