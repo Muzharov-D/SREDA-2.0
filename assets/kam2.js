@@ -507,6 +507,7 @@
     .k2-ta{ width:100%; min-height:120px; background:var(--k-panel2); border:1px solid var(--k-line); border-radius:12px; color:var(--k-txt); padding:14px; font-size:15px; resize:vertical; font-family:inherit; }
     .k2-chip{ display:inline-flex; gap:6px; align-items:center; background:var(--k-panel2); border:1px solid var(--k-line); border-radius:999px; padding:6px 12px; font-size:12.5px; margin:4px 6px 0 0; cursor:pointer; }
     .k2-chip:hover{ border-color:var(--k-gold); }
+    .k2-chip.on{ border-color:var(--k-gold); color:var(--k-gold); background:var(--k-soft); }
     .k2-reset{ position:fixed; bottom:16px; left:16px; z-index:60; background:var(--k-panel); border:1px solid var(--k-line); color:var(--k-dim); font-size:12px; border-radius:999px; padding:8px 14px; cursor:pointer; }
     .k2-reset:hover{ color:var(--k-txt); border-color:var(--k-gold); }
     .k2-agent{ background:var(--k-panel); border:1px solid var(--k-line); border-radius:14px; padding:16px; margin-bottom:12px; }
@@ -791,6 +792,8 @@
   /* высоте (Я/Отдел/Компания), точки участия = где нужен человек, ассистент    */
   /* как движок Пульса. Интерфейс = проекция модели «штат + контексты».         */
   const cockpit = { height:'me', view:'pulse', csId:null };
+  let myAdditions = [];   // что пользователь добавил → кандидаты на подъём в дефолт роли (§4.3, §7.3)
+  const STAGES = ['личное','отдел роли','компания'];
   const DOMAIN_DEPT = { sales:'sales', eng:'dev', marketing:'marketing', hr:'hr', exec:'mgmt', analytics:'strategy', project:'prod', ops:'prod' };
   const SYNTH_STAFF = {
     finance:[{e:'🧾',t:'Двойник бухгалтера',now:'сверка актов · утро'},{e:'📑',t:'Агент отчётности',now:'сбор ДДС за квартал'},{e:'🎛️',t:'Агент контроля расходов',now:'скан отклонений бюджета'}],
@@ -813,7 +816,7 @@
   const canCompany = () => profile.level>=4;   // высота «Компания» = Оркестратор (§2, §6)
 
   function enterCabinet(){
-    injectStyles(); initLive(); firstEnter=true; myStaffCache=null;
+    injectStyles(); initLive(); firstEnter=true; myStaffCache=null; myAdditions=[];
     cockpit.height='me'; cockpit.view='pulse'; cockpit.csId=null;
     renderStaffRail(); renderCockpit();
     const brand = $('#brandHome'); if (brand){ brand.onclick = (e)=>{ e.preventDefault(); goView('pulse'); }; }
@@ -821,7 +824,7 @@
     if (!$('#k2Reset')){
       const r = el('button','k2-reset','↺ пересобрать Среду'); r.id='k2Reset';
       r.onclick = ()=>{ localStorage.removeItem(LS_KEY); profile=null; active=null;
-        k2Live=null; myStaffCache=null; Object.keys(specDone).forEach(k=>delete specDone[k]);
+        k2Live=null; myStaffCache=null; myAdditions=[]; Object.keys(specDone).forEach(k=>delete specDone[k]); Object.keys(csStore).forEach(k=>delete csStore[k]);
         location.hash=''; runSurvey(); };
       document.body.appendChild(r);
     }
@@ -866,6 +869,7 @@
     shell.appendChild(main); shell.appendChild(aside); stage.appendChild(shell);
     if (cockpit.view==='cs') renderCS(w);
     else if (cockpit.view==='constructor') renderConstructorView(w);
+    else if (cockpit.view==='onboard') renderOnboard(w);
     else { // pulse
       if (cockpit.height==='me') renderPulseMe(w);
       else if (cockpit.height==='dept') renderPulseDept(w);
@@ -889,7 +893,9 @@
   /* ---- Пульс «Я»: собранный день (§3) с точками участия (§4) ---- */
   function renderPulseMe(w){
     const staff = myStaff();
-    w.innerHTML = head('Пульс · сегодня', `${esc(profile.roleTitle||'')} · собран к утру — не всё подряд, а ваш день`);
+    const mins = minsSince(8);
+    const ago = mins<60 ? `${mins} мин назад` : `${Math.floor(mins/60)} ч назад`;
+    w.innerHTML = head('Пульс · сегодня', `${esc(profile.roleTitle||'')} · помощник собрал день в 08:00 по вашему времени · обновлён ${nowHM()} (${ago})`);
     // 1. Ждёт меня — точки участия
     const waits = participationPoints();
     const s1 = section('Ждёт меня', waits.length?`${waits.length}`:'чисто');
@@ -904,8 +910,9 @@
     // 3. Мои ЦС в работе
     const s3 = section('Мои ЦС в работе', `${staff.length}`);
     staff.forEach((cs,i)=>{ const pct=cs.busy?45:[72,60,88,54][i%4];
+      const sc=csState(cs).schedule[0];
       const r=el('div','k2-item'); r.style.cursor='pointer';
-      r.innerHTML=`<div class="e">${cs.e}</div><div style="flex:1"><div class="b">${esc(cs.t)}</div><div class="m">${esc(cs.now)}</div>
+      r.innerHTML=`<div class="e">${cs.e}</div><div style="flex:1"><div class="b">${esc(cs.t)}</div><div class="m">${esc(cs.now)}${sc?` · 🔁 ${esc(sc.text)} ${esc(sc.when)}`:''}</div>
         <div class="k2-loadbar" style="max-width:220px"><i style="width:${pct}%;background:var(--k-gold)"></i></div></div>`;
       r.onclick=()=>goView('cs', cs.id); s3.appendChild(r); });
     w.appendChild(s3);
@@ -960,53 +967,165 @@
     x.forEach(f=> s2.appendChild(rowEl('🔗', f[2], f[1], null)));
     w.appendChild(s2);
   }
-  /* ---- Пульс «Компания» (§2): только Оркестратору ---- */
+  /* ---- Пульс «Компания» (§2): только Оркестратору + вход в онбординг (§11) ---- */
   function renderPulseCompany(w){
     if(!canCompany()){
       w.innerHTML = head('Пульс · компания','высота Оркестратора');
       w.appendChild(emptyEl('🔒 Обзор всей компании доступен Оркестратору — директору или владельцу. На вашем уровне Среда показывает ваш стол и ваш отдел.'));
       return;
     }
-    renderPulse(w); // переиспользуем: загрузка направлений + живая лента
+    renderPulse(w); // загрузка направлений + живая лента
+    const ob=el('div'); ob.style.marginTop='14px';
+    ob.innerHTML=`<div class="k2-sec-h">Оркестратор</div>`;
+    const b=el('button','k2-btn','🏗 Собрать компанию из ТЗ'); b.onclick=()=>goView('onboard'); ob.appendChild(b);
+    w.appendChild(ob);
   }
 
-  /* ---- ЦС: карточка + постановка задачи (§7.2) ---- */
+  /* ---- Онбординг компании из ТЗ (§11): админ+помощник → штат из библиотеки ролей ---- */
+  function renderOnboard(w){
+    w.innerHTML = `<button class="k2-back" id="obBack">← к Пульсу</button>` +
+      head('Онбординг компании', 'админ и его помощник читают ТЗ → Среда комплектует штат из библиотеки ролей');
+    const p=el('div','k2-panel'); p.innerHTML='<h3>ТЗ / описание компании</h3>';
+    const ta=el('textarea','k2-ta'); ta.style.minHeight='120px';
+    ta.value='ИТ-компания: разработка ИИ-платформы, продажи и тендеры РЖД, маркетинг, бухгалтерия и финансы, юридический отдел, HR, сметный отдел, производство и внедрения.';
+    p.appendChild(ta);
+    const go=el('button','k2-btn','Собрать компанию ▶'); const out=el('div'); out.style.marginTop='14px';
+    go.onclick=()=>{
+      const t=ta.value.toLowerCase();
+      const detect=[['разраб|ии|платформ|код|it','eng'],['продаж|тендер|клиент','sales'],['маркет','marketing'],
+        ['бухгалт|финанс','finance'],['юр|право|договор','legal'],['hr|кадр|персонал','hr'],
+        ['смет|расчёт','estimate'],['производ|внедрен','ops'],['аналит|данны','analytics']];
+      const found=[]; detect.forEach(([re,d])=>{ if(new RegExp(re).test(t) && found.indexOf(d)<0) found.push(d); });
+      let total=0;
+      out.innerHTML=`<div class="k2-sec-h">Среда распознала <b>${found.length}</b> направлений и укомплектовала штат из библиотеки (${ROLES.length} ролей)</div>`;
+      found.forEach(d=>{ const roles=ROLES.filter(r=>r.d===d).slice(0,3); total+=roles.length;
+        const pane=el('div','k2-panel'); pane.innerHTML=`<h3>${DOMAINS[d].icon} ${esc(DOMAINS[d].label)} · ${roles.length} ЦС</h3>`;
+        roles.forEach(r=> pane.appendChild(rowEl('🤖', 'Двойник · '+r.t, esc(LEVELS[r.l]), null)));
+        out.appendChild(pane); });
+      cabToast(`✓ Компания собрана: ${found.length} направлений, ${total} ЦС из библиотеки`);
+    };
+    p.appendChild(go); w.appendChild(p); w.appendChild(out);
+    $('#obBack',w).onclick=()=>goView('pulse');
+  }
+
+  /* ---- локальное время (§7.1: Пульс собирается к 08:00 по таймзоне) ---- */
+  function nowHM(){ const d=new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+  function minsSince(h){ const d=new Date(); const m=(d.getHours()-h)*60+d.getMinutes(); return m>0?m:0; }
+
+  /* ---- память, журнал (провенанс), расписание ЦС (§4.2, §7.1) ---- */
+  const csStore = {};
+  function csState(cs){
+    const k = profile.domain+':'+cs.id;
+    if(!csStore[k]) csStore[k] = {
+      journal: seedJournal(cs),
+      schedule: [{ kind:'regular', text:'ежедневный брифинг по контексту', when:'09:00' }],
+    };
+    return csStore[k];
+  }
+  function seedJournal(cs){
+    return [
+      { text:`Выполнил: ${cs.now}`, prov:['источник: CRM · почта · календарь','шаблон роли','история контекста'] },
+      { text:'Собрал черновик — на вашу приёмку', prov:['данные из системы (только чтение)','правило роли v1.2','лимиты допуска соблюдены'] },
+    ];
+  }
+  function csMemory(cs){
+    const ji=cs.ji||{}; const f=[];
+    if(ji.duties) ji.duties.slice(0,2).forEach(d=> f.push('умеет: '+d));
+    else f.push('умеет: '+cs.now);
+    f.push('контекст: клиент «Гамма» · дебиторка 340т (CRM, 12.07)');
+    f.push('правило: скидка до 10% — сам; выше — санкция РЦС');
+    if(ji.limits) f.push('граница: '+ji.limits[0]);
+    return f.slice(0,4);
+  }
+
+  /* ---- ЦС: память + журнал + расписание + постановка задачи (§4.2,§7.1,§7.2) ---- */
   function renderCS(w){
     const cs = myStaff().find(x=>x.id===cockpit.csId); if(!cs){ goView('pulse'); return; }
+    const st = csState(cs);
     w.innerHTML = `<button class="k2-back" id="csBack">← к Пульсу</button>`;
-    const card = el('div','k2-agent');
     const ji=cs.ji||{}; const duties=(ji.duties||[]).slice(0,3).map(d=>`<li>${esc(d)}</li>`).join('');
+    const card = el('div','k2-agent');
     card.innerHTML = `<div class="ah"><div class="e">${cs.e}</div><div><b>${esc(cs.t)}</b><small>${cs.busy?'⏳ ':''}${esc(cs.now)} · вы — его РЦС</small></div></div>
       ${ji.mission?`<div class="mission">${esc(ji.mission)}</div>`:'<div class="mission">Цифровой сотрудник вашего штата. Ставьте задачу словами — сделает сам, вернёт на приёмку.</div>'}
       ${duties?`<ul>${duties}</ul>`:''}`;
     w.appendChild(card);
+    // Память — что знает (§4.2)
+    const mem=section('Что знает · память','');
+    const mp=el('div','k2-panel'); csMemory(cs).forEach(f=> mp.appendChild(rowEl('🧠', f, '', null))); mem.appendChild(mp); w.appendChild(mem);
+    // Расписание — регулярные/отложенные (§7.1)
+    const sch=section('Регулярные и отложенные задачи', `${st.schedule.length}`);
+    const spn=el('div','k2-panel'); if(!st.schedule.length) spn.appendChild(emptyEl('регулярных задач нет'));
+    st.schedule.forEach(s=> spn.appendChild(rowEl(s.kind==='regular'?'🔁':'⏱', s.text, (s.kind==='regular'?'регулярно · ':'отложено · ')+s.when, null)));
+    sch.appendChild(spn); w.appendChild(sch);
+    // Журнал — из чего собран ответ (провенанс, §4.2)
+    const jr=section('Журнал · из чего собран ответ','');
+    const jp=el('div','k2-panel'); st.journal.slice(0,5).forEach(e=>{ const it=el('div','k2-item');
+      it.innerHTML=`<div class="e">📓</div><div><div class="b">${esc(e.text)}</div><div class="m">на основе: ${esc((e.prov||[]).join(' · '))}</div></div>`; jp.appendChild(it); });
+    jr.appendChild(jp); w.appendChild(jr);
+    // Поставить задачу с типом (§7.1: разовая/отложенная/регулярная)
     const p=el('div','k2-panel'); p.innerHTML='<h3>Поставить задачу</h3>';
-    const ta=el('textarea','k2-ta'); ta.placeholder=`Напр.: ${cs.now}…`; ta.style.minHeight='84px'; p.appendChild(ta);
+    const ta=el('textarea','k2-ta'); ta.placeholder=`Напр.: ${cs.now}…`; ta.style.minHeight='80px'; p.appendChild(ta);
+    let kind='now';
+    const kb=el('div'); kb.style.margin='10px 0';
+    [['now','▶ Сейчас'],['deferred','⏱ Отложить · завтра 09:00'],['regular','🔁 Регулярно · ежедневно']].forEach(([k,l],i)=>{
+      const c=el('span','k2-chip'+(i===0?' on':''),l); c.onclick=()=>{ kind=k; [...kb.children].forEach(x=>x.classList.remove('on')); c.classList.add('on'); }; kb.appendChild(c); });
+    p.appendChild(kb);
     const go=el('button','k2-btn','Поручить ▶'); p.appendChild(go); w.appendChild(p);
     $('#csBack',w).onclick=()=>goView('pulse');
-    go.onclick=()=>{ const t=ta.value.trim(); if(!t){ta.focus();return;}
-      if(go.disabled) return; go.disabled=true; go.textContent='ставлю…';
-      cs.busy=true; cs.now='выполняет: '+t;
-      setTimeout(()=>{ k2Live.drafts.unshift({id:'drt'+(apSeq++), text:'Черновик: '+t, dep:cs.dep, dept:cs.dep, who:cs.t});
-        cabToast(`✓ ${cs.t} взял задачу — черновик придёт на приёмку`); goView('pulse'); }, 650);
+    go.onclick=()=>{ const t=ta.value.trim(); if(!t){ta.focus();return;} if(go.disabled)return;
+      if(kind==='now'){ go.disabled=true; go.textContent='ставлю…'; cs.busy=true; cs.now='выполняет: '+t;
+        st.journal.unshift({text:'Взял задачу: '+t, prov:['поставлено РЦС · '+nowHM(),'контекст роли']});
+        setTimeout(()=>{ k2Live.drafts.unshift({id:'drt'+(apSeq++), text:'Черновик: '+t, dept:cs.dep, who:cs.t});
+          cabToast(`✓ ${cs.t} взял задачу — черновик придёт на приёмку`); goView('pulse'); }, 650);
+      } else {
+        const when = kind==='regular'?'ежедневно 09:00':'завтра 09:00';
+        st.schedule.unshift({kind, text:t, when});
+        st.journal.unshift({text:(kind==='regular'?'Поставлено регулярно: ':'Отложено: ')+t, prov:['расписание · '+when,'помощник запустит сам к утру']});
+        cabToast(kind==='regular'?'✓ Регулярная задача — помощник запустит ежедневно к утру':'✓ Отложено на завтра 09:00 — помощник запустит сам');
+        renderCockpit();
+      }
     };
   }
 
-  /* ---- Конструктор: чего не хватает (§7) ---- */
+  /* ---- Конструктор: чего не хватает + подъём в дефолт (§7, §4.3) ---- */
   function renderConstructorView(w){
     w.innerHTML = `<button class="k2-back" id="ctorBack">← к Пульсу</button>` +
       head('Чего вам не хватает?', 'дефолт роли — гипотеза Среды. Реальность правит её здесь.');
+    // 1. self-service: нанять из библиотеки (§7.1)
     const cat = section('Добавить в штат из библиотеки', '');
     const pool = Object.keys(SYNTH_STAFF).filter(d=>d!==profile.domain).slice(0,3)
       .flatMap(d=> SYNTH_STAFF[d].slice(0,1).map(s=>({...s,d})));
-    pool.forEach(s=>{ const it=el('div','k2-item'); it.style.cursor='pointer';
+    pool.forEach(s=>{ const it=el('div','k2-item');
       it.innerHTML=`<div class="e">${s.e}</div><div style="flex:1"><div class="b">${esc(s.t)}</div><div class="m">${esc(DOMAINS[s.d].label)}</div></div><div><button class="k2-tag act ok">+ нанять</button></div>`;
-      it.querySelector('.ok').onclick=()=> animateOut(it, ()=>{ myStaff().push({id:'csx'+(apSeq++), e:s.e, t:s.t, now:'адаптация…', busy:false, dep:DOMAIN_DEPT[s.d]}); cabToast('✓ '+s.t+' добавлен в ваш штат'); renderStaffRail(); });
+      it.querySelector('.ok').onclick=()=> animateOut(it, ()=>{
+        myStaff().push({id:'csx'+(apSeq++), e:s.e, t:s.t, now:'адаптация…', busy:false, dep:DOMAIN_DEPT[s.d]});
+        myAdditions.push({ t:s.t, stage:0, demand: 6+((s.t.length)%40) });
+        cabToast('✓ '+s.t+' добавлен в ваш штат'); renderStaffRail(); renderCockpit(); });
       cat.appendChild(it); });
     w.appendChild(cat);
+    // 2. подъём в дефолт роли: личное → отдел → компания (§4.3, §7.3 сетевой эффект)
+    if (myAdditions.length){
+      const up = section('Ваши изменения · подъём в дефолт роли', '');
+      myAdditions.forEach((a,idx)=>{
+        const it=el('div','k2-item');
+        const atCompany = a.stage>=2;
+        it.innerHTML=`<div class="e">🧬</div><div style="flex:1"><div class="b">${esc(a.t)}</div>
+          <div class="m">уровень: <b style="color:var(--k-gold)">${esc(STAGES[a.stage])}</b> · телеметрия спроса: ещё ${a.demand} компаний просили похожее</div></div>
+          <div>${atCompany?'<span class="k2-tag">в дефолте роли ✓</span>':'<button class="k2-tag act ok">поднять выше</button>'}</div>`;
+        if(!atCompany){ it.querySelector('.ok').onclick=()=>{
+          if(a.stage===1 && !canCompany()){ cabToast('Подъём в «компанию» = новый дефолт роли для всех — санкция Оркестратора'); return; }
+          a.stage++; cabToast(`✓ «${a.t}» поднят до «${STAGES[a.stage]}» с провенансом — ${a.stage>=2?'стал дефолтом роли для всех компаний СРЕДЫ':'виден всему отделу'}`); renderCockpit();
+        }; }
+        up.appendChild(it);
+      });
+      const note=el('div','k2-empty'); note.style.marginTop='4px';
+      note.textContent='Каждый подъём — топливо для библиотеки ролей: доработка одной роли улучшает дефолт для следующей компании (§7.3).';
+      up.appendChild(note); w.appendChild(up);
+    }
+    // 3. эскалация: нет в системе → админ-ЦС провижинит (§7.1)
     const esc2=section('Нет нужного в библиотеке?','');
     const p=el('div','k2-panel');
-    p.innerHTML=`<div class="k2-empty">Опишите, какого ЦС, навыка или инструмента не хватает — уйдёт как эскалация на ЦС администратора платформы. Он провижинит (MCP-инструмент/навык/«найм») со статусом.</div>`;
+    p.innerHTML=`<div class="k2-empty">Опишите, какого ЦС, навыка или инструмента не хватает — уйдёт эскалацией на ЦС администратора платформы. Он провижинит (MCP-инструмент / навык / «найм») со статусом.</div>`;
     const ta=el('textarea','k2-ta'); ta.placeholder='Напр.: нужен ЦС для работы с 1С…'; ta.style.minHeight='70px'; p.appendChild(ta);
     const b=el('button','k2-btn','Эскалировать админ-ЦС ▶'); b.style.marginTop='8px'; p.appendChild(b);
     b.onclick=()=>{ if(!ta.value.trim())return; cabToast('✓ Эскалация ушла админ-ЦС — соберёт и вернёт со статусом'); ta.value=''; };
