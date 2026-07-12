@@ -17,6 +17,7 @@
   const DASH = (typeof DASHBOARD !== 'undefined') ? DASHBOARD : {};
   const LS_KEY = 'sreda_kam2_profile_v2';
   const LS_STATE = 'sreda_kam2_state_v1';   // состояние кокпита переживает перезагрузку (готовый продукт, не демка)
+  const LS_ONBOARD = 'sreda_kam2_onboarded';   // одноразовый онбординг помощником — показать один раз на роль
 
   /* ---------------------------------------------------------------- утилиты */
   const $  = (s, r) => (r||document).querySelector(s);
@@ -633,9 +634,40 @@
     .k2-opt:focus-visible,.k2-cta:focus-visible,.k2-btn:focus-visible,.k2-nav-item:focus-visible,.k2-chip:focus-visible,
     .k2-tag.act:focus-visible,.k2-asst-rem:focus-visible,.k2-add:focus-visible,.k2-back:focus-visible,.k2-asst-input input:focus-visible{
       outline:2px solid var(--k-gold); outline-offset:2px; }
+    /* ---- одноразовый онбординг: пошаговая подсветка зон ---- */
+    .k2-coach-ring{ position:fixed; z-index:130; border-radius:14px; border:2px solid var(--k-gold);
+      box-shadow:0 0 0 9999px rgba(6,10,8,.66), 0 0 0 4px var(--k-soft); pointer-events:none;
+      transition:left .32s cubic-bezier(.22,1,.36,1),top .32s cubic-bezier(.22,1,.36,1),width .32s cubic-bezier(.22,1,.36,1),height .32s cubic-bezier(.22,1,.36,1); }
+    .k2-coach-tip{ position:fixed; z-index:131; width:min(320px,86vw); background:var(--k-panel); border:1px solid var(--k-line2);
+      border-radius:14px; padding:16px 18px; box-shadow:var(--k-sh-xl); animation:k2fadein .3s cubic-bezier(.22,1,.36,1); }
+    .k2-coach-tip .step{ color:var(--k-gold); font-size:11px; letter-spacing:.14em; text-transform:uppercase; font-weight:700; }
+    .k2-coach-tip .ttl{ font-size:16px; font-weight:750; margin:6px 0 6px; color:var(--k-txt); letter-spacing:-.01em; }
+    .k2-coach-tip .bd{ font-size:13.5px; line-height:1.5; color:var(--k-txt2); }
+    .k2-coach-foot{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px; }
+    .k2-coach-dots{ display:flex; gap:6px; }
+    .k2-coach-dots i{ width:6px; height:6px; border-radius:50%; background:var(--k-line2); display:block; }
+    .k2-coach-dots i.on{ background:var(--k-gold); }
+    .k2-coach-btns{ display:flex; gap:10px; align-items:center; }
+    .k2-coach-skip{ background:none; border:none; color:var(--k-dim); font-size:12.5px; cursor:pointer; padding:0; }
+    .k2-coach-skip:hover{ color:var(--k-txt2); }
+    .k2-coach-next{ background:var(--k-gold); color:var(--k-on); border:none; border-radius:999px; padding:7px 16px; font-size:13px; font-weight:700; cursor:pointer; }
+    .k2-coach-next:hover{ background:var(--k-gold2); }
+    .k2-coach-next:focus-visible,.k2-coach-skip:focus-visible{ outline:2px solid var(--k-gold); outline-offset:2px; }
+    /* ---- «С чего начать» в помощнике (пустой/типовой штат) ---- */
+    .k2-start{ background:var(--k-soft); border:1px solid var(--k-line2); border-radius:12px; padding:13px 15px; margin-bottom:12px; }
+    .k2-start .st-h{ font-size:13px; font-weight:700; color:var(--k-txt); margin-bottom:9px; }
+    .k2-start-btns{ display:flex; flex-direction:column; gap:7px; }
+    .k2-start-btn{ display:flex; gap:10px; align-items:flex-start; text-align:left; width:100%; background:var(--k-panel); border:1px solid var(--k-line); border-radius:10px; padding:10px 12px; cursor:pointer; transition:border-color .15s; }
+    .k2-start-btn:hover{ border-color:var(--k-gold); }
+    .k2-start-btn .si{ font-size:15px; line-height:1.2; }
+    .k2-start-btn .sl{ font-size:13px; font-weight:650; color:var(--k-txt); }
+    .k2-start-btn .ss{ font-size:11.5px; color:var(--k-dim); margin-top:1px; }
+    .k2-start-btn:focus-visible{ outline:2px solid var(--k-gold); outline-offset:2px; }
     /* ---- A11y: уважение к reduced-motion ---- */
     @media (prefers-reduced-motion: reduce){
-      .k2-echo-line,.k2-verdict,.k2-tcard,.k2-card,.k2-role,.k2-axbadge,.k2-shell,.k2-survey.leaving,.k2-item{ animation:none !important; opacity:1 !important; transform:none !important; }
+      .k2-echo-line,.k2-verdict,.k2-tcard,.k2-card,.k2-role,.k2-axbadge,.k2-shell,.k2-survey.leaving,.k2-item,.k2-coach-tip{ animation:none !important; }
+      .k2-coach-ring{ transition:none !important; }
+      .k2-echo-line,.k2-verdict,.k2-tcard,.k2-card,.k2-role,.k2-axbadge,.k2-shell,.k2-item{ opacity:1 !important; transform:none !important; }
     }
     `;
     document.head.appendChild(s);
@@ -960,6 +992,8 @@
     }
     return myStaffCache;
   }
+  // штат «синтетический», если у домена роли нет реального отдела в оргструктуре (SYNTH_STAFF) — тогда это по сути пустой старт
+  function isSynthStaff(){ const dep = DOMAIN_DEPT[profile.domain]; return !(dep && ORG.digital && Array.isArray(ORG.digital[dep])); }
   const canCompany = () => profile.level>=4;   // высота «Компания» = Оркестратор (§2, §6)
 
   /* ---- персистентность: продукт помнит состояние между сессиями ---- */
@@ -1008,11 +1042,77 @@
     const cmd = $('#cmdBtn'); if (cmd){ cmd.onclick = (e)=>{ e.preventDefault(); goView('pulse'); const i=$('#k2AsstIn'); if(i){ i.focus(); i.scrollIntoView({block:'center'}); } }; }
     if (!$('#k2Reset')){
       const r = el('button','k2-reset','↺ пересобрать Среду'); r.id='k2Reset';
-      r.onclick = ()=>{ localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_STATE); profile=null; active=null;
+      r.onclick = ()=>{ localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_STATE); localStorage.removeItem(LS_ONBOARD); profile=null; active=null;
         k2Live=null; myStaffCache=null; myAdditions=[]; Object.keys(specDone).forEach(k=>delete specDone[k]); Object.keys(csStore).forEach(k=>delete csStore[k]);
         location.hash=''; runSurvey(); };
       document.body.appendChild(r);
     }
+    maybeOnboard();   // одноразовый онбординг помощником — только при первом входе роли
+  }
+
+  /* ---- одноразовый онбординг: помощник проводит по трём зонам (§9: вместо захардкоженного тура) ---- */
+  const wasOnboarded = () => { try{ return !!localStorage.getItem(LS_ONBOARD); }catch(e){ return false; } };
+  function maybeOnboard(){
+    if (wasOnboarded()) return;
+    // дать кокпиту раскладку, затем подсветить зоны по их реальным координатам
+    // (setTimeout, а не rAF: rAF не тикает в фоновой вкладке превью)
+    setTimeout(runOnboard, 90);
+  }
+  function runOnboard(){
+    if (wasOnboarded()) return;
+    const staff = myStaff();
+    const waits = participationPoints().length;
+    const synth = isSynthStaff();
+    const domLabel = DOMAINS[profile.domain] ? DOMAINS[profile.domain].label : 'твою роль';
+    const names = staff.slice(0,2).map(c=>c.t).join(', ');
+    const steps = [
+      { sel:'#nav', side:'right', step:'Шаг 1 из 3', ttl:'Слева — твой цифровой штат',
+        bd: synth
+          ? `Пока это типовой набор под ${esc(domLabel)}. Клик по любому — карточка и постановка задачи. Свой штат наберёшь внизу: «+ штат».`
+          : `${staff.length} ${plural(staff.length,'цифровой сотрудник','цифровых сотрудника','цифровых сотрудников')}: ${esc(names)}${staff.length>2?' и другие':''}. Клик по любому — карточка, память и постановка задачи.` },
+      { sel:'.k2-main', side:'below', step:'Шаг 2 из 3', ttl:'В центре — твой день',
+        bd: waits
+          ? `Помощник собрал его к 08:00. ${waits} ${plural(waits,'точка','точки','точек')} уже ждут твоего слова — принять, уточнить, согласовать.`
+          : `Помощник собрал его к 08:00: встречи, задачи ЦС и то, что он предложил из звонков и почты.` },
+      { sel:'.k2-asst', side:'left', step:'Шаг 3 из 3', ttl:'Справа — твой помощник',
+        bd: `Спроси словами или жми чип — проведу и подскажу, кому из ЦС поручить. ${synth?'С пустого места начнём вместе — предложу первый шаг.':'Дальше сам.'}` },
+    ];
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const ring = el('div','k2-coach-ring'); const tip = el('div','k2-coach-tip');
+    document.body.appendChild(ring); document.body.appendChild(tip);
+    let i = 0;
+    const finish = ()=>{ try{ localStorage.setItem(LS_ONBOARD,'1'); }catch(e){}
+      ring.remove(); tip.remove(); document.removeEventListener('keydown', onKey); window.removeEventListener('resize', onResize); };
+    function onKey(e){ if(e.key==='Escape'){ finish(); } else if(e.key==='Enter'){ e.preventDefault(); adv(); } }
+    function onResize(){ if(document.body.contains(ring)) draw(); }
+    function adv(){ if(i>=steps.length-1){ finish(); return; } i++; draw(); }
+    function draw(){
+      const s = steps[i]; const t = document.querySelector(s.sel);
+      if(!t){ adv(); return; }
+      const r = t.getBoundingClientRect(); const pad = 8;
+      const rx = Math.max(6, r.left-pad), ry = Math.max(6, r.top-pad);
+      const rw = r.width+pad*2, rh = Math.min(r.height+pad*2, window.innerHeight-12);
+      ring.style.left=rx+'px'; ring.style.top=ry+'px'; ring.style.width=rw+'px'; ring.style.height=rh+'px';
+      const dots = steps.map((_,k)=>`<i class="${k===i?'on':''}"></i>`).join('');
+      const last = i===steps.length-1;
+      tip.innerHTML = `<div class="step">${esc(s.step)}</div><div class="ttl">${esc(s.ttl)}</div><div class="bd">${s.bd}</div>
+        <div class="k2-coach-foot"><div class="k2-coach-dots">${dots}</div>
+        <div class="k2-coach-btns">${last?'':'<button class="k2-coach-skip" id="coSkip">Пропустить</button>'}<button class="k2-coach-next" id="coNext">${last?'Понятно':'Далее'}</button></div></div>`;
+      const tw = Math.min(320, window.innerWidth*0.86); tip.style.width=tw+'px';
+      const th = tip.offsetHeight||170;
+      let tx, ty;
+      if(s.side==='right'){ tx=rx+rw+14; ty=ry; }
+      else if(s.side==='left'){ tx=rx-tw-14; ty=ry; }
+      else { tx=rx; ty=ry+rh+14; }
+      tx = Math.max(12, Math.min(tx, window.innerWidth-tw-12));
+      ty = Math.max(12, Math.min(ty, window.innerHeight-th-12));
+      tip.style.left=tx+'px'; tip.style.top=ty+'px';
+      const nx=$('#coNext',tip); if(nx){ nx.onclick=adv; if(!reduce) nx.focus(); }
+      const sk=$('#coSkip',tip); if(sk) sk.onclick=finish;
+    }
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('resize', onResize, {passive:true});
+    draw();
   }
   function goView(view, csId){ cockpit.view=view; cockpit.csId=csId||null; renderStaffRail(); renderCockpit(); }
   /* совместимость: старые модульные функции (не в навигации кокпита) деградируют мягко */
@@ -1412,10 +1512,21 @@
     // подстройка под привычный инструмент
     const habitNote = (profile.aiTool ? `подстроен под ${profile.aiTool}` : (profile.habit==='none' ? 'проведёт за руку' : 'знает, на что вы смотрите')) + (profile.tone==='ты' ? ' · на ты' : '');
     const inHint = profile.habit==='chat' ? `Спросите словами — как в ${profile.aiTool||'чате'}` : (profile.habit==='none' ? 'Напишите, что нужно — я подскажу' : 'Поручите помощнику…');
+    // пустой/типовой штат → помощник спрашивает, с чего начать (развилка задача ↔ штат)
+    const synth = isSynthStaff();
+    const startBlock = synth ? `
+      <div class="k2-start">
+        <div class="st-h">С чего начать</div>
+        <div class="k2-start-btns">
+          <button class="k2-start-btn" id="stTask"><span class="si">⚡</span><span><span class="sl">Поставить задачу словами</span><span class="ss">опишите — рой разберёт и раздаст ЦС</span></span></button>
+          <button class="k2-start-btn" id="stStaff"><span class="si">🧩</span><span><span class="sl">Собрать штат под себя</span><span class="ss">нанять цифровых сотрудников из библиотеки</span></span></button>
+        </div>
+      </div>` : '';
     box.innerHTML = `
       <div class="k2-asst-h"><div class="av">🗓️</div>
         <div><b>Личный помощник</b><small>ядро вашего дня · ${esc(habitNote)}</small></div></div>
       <div class="k2-asst-ctx">${esc(assistantObsC())}</div>
+      ${startBlock}
       <div class="k2-asst-sec">Ждёт вас</div>
       <div id="asstRems"></div>
       <div class="k2-asst-sec">Могу прямо сейчас</div>
@@ -1433,6 +1544,9 @@
     const inp=$('#k2AsstIn',box), gob=$('#k2AsstGo',box);
     const submit=()=>{ const v=inp.value.trim(); if(v) askAssistant(v); };
     if(gob) gob.onclick=submit; if(inp) inp.onkeydown=(e)=>{ if(e.key==='Enter') submit(); };
+    // развилка «с чего начать» (пустой/типовой штат)
+    const stT=$('#stTask',box); if(stT) stT.onclick=()=>{ const i=$('#k2AsstIn',box); if(i){ i.focus(); i.scrollIntoView({block:'center'}); } };
+    const stS=$('#stStaff',box); if(stS) stS.onclick=()=>goView('constructor');
   }
 
   /* ================================================================ РЕНДЕР  */
