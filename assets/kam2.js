@@ -162,6 +162,16 @@
         { t:'Поручать и проверять результат',      posture:'поручать и проверять', pk:'delegate' },
         { t:'Задавать направление, а не делать',   posture:'задавать направление', pk:'direct' },
       ]},
+    { kind:'tools', q:'Каким ИИ вы уже пользуетесь?',
+      opts:[
+        { t:'ChatGPT',                    tool:'ChatGPT',            habit:'chat' },
+        { t:'Claude',                     tool:'Claude',            habit:'chat' },
+        { t:'Gemini / Google',            tool:'Gemini',            habit:'chat' },
+        { t:'GigaChat или YandexGPT',     tool:'GigaChat/YandexGPT',habit:'chat' },
+        { t:'Copilot в Office',           tool:'Copilot',           habit:'office' },
+        { t:'Пробовал, но не прижилось',  tool:null,                habit:'none' },
+        { t:'Ещё не пробовал',            tool:null,                habit:'none' },
+      ]},
     { kind:'depth', q:'Насколько важно видеть, как именно всё сделано?',
       opts:[
         { t:'Достаточно результата',              depth:0 },
@@ -605,7 +615,7 @@
     injectStyles();
     let step = 0;
     const domScore = {}; const lvlSamples = [];
-    let depth = 1; let focus = null; let posture = null; let postureKey = null;
+    let depth = 1; let focus = null; let posture = null; let postureKey = null; let aiTool = null; let habit = null;
     let liveChosen = [];
     const history = [];   // [{kind, dom?, lvl?, depth?}]
     let locked = false;
@@ -620,7 +630,7 @@
       c.innerHTML = `
         <div class="k2-eyebrow">Среда собирается под вас</div>
         <div class="k2-q">Не «выберите свою роль» — этого никто про себя не формулирует.<br>Просто ответьте про свою работу, и Среда сама узнает, кто вы, и соберётся.</div>
-        <div class="k2-sub">8 коротких вопросов. Справа вы увидите, как Среда распознаёт вашу профессию и достраивает рабочее место прямо на глазах.</div>
+        <div class="k2-sub">9 коротких вопросов. Справа вы увидите, как Среда распознаёт вашу профессию и достраивает рабочее место прямо на глазах.</div>
         <div style="margin-top:26px"><button class="k2-cta" id="k2Start">Собрать мою Среду ▶</button></div>`;
       layer.appendChild(c);
       $('#k2Start').onclick = ()=>{ step=0; buildShell(); drawLeft(); };
@@ -680,6 +690,7 @@
       else if (s.kind==='lvl'){ lvlSamples.push(o.lvl); rec.lvl=o.lvl; }
       else if (s.kind==='focus'){ focus=o.focus; rec.focus=o.focus; }
       else if (s.kind==='posture'){ posture=o.posture; postureKey=o.pk; rec.posture=o.posture; }
+      else if (s.kind==='tools'){ aiTool=o.tool; habit=o.habit; rec.tool=o.tool; }
       else if (s.kind==='depth'){ depth=o.depth; rec.depth=o.depth; }
       history[step] = rec;
       updateRight(o, s);
@@ -698,6 +709,7 @@
         else if (h.kind==='lvl'){ const i=lvlSamples.lastIndexOf(h.lvl); if(i>=0) lvlSamples.splice(i,1); }
         else if (h.kind==='focus'){ focus=null; }
         else if (h.kind==='posture'){ posture=null; postureKey=null; }
+        else if (h.kind==='tools'){ aiTool=null; habit=null; }
       }
       history.length = step;
       drawLeft();
@@ -773,10 +785,12 @@
         if (h.qi===2) return `дороже всего ошибиться ${t}`;
         return t;
       });
-      // профилирование: фокус и предпочтение — в портрет узнавания
+      // профилирование: фокус, предпочтение, привычный ИИ — в портрет узнавания
       if (focus)   echo.push(`больше всего времени у вас уходит на ${focus}`);
       if (posture) echo.push(`вам ближе ${posture}`);
-      profile = { domain, level, roleTitle: role?role.t:null, depth, focus, posture, postureKey,
+      if (aiTool)  echo.push(`вы уже работаете в ${aiTool} — Среда встанет привычно`);
+      else if (habit==='none') echo.push(`с ИИ вы ещё на «вы» — Среда проведёт за руку`);
+      profile = { domain, level, roleTitle: role?role.t:null, depth, focus, posture, postureKey, aiTool, habit,
         chosen: assembleModules(domain, level), echo, baseCount: ROLES.length };
       save(profile);
       drawResult();
@@ -1352,15 +1366,18 @@
     const busy=staff.filter(c=>c.busy).length;
     if(busy) rem.push({icon:'⏳', text:`${busy} ${plural(busy,'ЦС выполняет','ЦС выполняют','ЦС выполняют')} вашу задачу`, act:()=>goView('pulse')});
     if(!rem.length) rem.push({icon:'✓', text:'От вас сейчас ничего не ждут — день под контролем.', act:()=>goView('pulse')});
+    // подстройка под привычный инструмент
+    const habitNote = profile.aiTool ? `подстроен под ${profile.aiTool}` : (profile.habit==='none' ? 'проведёт за руку' : 'знает, на что вы смотрите');
+    const inHint = profile.habit==='chat' ? `Спросите словами — как в ${profile.aiTool||'чате'}` : (profile.habit==='none' ? 'Напишите, что нужно — я подскажу' : 'Поручите помощнику…');
     box.innerHTML = `
       <div class="k2-asst-h"><div class="av">🗓️</div>
-        <div><b>Личный помощник</b><small>ядро вашего дня · знает, на что вы смотрите</small></div></div>
+        <div><b>Личный помощник</b><small>ядро вашего дня · ${esc(habitNote)}</small></div></div>
       <div class="k2-asst-ctx">${esc(assistantObsC())}</div>
       <div class="k2-asst-sec">Ждёт вас</div>
       <div id="asstRems"></div>
       <div class="k2-asst-sec">Могу прямо сейчас</div>
       <div class="k2-asst-chips" id="asstChips"></div>
-      <div class="k2-asst-input"><input id="k2AsstIn" placeholder="Поручите помощнику…" aria-label="Поручить помощнику"/><button id="k2AsstGo" aria-label="Отправить">→</button></div>
+      <div class="k2-asst-input"><input id="k2AsstIn" placeholder="${esc(inHint)}" aria-label="Поручить помощнику"/><button id="k2AsstGo" aria-label="Отправить">→</button></div>
       <div class="k2-asst-out" id="k2AsstOut"></div>`;
     const remBox=$('#asstRems',box);
     rem.forEach(r=>{ const b=el('button','k2-asst-rem',`<span>${r.icon}</span><span>${esc(r.text)}</span>`); b.onclick=r.act; remBox.appendChild(b); });
