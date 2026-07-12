@@ -148,6 +148,20 @@
         { t:'Задаю правила отделу',               lvl:4 },
         { t:'Финальное слово за мной',            lvl:5 },
       ]},
+    { kind:'focus', q:'Что сейчас съедает больше всего вашего времени?',
+      opts:[
+        { t:'Рутина, которую можно передать',      focus:'рутину, которую пора передать' },
+        { t:'Сбор данных и отчёты',                focus:'сбор данных и отчёты' },
+        { t:'Согласования и решения',              focus:'согласования и решения' },
+        { t:'Разбор входящих — почта, звонки, чаты',focus:'разбор входящих' },
+        { t:'Контроль, что всё идёт по плану',     focus:'контроль, что всё идёт по плану' },
+      ]},
+    { kind:'posture', q:'Вам ближе — делать самому или поручать?',
+      opts:[
+        { t:'Делать самому — так надёжнее',        posture:'делать самому', pk:'self' },
+        { t:'Поручать и проверять результат',      posture:'поручать и проверять', pk:'delegate' },
+        { t:'Задавать направление, а не делать',   posture:'задавать направление', pk:'direct' },
+      ]},
     { kind:'depth', q:'Насколько важно видеть, как именно всё сделано?',
       opts:[
         { t:'Достаточно результата',              depth:0 },
@@ -591,7 +605,7 @@
     injectStyles();
     let step = 0;
     const domScore = {}; const lvlSamples = [];
-    let depth = 1;
+    let depth = 1; let focus = null; let posture = null; let postureKey = null;
     let liveChosen = [];
     const history = [];   // [{kind, dom?, lvl?, depth?}]
     let locked = false;
@@ -606,7 +620,7 @@
       c.innerHTML = `
         <div class="k2-eyebrow">Среда собирается под вас</div>
         <div class="k2-q">Не «выберите свою роль» — этого никто про себя не формулирует.<br>Просто ответьте про свою работу, и Среда сама узнает, кто вы, и соберётся.</div>
-        <div class="k2-sub">6 коротких вопросов. Справа вы увидите, как Среда распознаёт вашу профессию и достраивает рабочее место прямо на глазах.</div>
+        <div class="k2-sub">8 коротких вопросов. Справа вы увидите, как Среда распознаёт вашу профессию и достраивает рабочее место прямо на глазах.</div>
         <div style="margin-top:26px"><button class="k2-cta" id="k2Start">Собрать мою Среду ▶</button></div>`;
       layer.appendChild(c);
       $('#k2Start').onclick = ()=>{ step=0; buildShell(); drawLeft(); };
@@ -664,6 +678,8 @@
       const rec = { kind:s.kind, qi:step, text:o.t };
       if (s.kind==='dom'){ for(const d in o.dom){ domScore[d]=(domScore[d]||0)+o.dom[d]; } rec.dom=o.dom; }
       else if (s.kind==='lvl'){ lvlSamples.push(o.lvl); rec.lvl=o.lvl; }
+      else if (s.kind==='focus'){ focus=o.focus; rec.focus=o.focus; }
+      else if (s.kind==='posture'){ posture=o.posture; postureKey=o.pk; rec.posture=o.posture; }
       else if (s.kind==='depth'){ depth=o.depth; rec.depth=o.depth; }
       history[step] = rec;
       updateRight(o, s);
@@ -680,6 +696,8 @@
       if (h){
         if (h.kind==='dom' && h.dom){ for(const d in h.dom){ domScore[d]=(domScore[d]||0)-h.dom[d]; if(domScore[d]<=0) delete domScore[d]; } }
         else if (h.kind==='lvl'){ const i=lvlSamples.lastIndexOf(h.lvl); if(i>=0) lvlSamples.splice(i,1); }
+        else if (h.kind==='focus'){ focus=null; }
+        else if (h.kind==='posture'){ posture=null; postureKey=null; }
       }
       history.length = step;
       drawLeft();
@@ -755,7 +773,10 @@
         if (h.qi===2) return `дороже всего ошибиться ${t}`;
         return t;
       });
-      profile = { domain, level, roleTitle: role?role.t:null, depth,
+      // профилирование: фокус и предпочтение — в портрет узнавания
+      if (focus)   echo.push(`больше всего времени у вас уходит на ${focus}`);
+      if (posture) echo.push(`вам ближе ${posture}`);
+      profile = { domain, level, roleTitle: role?role.t:null, depth, focus, posture, postureKey,
         chosen: assembleModules(domain, level), echo, baseCount: ROLES.length };
       save(profile);
       drawResult();
@@ -1309,7 +1330,9 @@
     if (cockpit.view==='constructor') return 'Скажите, чего не хватает — добавлю из библиотеки или эскалирую админ-ЦС.';
     if (cockpit.height==='dept') return 'Высота отдела: вижу штат и передачи. Показать, у кого затык?';
     if (cockpit.height==='company') return 'Высота компании: обзор всей организации.';
-    return 'Собрал ваш день к утру. Начните с того, что подсвечено — остальное ЦС держат сами.';
+    return profile.focus
+      ? `Собрал ваш день к утру. Знаю, что больше всего у вас уходит на ${profile.focus} — держу это в приоритете.`
+      : 'Собрал ваш день к утру. Начните с того, что подсвечено — остальное ЦС держат сами.';
   }
   function askAssistant(text){
     const t=String(text).toLowerCase();
@@ -1342,7 +1365,9 @@
     const remBox=$('#asstRems',box);
     rem.forEach(r=>{ const b=el('button','k2-asst-rem',`<span>${r.icon}</span><span>${esc(r.text)}</span>`); b.onclick=r.act; remBox.appendChild(b); });
     const chips=[{l:'Мой день',a:()=>goView('pulse')},{l:'Штат отдела',a:()=>{cockpit.height='dept';cockpit.view='pulse';renderStaffRail();renderCockpit();}},{l:'Чего не хватает',a:()=>goView('constructor')}];
-    if(staff[0]) chips.splice(1,0,{l:'Поставить задачу '+staff[0].t.split(' ')[0].toLowerCase(),a:()=>goView('cs',staff[0].id)});
+    if(staff[0]){ const taskChip={l:'Поставить задачу '+staff[0].t.split(' ')[0].toLowerCase(),a:()=>goView('cs',staff[0].id)};
+      // предпочтение «поручать» → действие постановки задачи выходит вперёд
+      if(profile.postureKey==='delegate') chips.unshift(taskChip); else chips.splice(1,0,taskChip); }
     const chipBox=$('#asstChips',box);
     chips.slice(0,4).forEach(c=>{ const b=el('button','k2-chip',esc(c.l)); b.onclick=c.a; chipBox.appendChild(b); });
     const inp=$('#k2AsstIn',box), gob=$('#k2AsstGo',box);
