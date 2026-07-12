@@ -542,7 +542,8 @@
     .k2-asst-input button{ background:var(--k-gold); color:var(--k-on); border:none; border-radius:10px; width:42px; font-size:16px; font-weight:800; cursor:pointer; }
     .k2-asst-out{ font-size:12.5px; color:var(--k-gold); margin-top:11px; line-height:1.45; }
     /* ---- живые действия в модулях ---- */
-    .k2-tag.act{ cursor:pointer; font-family:inherit; transition:.14s; }
+    .k2-tag.act{ cursor:pointer; font-family:inherit; transition:.14s; font-size:12.5px; padding:7px 13px; min-height:32px; line-height:1; }
+    @media(max-width:640px){ .k2-grid{ grid-template-columns:1fr !important; } }
     .k2-tag.act:hover{ background:var(--k-panel2); color:var(--k-txt); border-color:var(--k-line2); }
     .k2-tag.act.ok{ border-color:var(--k-gold); color:var(--k-gold); }
     .k2-tag.act.ok:hover{ background:var(--k-soft); }
@@ -764,8 +765,13 @@
       const echoHtml = (profile.echo||[]).map((line,i)=>
         `<div class="k2-echo-line" style="animation-delay:${(0.2+i*0.55).toFixed(2)}s">${esc(line)}</div>`).join('');
       const vDelay = (0.2 + (profile.echo||[]).length*0.55 + 0.25).toFixed(2);
-      const mods = profile.chosen.map(id=>{ const m=MODULES.find(x=>x.id===id);
-        return `<div class="k2-mod"><div class="i">${m.icon}</div><div class="n">${esc(m.name)}</div><div class="h">${esc(m.hint)}</div></div>`; }).join('');
+      // превью цифрового штата, который соберёт кокпит (а не мёртвые модули)
+      const dep0 = DOMAIN_DEPT[dom];
+      const staffPrev = (dep0 && ORG.digital && Array.isArray(ORG.digital[dep0]))
+        ? ORG.digital[dep0].slice(0,4).map(a=>({e:a.emoji||'🤖', t:a.title||a.name, now:a.now||'на связи'}))
+        : (SYNTH_STAFF[dom]||[{e:'🤖',t:'Цифровой двойник',now:'на связи'}]);
+      const mods = staffPrev.map(cs=>
+        `<div class="k2-mod"><div class="i">${cs.e}</div><div class="n">${esc(cs.t)}</div><div class="h">${esc(cs.now)}</div></div>`).join('');
       c.innerHTML = `
         <div class="k2-eyebrow">Среда прочитала ваши ответы</div>
         <div class="k2-echo">${echoHtml}</div>
@@ -777,7 +783,7 @@
             <div class="k2-pill">🎚️ <b>${esc(LEVELS[profile.level])}</b></div>
             <div class="k2-pill">🧬 одна из <b>${profile.baseCount}</b> ролей, что различает Среда</div>
           </div>
-          <div class="k2-sub">Под вашу работу Среда собрала ${profile.chosen.length} модуля. Не вы? «↺ пересобрать» внизу. Не хватает — «Добавить в Среду».</div>
+          <div class="k2-sub">Среда укомплектовала под вашу роль цифровой штат — ${staffPrev.length} ${plural(staffPrev.length,'сотрудник','сотрудника','сотрудников')}. Ставьте им задачи, а Пульс соберёт ваш день. Не вы? «↺ пересобрать» внизу.</div>
           <div class="k2-picked">${mods}</div>
           <button class="k2-cta" id="k2Enter">Войти в мою Среду ▶</button>
         </div>`;
@@ -809,6 +815,58 @@
     legal:[{e:'📄',t:'Юридический агент',now:'правки договора «Гамма»'},{e:'🛡️',t:'Агент комплаенса',now:'проверка 152-ФЗ'}],
     assist:[{e:'🗓️',t:'Двойник ассистента',now:'подготовка к встрече 14:00'},{e:'✉️',t:'Агент входящих',now:'разбор почты за ночь'}],
   };
+  /* доменный контент Пульса: точки участия, встречи, кандидат, память ЦС — под роль (а не sales для всех) */
+  const DCONTENT = {
+    sales:    { clarify:'применить скидку 12% сверх политики по сделке «Гамма»?', coord:'РОП просит подключить вашего ЦС к тендеру РЖД', dept:'Продажи',
+      meet:[['10:00','Zoom с клиентом «Гамма»','бриф от помощника готов'],['15:30','Синк по воронке','повестка собрана']],
+      cand:{text:'Из вчерашнего звонка «Гамма» насчитал 4 задачи и 1 встречу', task:'Отправка КП «Гамма» (из звонка)', draft:'Черновик протокола встречи «Гамма»'},
+      mem:['контекст: клиент «Гамма» · воронка 6 горячих (CRM, 12.07)','правило: скидка до 10% — сам; выше — санкция РЦС'] },
+    finance:  { clarify:'провести платёж поставщику сверх лимита без доп. согласования?', coord:'Директор просит подключить вашего ЦС к закрытию квартала', dept:'Финансы',
+      meet:[['10:00','Разбор отклонений бюджета','сводка от помощника'],['16:00','Сверка с аудитором','материалы готовы']],
+      cand:{text:'Из выписки банка: 3 расхождения и 1 запрос на оплату', task:'Согласование платежа поставщику', draft:'Черновик акта сверки'},
+      mem:['контекст: дебиторка 340т · просрочка 12 дней (CRM, 12.07)','правило: платёж до лимита — сам; выше — санкция РЦС'] },
+    estimate: { clarify:'принять смету с превышением норматива на 6%?', coord:'ГИП просит подключить вашего ЦС к расчёту тендера', dept:'Сметный отдел',
+      meet:[['10:00','Защита сметы по объекту','расчёт готов'],['14:00','Разбор расценок','обновления собраны']],
+      cand:{text:'Из письма заказчика: 2 позиции пересчитать и запрос КП', task:'Пересчёт сметы по объекту «ЖК Ривер»', draft:'Черновик коммерческого предложения'},
+      mem:['контекст: объект «ЖК Ривер» · 142 позиции (база расценок 2026-Q2)','правило: отклонение до 5% — сам; выше — санкция РЦС'] },
+    eng:      { clarify:'выкатить релиз 2.4 в прод сегодня вечером?', coord:'PM просит подключить вашего ЦС к разбору инцидента', dept:'ИИ и разработка',
+      meet:[['10:00','Дейли команды','статус собран'],['16:00','Ревью архитектуры','материалы готовы']],
+      cand:{text:'Из трекера: 3 бага на ревью и 1 инцидент', task:'Выкатка релиза 2.4', draft:'Черновик пост-мортема'},
+      mem:['контекст: релиз 2.4 · покрытие тестами 71%','правило: hotfix — сам; выкатка в прод — санкция РЦС'] },
+    marketing:{ clarify:'запустить кампанию с бюджетом сверх плана на 15%?', coord:'Продажи просят подключить вашего ЦС к GTM-запуску', dept:'Маркетинг',
+      meet:[['11:00','Синк по кампании','бриф готов'],['15:00','Разбор метрик','дашборд собран']],
+      cand:{text:'Из брифа: 4 креатива на согласование и 1 запуск', task:'Публикация GTM-плана', draft:'Черновик контент-плана'},
+      mem:['контекст: 18 MQL проскорены · 6 горячих','правило: расход до плана — сам; сверх — санкция РЦС'] },
+    ops:      { clarify:'сдвинуть срок поставки на объект на 2 дня?', coord:'РП просит подключить вашего ЦС к внедрению', dept:'Производство',
+      meet:[['09:00','Планёрка по объектам','график готов'],['14:00','Синк со снабжением','заявки собраны']],
+      cand:{text:'Из заявок: 8 позиций к заказу и 1 риск срыва', task:'Согласование сдвига срока поставки', draft:'Черновик графика работ'},
+      mem:['контекст: внедрение · веха 3 из 5 · SLA под риском','правило: сдвиг до дня — сам; больше — санкция РЦС'] },
+    hr:       { clarify:'сделать оффер кандидату выше вилки на 10%?', coord:'Руководитель отдела просит подключить вашего ЦС к найму', dept:'HR',
+      meet:[['10:00','Интервью с кандидатом','досье готово'],['15:00','Синк по онбордингу','план собран']],
+      cand:{text:'Из откликов: 24 резюме отобрано, топ-5 к интервью', task:'Согласование оффера кандидату', draft:'Черновик плана онбординга'},
+      mem:['контекст: 3 вакансии в работе · 24 отклика','правило: оффер в вилке — сам; выше — санкция РЦС'] },
+    legal:    { clarify:'подписать договор с правкой контрагента по п.5?', coord:'Продажи просят подключить вашего ЦС к сделке', dept:'Юридический отдел',
+      meet:[['11:00','Разбор договора','правки собраны'],['16:00','Синк по претензии','материалы готовы']],
+      cand:{text:'Из почты: 3 договора на подпись и 1 претензия', task:'Согласование правки договора', draft:'Черновик заключения по риску'},
+      mem:['контекст: 3 договора на подписи · 2 претензии','правило: типовая правка — сам; существенная — санкция РЦС'] },
+    project:  { clarify:'принять этап проекта с открытым риском?', coord:'Смежный отдел просит подключить вашего ЦС к проекту', dept:'Проекты',
+      meet:[['10:00','Статус проекта','отчёт собран'],['15:00','Разбор рисков','реестр обновлён']],
+      cand:{text:'Из статусов: 2 вехи к приёмке и 1 риск', task:'Приёмка этапа проекта', draft:'Черновик статус-отчёта заказчику'},
+      mem:['контекст: проект РЖД · этап 2 из 4','правило: веха в срок — сам; сдвиг — санкция РЦС'] },
+    analytics:{ clarify:'опубликовать отчёт с доверительным интервалом ±12%?', coord:'Руководство просит подключить вашего ЦС к срезу', dept:'Аналитика',
+      meet:[['10:00','Разбор дашборда','срез готов'],['16:00','Синк по метрикам','данные собраны']],
+      cand:{text:'Из данных: отклонение факт/план >15% и 1 запрос среза', task:'Публикация отчёта с выводом', draft:'Черновик аналитической записки'},
+      mem:['контекст: недельный дашборд · алерт >15%','правило: срез — сам; публикация вовне — санкция РЦС'] },
+    exec:     { clarify:'утвердить стратегическую ставку с бюджетом сверх плана?', coord:'Директор направления просит вашего решения по ресурсу', dept:'Управление',
+      meet:[['09:00','Совет директоров','повестка собрана'],['15:00','Стратсессия','срез рынка готов']],
+      cand:{text:'Из сводки: 3 решения на утверждение и 1 риск', task:'Утверждение стратегической ставки', draft:'Черновик решения совета'},
+      mem:['контекст: портфель проектов · прогноз выручки ±10%','правило: в рамках стратегии — сам; смена курса — совет'] },
+    assist:   { clarify:'подтвердить встречу от имени руководителя?', coord:'Руководитель просит подключить вашего ЦС к подготовке', dept:'Операционка',
+      meet:[['10:00','Подготовка к встрече руководителя','досье готово'],['14:00','Разбор входящих','почта собрана']],
+      cand:{text:'Из почты за ночь: 4 задачи и 1 встреча к подтверждению', task:'Подтверждение встречи руководителя', draft:'Черновик протокола'},
+      mem:['контекст: календарь руководителя · 4 встречи сегодня','правило: календарь — сам; подтверждение от лица — санкция РЦС'] },
+  };
+  const dcontent = () => DCONTENT[profile.domain] || DCONTENT.sales;
   let myStaffCache = null;
   function myStaff(){
     if (myStaffCache) return myStaffCache;
@@ -817,7 +875,7 @@
       myStaffCache = ORG.digital[dep].slice(0,4).map((a,i)=>({ id:'cs'+i, e:a.emoji||'🤖', t:a.title||a.name, now:a.now||'на связи', ji:a.ji, busy:false, dep }));
     } else {
       const syn = SYNTH_STAFF[profile.domain] || [{e:'🤖',t:'Цифровой двойник',now:'на связи'}];
-      myStaffCache = syn.map((s,i)=>({ id:'cs'+i, e:s.e, t:s.t, now:s.now, busy:false, dep }));
+      myStaffCache = syn.map((s,i)=>({ id:'cs'+i, e:s.e, t:s.t, now:s.now, busy:false, dep:profile.domain }));  // dep=домен → deptLabel даёт название направления, не undefined
     }
     return myStaffCache;
   }
@@ -826,7 +884,7 @@
   /* ---- персистентность: продукт помнит состояние между сессиями ---- */
   function persist(){
     if(!profile) return;
-    try{ localStorage.setItem(LS_STATE, JSON.stringify({ domain:profile.domain, k2Live, csStore, staff:myStaffCache, myAdditions })); }catch(e){}
+    try{ localStorage.setItem(LS_STATE, JSON.stringify({ domain:profile.domain, apSeq, k2Live, csStore, staff:myStaffCache, myAdditions })); }catch(e){}
   }
   function loadState(){
     try{ const s=JSON.parse(localStorage.getItem(LS_STATE)||'null');
@@ -835,6 +893,12 @@
         if(Array.isArray(s.staff)) myStaffCache=s.staff;
         if(Array.isArray(s.myAdditions)) myAdditions=s.myAdditions;
         if(s.csStore) Object.assign(csStore, s.csStore);
+        // восстановить счётчик id выше сохранённого max, иначе новые id столкнутся с восстановленными
+        let mx = (typeof s.apSeq==='number') ? s.apSeq : 0;
+        const scan = arr => (arr||[]).forEach(o=>{ const m=/(\d+)$/.exec(o&&o.id||''); if(m) mx=Math.max(mx, +m[1]+1); });
+        if(k2Live){ scan(k2Live.approvals); scan(k2Live.drafts); }
+        scan(myStaffCache);
+        apSeq = mx;
       }
     }catch(e){}
   }
@@ -935,10 +999,9 @@
     if(!waits.length) s1.appendChild(emptyEl('✓ Всё, что можно, ЦС сделали сами — от вас сейчас ничего не нужно.'));
     waits.forEach(p=> s1.appendChild(pointEl(p)));
     w.appendChild(s1);
-    // 2. Встречи дня
+    // 2. Встречи дня (под домен роли)
     const s2 = section('Встречи дня','');
-    [['10:00','Zoom с клиентом «Гамма»','бриф от помощника готов'],['15:30','Синк по проекту','повестка собрана']]
-      .forEach(m=> s2.appendChild(rowEl('📅', `${m[0]} · ${m[1]}`, m[2], null)));
+    dcontent().meet.forEach(m=> s2.appendChild(rowEl('📅', `${m[0]} · ${m[1]}`, m[2], null)));
     w.appendChild(s2);
     // 3. Мои ЦС в работе
     const s3 = section('Мои ЦС в работе', `${staff.length}`);
@@ -949,17 +1012,31 @@
         <div class="k2-loadbar" style="max-width:220px"><i style="width:${pct}%;background:var(--k-gold)"></i></div></div>`;
       r.onclick=()=>goView('cs', cs.id); s3.appendChild(r); });
     w.appendChild(s3);
-    // 4. Предложено помощником — кандидаты из Zoom/почты (§6)
+    // 4. Предложено помощником — кандидаты из Zoom/почты (§6), под домен, одноразово
+    const dc = dcontent();
     const s4 = section('Предложено помощником','');
     const cand = el('div','k2-panel');
-    cand.innerHTML = `<div class="k2-item"><div class="e">🎧</div><div style="flex:1"><div class="b">Из вчерашнего звонка «Гамма» насчитал 4 задачи и 1 встречу</div>
-      <div class="m">помощник разобрал транскрипт — подтвердите, прежде чем я раздам ЦС</div></div></div>
-      <div style="display:flex;gap:8px;margin-top:8px"><button class="k2-btn" id="candOk">Подтвердить и раздать</button><button class="k2-tag act" id="candFix">Поправить</button></div>`;
+    if (k2Live.candDone){
+      cand.innerHTML = `<div class="k2-item"><div class="e">✓</div><div><div class="b">Роздано ЦС</div><div class="m">задачи из звонка ушли в работу, встреча — в календаре</div></div></div>`;
+    } else {
+      cand.innerHTML = `<div class="k2-item"><div class="e">🎧</div><div style="flex:1"><div class="b">${esc(dc.cand.text)}</div>
+        <div class="m">помощник разобрал транскрипт — подтвердите или поправьте, прежде чем я раздам ЦС</div></div></div>
+        <div id="candBreak"></div>
+        <div style="display:flex;gap:8px;margin-top:10px"><button class="k2-btn" id="candOk">Подтвердить и раздать</button><button class="k2-tag act" id="candFix">Поправить</button></div>`;
+    }
     s4.appendChild(cand); w.appendChild(s4);
-    const ok=$('#candOk',w); if(ok) ok.onclick=()=>{ addApproval({task:'Отправка КП «Гамма» (из звонка)',dept:'Продажи',cost:'₽12 / задача',risk:'low'});
-      k2Live.drafts.unshift({id:'drc'+(apSeq++),text:'Черновик протокола встречи «Гамма»',dept:staff[0]?.dep||'sales',who:'помощник'});
-      cabToast('✓ 4 задачи розданы ЦС, 1 встреча в календаре'); renderCockpit(); };
-    const fix=$('#candFix',w); if(fix) fix.onclick=()=>cabToast('Открыл разбор кандидатов на правку');
+    const dispatchCand = ()=>{ if(k2Live.candDone) return;
+      addApproval({task:dc.cand.task, dept:dc.dept, cost:'₽12 / задача', risk:'low'});
+      k2Live.drafts.unshift({id:'drc'+(apSeq++), text:dc.cand.draft, dept:(staff[0]&&staff[0].dep)||profile.domain, who:'помощник'});
+      k2Live.candDone=true; cabToast('✓ Задачи розданы ЦС, встреча — в календаре'); renderCockpit(); };
+    const ok=$('#candOk',w); if(ok) ok.onclick=dispatchCand;
+    const fix=$('#candFix',w); if(fix) fix.onclick=()=>{   // честно: раскрыть разбор, а не врать тостом
+      const items=[dc.cand.task, 'Подготовить: '+dc.cand.draft.replace('Черновик ',''), 'Назначить встречу по итогам', 'Обновить статус в системе'];
+      const b=$('#candBreak',w);
+      b.innerHTML = `<div class="k2-empty" style="padding:8px 2px">Помощник разобрал звонок на ${items.length} задачи — поправьте формулировки и раздайте:</div>`+
+        items.map(t=>`<div class="k2-item"><div class="e">•</div><div style="flex:1"><input class="k2-ta" style="min-height:0;padding:8px 10px;font-size:13.5px" value="${esc(t)}"/></div></div>`).join('');
+      fix.style.display='none';
+    };
   }
   function section(title, badge){ const s=el('div'); s.style.marginBottom='14px';
     s.innerHTML=`<div class="k2-sec-h">${esc(title)}${badge?` · <b>${esc(badge)}</b>`:''}</div>`; return s; }
@@ -988,8 +1065,16 @@
   /* ---- точки участия (§4): приёмка / санкция / уточнение ---- */
   function participationPoints(){
     const pts=[];
-    liveApprovals().forEach(a=> pts.push({ kind:'sanction', id:a.id, icon:'🔴', label:'Разрешить', title:a.task, meta:`${a.dept} · ${a.cost} · риск ${a.risk}` }));
-    liveDrafts().slice(0,6).forEach(d=> pts.push({ kind:'intake', id:d.id, icon:'🔴', label:'Принять', title:d.text, meta:`${deptLabel(d.dept)}${profile.depth?' · '+d.who:''}` }));
+    // §4: точки — по ТВОИМ ЦС/домену. Оркестратор (level>=4) видит всю компанию;
+    // специалист — свой домен + всё, что создал сам (id 'apn'/'drt'/'drc').
+    const orch = canCompany();
+    const myDep = DOMAIN_DEPT[profile.domain];
+    const myLabel = deptLabel(myDep||profile.domain);
+    const mine = id => { const s=String(id); return s.indexOf('apn')===0 || s.indexOf('drt')===0 || s.indexOf('drc')===0; };
+    const apprOk  = a => orch || mine(a.id) || a.dept===myLabel;
+    const draftOk = d => orch || mine(d.id) || d.dept===myDep || deptLabel(d.dept)===myLabel;
+    liveApprovals().filter(apprOk).forEach(a=> pts.push({ kind:'sanction', id:a.id, icon:'🔴', label:'Разрешить', title:a.task, meta:`${a.dept} · ${a.cost} · риск ${a.risk}` }));
+    liveDrafts().filter(draftOk).slice(0,6).forEach(d=> pts.push({ kind:'intake', id:d.id, icon:'🔴', label:'Принять', title:d.text, meta:`${deptLabel(d.dept)}${profile.depth?' · '+d.who:''}` }));
     (k2Live.clarify||[]).forEach(c=> pts.push({ kind:'clarify', id:c.id, icon:'🟡', label:'Ответить', title:c.text, meta:c.who }));
     (k2Live.coord||[]).forEach(c=> pts.push({ kind:'coord', id:c.id, icon:'🟡', label:'Согласовать', title:c.text, meta:c.who }));
     return pts;
@@ -1016,7 +1101,8 @@
     w.innerHTML = head('Пульс · отдел', 'мой основной контекст — штат отдела и передачи между людьми и ЦС');
     const dep = DOMAIN_DEPT[profile.domain];
     const people = (dep && ORG.hc && ORG.hc[dep])||0, dig=(dep && ORG.dhc && ORG.dhc[dep])||myStaff().length;
-    const s1=section('Штат отдела', `${people} чел · ${dig} ЦС`);
+    const badge = people ? `${people} чел · ${dig} ЦС` : `${dig} ЦС · цифровой штат`;   // без «0 чел» для доменов без людей-отдела
+    const s1=section('Штат отдела', badge);
     myStaff().forEach(cs=> s1.appendChild(rowEl(cs.e, cs.t, cs.now, null)));
     w.appendChild(s1);
     const s2=section('Передачи между ролями','');
@@ -1086,11 +1172,10 @@
     ];
   }
   function csMemory(cs){
-    const ji=cs.ji||{}; const f=[];
+    const ji=cs.ji||{}; const f=[]; const dc=dcontent();
     if(ji.duties) ji.duties.slice(0,2).forEach(d=> f.push('умеет: '+d));
     else f.push('умеет: '+cs.now);
-    f.push('контекст: клиент «Гамма» · дебиторка 340т (CRM, 12.07)');
-    f.push('правило: скидка до 10% — сам; выше — санкция РЦС');
+    (dc.mem||[]).forEach(m=> f.push(m));   // контекст + правило под домен роли
     if(ji.limits) f.push('граница: '+ji.limits[0]);
     return f.slice(0,4);
   }
@@ -1134,7 +1219,8 @@
     go.onclick=()=>{ const t=ta.value.trim(); if(!t){ta.focus();return;} if(go.disabled)return;
       if(kind==='now'){ go.disabled=true; go.textContent='ставлю…'; cs.busy=true; cs.now='выполняет: '+t; cs.stageIdx=2;
         st.journal.unshift({text:'Взял задачу: '+t, prov:['поставлено РЦС · '+nowHM(),'проверка допустимости (ИБ/комплаенс): пройдена','контекст роли']});
-        setTimeout(()=>{ k2Live.drafts.unshift({id:'drt'+(apSeq++), text:'Черновик: '+t, dept:cs.dep, who:cs.t});
+        setTimeout(()=>{ if(!k2Live) return;   // гард: пользователь мог «пересобрать» за эти 650мс
+          k2Live.drafts.unshift({id:'drt'+(apSeq++), text:'Черновик: '+t, dept:cs.dep, who:cs.t});
           cabToast(`✓ ${cs.t} взял задачу — черновик придёт на приёмку`); goView('pulse'); }, 650);
       } else {
         const when = kind==='regular'?'ежедневно 09:00':'завтра 09:00';
@@ -1153,11 +1239,14 @@
     // 1. self-service: нанять из библиотеки (§7.1)
     const cat = section('Добавить в штат из библиотеки', '');
     const pool = Object.keys(SYNTH_STAFF).filter(d=>d!==profile.domain).slice(0,3)
-      .flatMap(d=> SYNTH_STAFF[d].slice(0,1).map(s=>({...s,d})));
+      .flatMap(d=> SYNTH_STAFF[d].slice(0,1).map(s=>({...s,d})))
+      .filter(s=> !myStaff().some(cs=>cs.t===s.t));   // не предлагать уже нанятых
+    if(!pool.length) cat.appendChild(emptyEl('вы уже добрали доступное из библиотеки'));
     pool.forEach(s=>{ const it=el('div','k2-item');
       it.innerHTML=`<div class="e">${s.e}</div><div style="flex:1"><div class="b">${esc(s.t)}</div><div class="m">${esc(DOMAINS[s.d].label)}</div></div><div><button class="k2-tag act ok">+ нанять</button></div>`;
       it.querySelector('.ok').onclick=()=> animateOut(it, ()=>{
-        myStaff().push({id:'csx'+(apSeq++), e:s.e, t:s.t, now:'адаптация…', busy:false, dep:DOMAIN_DEPT[s.d]});
+        if(myStaff().some(cs=>cs.t===s.t)){ cabToast('Такой ЦС уже в штате'); return; }
+        myStaff().push({id:'csx'+(apSeq++), e:s.e, t:s.t, now:'адаптация…', busy:false, dep:DOMAIN_DEPT[s.d]||s.d});
         myAdditions.push({ t:s.t, stage:0, demand: 6+((s.t.length)%40) });
         cabToast('✓ '+s.t+' добавлен в ваш штат'); renderStaffRail(); renderCockpit(); });
       cat.appendChild(it); });
@@ -1243,8 +1332,8 @@
 
   /* ================================================================ РЕНДЕР  */
   const feed = () => (ORG.pulseFeed || []);
-  const deptLabel = id => { const d=(ORG.depts||[]).find(x=>x.id===id); return d?d.label:id; };
-  const deptIcon  = id => { const d=(ORG.depts||[]).find(x=>x.id===id); return d?d.icon:'•'; };
+  const deptLabel = id => { const d=(ORG.depts||[]).find(x=>x.id===id); return d?d.label:(DOMAINS[id]?DOMAINS[id].label:(id||'')); };
+  const deptIcon  = id => { const d=(ORG.depts||[]).find(x=>x.id===id); return d?d.icon:(DOMAINS[id]?DOMAINS[id].icon:'•'); };
 
   /* --- сквозное живое состояние: очередь решений и черновиков ------------- */
   /* модули РЕАЛЬНО меняют его (одобрил → ушло), ассистент видит те же числа.  */
@@ -1254,8 +1343,8 @@
     k2Live = {
       approvals: (DASH.approvals||[]).map((a,i)=>({ id:'ap'+i, task:a.task, dept:a.dept, cost:a.cost, risk:a.risk })),
       drafts:    feed().filter(f=>f[0]==='d').map((f,i)=>({ id:'dr'+i, text:f[2], dept:f[3], who:f[1] })),
-      clarify:   [{ id:'cl0', text:'ЦС спрашивает: применить скидку 12% сверх политики по сделке «Гамма»?', who:'цифровой сотрудник ждёт вашего слова' }],
-      coord:     [{ id:'co0', text:'Руководитель проектов РЖД просит подключить вашего ЦС к тендеру', who:'согласование как РЦС — привлечение вашего цифрового сотрудника' }],
+      clarify:   [{ id:'cl0', text:'ЦС спрашивает: '+dcontent().clarify, who:'цифровой сотрудник ждёт вашего слова' }],
+      coord:     [{ id:'co0', text:dcontent().coord, who:'согласование как РЦС — привлечение вашего цифрового сотрудника' }],
     };
   }
   function liveApprovals(){ initLive(); return k2Live.approvals; }
