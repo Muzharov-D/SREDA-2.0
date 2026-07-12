@@ -172,6 +172,37 @@
         { t:'Пробовал, но не прижилось',  tool:null,                habit:'none' },
         { t:'Ещё не пробовал',            tool:null,                habit:'none' },
       ]},
+    { kind:'industry', q:'В какой сфере работает ваша компания?',
+      opts:[
+        { t:'Строительство и недвижимость', industry:'строительстве' },
+        { t:'Финансы и банки',              industry:'финансах' },
+        { t:'ИТ и разработка',              industry:'ИТ' },
+        { t:'Производство',                 industry:'производстве' },
+        { t:'Торговля и ритейл',            industry:'торговле' },
+        { t:'Госсектор',                    industry:'госсекторе' },
+        { t:'Услуги / другое',              industry:'услугах' },
+      ]},
+    { kind:'systems', q:'В каких системах вы живёте?',
+      opts:[
+        { t:'1С',                           systems:'1С' },
+        { t:'Excel / Google Таблицы',       systems:'Excel' },
+        { t:'CRM (Bitrix, amoCRM…)',        systems:'CRM' },
+        { t:'Таск-трекеры (Jira, Trello)',  systems:'трекерах' },
+        { t:'Почта и мессенджеры',          systems:'почте' },
+      ]},
+    { kind:'tone', q:'Как вам удобнее общаться?',
+      opts:[
+        { t:'На «ты», по-простому',         tone:'ты' },
+        { t:'На «вы», по-деловому',         tone:'вы' },
+      ]},
+    { kind:'gripe', q:'Что в работе бесит больше всего?',
+      opts:[
+        { t:'Бесконечные согласования',     gripe:'бесконечные согласования' },
+        { t:'Рутина и копипаст',            gripe:'рутина и копипаст' },
+        { t:'Информация теряется',          gripe:'информация теряется' },
+        { t:'Отчёты и таблицы',             gripe:'отчёты и таблицы' },
+        { t:'Вечная спешка',                gripe:'вечная спешка' },
+      ]},
     { kind:'depth', q:'Насколько важно видеть, как именно всё сделано?',
       opts:[
         { t:'Достаточно результата',              depth:0 },
@@ -616,6 +647,7 @@
     let step = 0;
     const domScore = {}; const lvlSamples = [];
     let depth = 1; let focus = null; let posture = null; let postureKey = null; let aiTool = null; let habit = null;
+    let industry = null; let systems = null; let tone = null; let gripe = null;
     let liveChosen = [];
     const history = [];   // [{kind, dom?, lvl?, depth?}]
     let locked = false;
@@ -630,7 +662,7 @@
       c.innerHTML = `
         <div class="k2-eyebrow">Среда собирается под вас</div>
         <div class="k2-q">Не «выберите свою роль» — этого никто про себя не формулирует.<br>Просто ответьте про свою работу, и Среда сама узнает, кто вы, и соберётся.</div>
-        <div class="k2-sub">9 коротких вопросов. Справа вы увидите, как Среда распознаёт вашу профессию и достраивает рабочее место прямо на глазах.</div>
+        <div class="k2-sub">Несколько коротких вопросов про вашу работу — чем точнее ответите, тем точнее Среда соберётся под вас. Справа вы увидите, как она узнаёт вашу профессию прямо на глазах.</div>
         <div style="margin-top:26px"><button class="k2-cta" id="k2Start">Собрать мою Среду ▶</button></div>`;
       layer.appendChild(c);
       $('#k2Start').onclick = ()=>{ step=0; buildShell(); drawLeft(); };
@@ -691,6 +723,10 @@
       else if (s.kind==='focus'){ focus=o.focus; rec.focus=o.focus; }
       else if (s.kind==='posture'){ posture=o.posture; postureKey=o.pk; rec.posture=o.posture; }
       else if (s.kind==='tools'){ aiTool=o.tool; habit=o.habit; rec.tool=o.tool; }
+      else if (s.kind==='industry'){ industry=o.industry; rec.industry=o.industry; }
+      else if (s.kind==='systems'){ systems=o.systems; rec.systems=o.systems; }
+      else if (s.kind==='tone'){ tone=o.tone; rec.tone=o.tone; }
+      else if (s.kind==='gripe'){ gripe=o.gripe; rec.gripe=o.gripe; }
       else if (s.kind==='depth'){ depth=o.depth; rec.depth=o.depth; }
       history[step] = rec;
       updateRight(o, s);
@@ -710,6 +746,10 @@
         else if (h.kind==='focus'){ focus=null; }
         else if (h.kind==='posture'){ posture=null; postureKey=null; }
         else if (h.kind==='tools'){ aiTool=null; habit=null; }
+        else if (h.kind==='industry'){ industry=null; }
+        else if (h.kind==='systems'){ systems=null; }
+        else if (h.kind==='tone'){ tone=null; }
+        else if (h.kind==='gripe'){ gripe=null; }
       }
       history.length = step;
       drawLeft();
@@ -790,7 +830,10 @@
       if (posture) echo.push(`вам ближе ${posture}`);
       if (aiTool)  echo.push(`вы уже работаете в ${aiTool} — Среда встанет привычно`);
       else if (habit==='none') echo.push(`с ИИ вы ещё на «вы» — Среда проведёт за руку`);
-      profile = { domain, level, roleTitle: role?role.t:null, depth, focus, posture, postureKey, aiTool, habit,
+      if (industry) echo.push(`ваша компания — в ${industry}`);
+      if (systems)  echo.push(`вы живёте в ${systems} — Среда к ним подключится`);
+      if (gripe)    echo.push(`больше всего вас бесит: ${gripe}`);
+      profile = { domain, level, roleTitle: role?role.t:null, depth, focus, posture, postureKey, aiTool, habit, industry, systems, tone, gripe,
         chosen: assembleModules(domain, level), echo, baseCount: ROLES.length };
       save(profile);
       drawResult();
@@ -1110,7 +1153,7 @@
     s.innerHTML = `<span title="Агент учёта ресурсов">💰 ${esc(meter)} ИИ/нед</span>
       <span title="Агент ИБ · карантин">🛡️ ИБ: 0 в карантине</span>
       <span title="Агент аудита · след действий">📋 аудит-след: онлайн</span>
-      <span title="Агент знаний">📚 знания: актуальны</span>`;
+      ${profile.systems?`<span title="Интеграции">🔌 подключено: ${esc(profile.systems)}</span>`:'<span title="Агент знаний">📚 знания: актуальны</span>'}`;
     return s;
   }
 
@@ -1367,7 +1410,7 @@
     if(busy) rem.push({icon:'⏳', text:`${busy} ${plural(busy,'ЦС выполняет','ЦС выполняют','ЦС выполняют')} вашу задачу`, act:()=>goView('pulse')});
     if(!rem.length) rem.push({icon:'✓', text:'От вас сейчас ничего не ждут — день под контролем.', act:()=>goView('pulse')});
     // подстройка под привычный инструмент
-    const habitNote = profile.aiTool ? `подстроен под ${profile.aiTool}` : (profile.habit==='none' ? 'проведёт за руку' : 'знает, на что вы смотрите');
+    const habitNote = (profile.aiTool ? `подстроен под ${profile.aiTool}` : (profile.habit==='none' ? 'проведёт за руку' : 'знает, на что вы смотрите')) + (profile.tone==='ты' ? ' · на ты' : '');
     const inHint = profile.habit==='chat' ? `Спросите словами — как в ${profile.aiTool||'чате'}` : (profile.habit==='none' ? 'Напишите, что нужно — я подскажу' : 'Поручите помощнику…');
     box.innerHTML = `
       <div class="k2-asst-h"><div class="av">🗓️</div>
