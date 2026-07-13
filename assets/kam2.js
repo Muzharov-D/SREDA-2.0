@@ -980,6 +980,47 @@
       mem:['контекст: календарь руководителя · 4 встречи сегодня','правило: календарь — сам; подтверждение от лица — санкция РЦС'] },
   };
   const dcontent = () => DCONTENT[profile.domain] || DCONTENT.sales;
+
+  /* ==================== ПРОФИЛЬ РЕАЛЬНО МЕНЯЕТ КАБИНЕТ ====================
+     не эхо в финале опроса, а живые изменения интерфейса и состава штата.   */
+  // tone: реальное переключение микротекста (не ярлык «· на ты»)
+  const T = (ty, vy) => (profile && profile.tone === 'ты') ? ty : vy;
+
+  // gripe → блок «Среда уже взяла на себя» + анти-gripe ЦС в штат
+  const GRIPE_MAP = {
+    'бесконечные согласования': { e:'✅', act:'свёл согласования в одну очередь — визируются пачкой, а не по одному', cs:{e:'✅',t:'Агент согласований',now:'собирает визы в одну очередь'} },
+    'рутина и копипаст':        { e:'🔁', act:'повторяющуюся сборку делает ЦС по расписанию — приходит готовое',   cs:{e:'🔁',t:'Агент рутины',now:'снимает копипаст по расписанию'} },
+    'информация теряется':      { e:'🧠', act:'единая память ЦС: каждый ответ с провенансом — ничего не теряется',  cs:{e:'🧠',t:'Агент памяти',now:'держит контекст и источники'} },
+    'отчёты и таблицы':         { e:'📑', act:'отчёт собирается к 08:00 сам — остаётся проверить, а не собирать',   cs:{e:'📑',t:'Агент отчётности',now:'готовит отчёт к утру'} },
+    'вечная спешка':            { e:'⏱️', act:'срочное вынесено наверх, остальное ЦС держат в фоне',                cs:{e:'⏱️',t:'Агент приоритетов',now:'сортирует срочное от фонового'} },
+  };
+  const gripeInfo = () => (profile && profile.gripe) ? GRIPE_MAP[profile.gripe] : null;
+
+  // focus → какая секция Пульса поднимается наверх
+  const FOCUS_PRIORITY = {
+    'рутину, которую пора передать':  'staff',
+    'сбор данных и отчёты':           'staff',
+    'согласования и решения':         'wait',
+    'разбор входящих':                'cand',
+    'контроль, что всё идёт по плану':'wait',
+  };
+  const focusPriority = () => (profile && profile.focus && FOCUS_PRIORITY[profile.focus]) || null;
+
+  // industry → отраслевой профиль в строке систем + отраслевой ЦС в штат
+  const INDUSTRY_MAP = {
+    'строительстве': { reg:'44-ФЗ · сметы · ГОСТ', cs:{e:'📐',t:'Агент смет и тендеров',now:'сверяет сметы и НМЦК'} },
+    'финансах':      { reg:'152-ФЗ · МСФО · ЦБ',   cs:{e:'🧾',t:'Агент отчётности',now:'сводит отчётность'} },
+    'ИТ':            { reg:'ИБ · SLA · релизы',     cs:{e:'🔀',t:'Агент релизов',now:'следит за PR и инцидентами'} },
+    'производстве':  { reg:'ОТиТБ · снабжение',     cs:{e:'📦',t:'Агент снабжения',now:'держит заявки и остатки'} },
+    'торговле':      { reg:'ЕГАИС · остатки',       cs:{e:'🏷️',t:'Агент остатков',now:'сводит остатки и поставки'} },
+    'госсекторе':    { reg:'223-ФЗ · 44-ФЗ · ПДн',  cs:{e:'🏛️',t:'Агент госзакупок',now:'мониторит закупки'} },
+    'услугах':       { reg:'договоры · SLA клиента', cs:{e:'📄',t:'Агент договоров',now:'ведёт договоры и SLA'} },
+  };
+  const industryInfo = () => (profile && profile.industry) ? INDUSTRY_MAP[profile.industry] : null;
+
+  // systems → провенанс-источник на карточках ЦС
+  const SYSTEM_SOURCE = { '1С':'источник: 1С', 'Excel':'источник: Excel/Таблицы', 'CRM':'источник: CRM', 'трекерах':'источник: трекер', 'почте':'источник: почта' };
+  const systemSource = () => (profile && profile.systems) ? (SYSTEM_SOURCE[profile.systems] || ('источник: '+profile.systems)) : null;
   let myStaffCache = null;
   function myStaff(){
     if (myStaffCache) return myStaffCache;
@@ -990,6 +1031,13 @@
       const syn = SYNTH_STAFF[profile.domain] || [{e:'🤖',t:'Цифровой двойник',now:'на связи'}];
       myStaffCache = syn.map((s,i)=>({ id:'cs'+i, e:s.e, t:s.t, now:s.now, busy:false, dep:profile.domain }));  // dep=домен → deptLabel даёт название направления, не undefined
     }
+    // профиль реально меняет СОСТАВ штата: отраслевой ЦС + анти-gripe ЦС (дедуп по названию)
+    const extra = [];
+    const ind = industryInfo();
+    if (ind && !myStaffCache.some(c=>c.t===ind.cs.t)) extra.push({ id:'csind', e:ind.cs.e, t:ind.cs.t, now:ind.cs.now, busy:false, dep:profile.domain, tag:'под вашу отрасль' });
+    const gr = gripeInfo();
+    if (gr && !myStaffCache.some(c=>c.t===gr.cs.t)) extra.push({ id:'csgrp', e:gr.cs.e, t:gr.cs.t, now:gr.cs.now, busy:false, dep:profile.domain, tag:'снимает то, что бесит' });
+    if (extra.length) myStaffCache = extra.concat(myStaffCache);
     return myStaffCache;
   }
   // штат «синтетический», если у домена роли нет реального отдела в оргструктуре (SYNTH_STAFF) — тогда это по сути пустой старт
@@ -1181,28 +1229,36 @@
     const staff = myStaff();
     const mins = minsSince(8);
     const ago = mins<60 ? `${mins} мин назад` : `${Math.floor(mins/60)} ч назад`;
-    const when = mins>0 ? `собрал ваш день в 08:00 по вашему времени · ${ago}` : `готовит ваш день к 08:00 по вашему времени · сейчас ${nowHM()}`;
+    const when = mins>0 ? `собрал ${T('твой','ваш')} день в 08:00 по ${T('твоему','вашему')} времени · ${ago}` : `готовит ${T('твой','ваш')} день к 08:00 · сейчас ${nowHM()}`;
     w.innerHTML = head('Пульс · сегодня', `${esc(profile.roleTitle||'')} · помощник ${when}`);
     w.appendChild(sysStrip());
+    // gripe → «Среда уже взяла на себя то, что бесит» (блок виден ТОЛЬКО из-за ответа)
+    const gr = gripeInfo();
+    if (gr){
+      const gb = el('div','k2-panel'); gb.style.borderColor='var(--k-gold)';
+      gb.innerHTML = `<div class="k2-item"><div class="e">${gr.e}</div><div style="flex:1"><div class="b">Среда уже взяла на себя то, что ${T('тебя','вас')} бесит</div>
+        <div class="m">${T('Ты сказал','Вы сказали')}: «${esc(profile.gripe)}» — ${esc(gr.act)}</div></div></div>`;
+      w.appendChild(gb);
+    }
+    const src = systemSource();
     // 1. Ждёт меня — точки участия
     const waits = participationPoints();
     const s1 = section('Ждёт меня', waits.length?`${waits.length}`:'чисто');
-    if(!waits.length) s1.appendChild(emptyEl('✓ Всё, что можно, ЦС сделали сами — от вас сейчас ничего не нужно.'));
+    if(!waits.length) s1.appendChild(emptyEl(`✓ Всё, что можно, ЦС сделали сами — от ${T('тебя','вас')} сейчас ничего не нужно.`));
     waits.forEach(p=> s1.appendChild(pointEl(p)));
-    w.appendChild(s1);
     // 2. Встречи дня (под домен роли)
     const s2 = section('Встречи дня','');
     dcontent().meet.forEach(m=> s2.appendChild(rowEl('📅', `${m[0]} · ${m[1]}`, m[2], null)));
-    w.appendChild(s2);
     // 3. Мои ЦС в работе
     const s3 = section('Мои ЦС в работе', `${staff.length}`);
     staff.forEach((cs,i)=>{ const pct=cs.busy?45:[72,60,88,54][i%4];
       const sc=csState(cs).schedule[0];
       const r=el('div','k2-item'); r.style.cursor='pointer';
-      r.innerHTML=`<div class="e">${cs.e}</div><div style="flex:1"><div class="b">${esc(cs.t)}${cs.busy?` · <span style="color:var(--k-gold)">этап: ${esc(TASK_STAGES[cs.stageIdx!=null?cs.stageIdx:2])}</span>`:''}</div><div class="m">${esc(cs.now)}${sc?` · 🔁 ${esc(sc.text)} ${esc(sc.when)}`:''}</div>
+      const tagHtml = cs.tag?` · <span style="color:var(--k-gold)">${esc(cs.tag)}</span>`:'';
+      const srcHtml = src?` · ${esc(src)}`:'';   // systems → провенанс-источник на карточке
+      r.innerHTML=`<div class="e">${cs.e}</div><div style="flex:1"><div class="b">${esc(cs.t)}${tagHtml}${cs.busy?` · <span style="color:var(--k-gold)">этап: ${esc(TASK_STAGES[cs.stageIdx!=null?cs.stageIdx:2])}</span>`:''}</div><div class="m">${esc(cs.now)}${srcHtml}${sc?` · 🔁 ${esc(sc.text)} ${esc(sc.when)}`:''}</div>
         <div class="k2-loadbar" style="max-width:220px"><i style="width:${pct}%;background:var(--k-gold)"></i></div></div>`;
       r.onclick=()=>goView('cs', cs.id); s3.appendChild(r); });
-    w.appendChild(s3);
     // 4. Предложено помощником — кандидаты из Zoom/почты (§6), под домен, одноразово
     const dc = dcontent();
     const s4 = section('Предложено помощником','');
@@ -1211,11 +1267,20 @@
       cand.innerHTML = `<div class="k2-item"><div class="e">✓</div><div><div class="b">Роздано ЦС</div><div class="m">задачи из звонка ушли в работу</div></div></div>`;
     } else {
       cand.innerHTML = `<div class="k2-item"><div class="e">🎧</div><div style="flex:1"><div class="b">${esc(dc.cand.text)}</div>
-        <div class="m">помощник разобрал транскрипт — подтвердите или поправьте, прежде чем я раздам ЦС</div></div></div>
+        <div class="m">помощник разобрал транскрипт — ${T('подтверди или поправь','подтвердите или поправьте')}, прежде чем я раздам ЦС</div></div></div>
         <div id="candBreak"></div>
         <div style="display:flex;gap:8px;margin-top:10px"><button class="k2-btn" id="candOk">Подтвердить и раздать</button><button class="k2-tag act" id="candFix">Поправить</button></div>`;
     }
-    s4.appendChild(cand); w.appendChild(s4);
+    s4.appendChild(cand);
+    // focus → приоритетная секция реально поднимается наверх (перестановка, не просто текст)
+    const secMap = { wait:s1, meet:s2, staff:s3, cand:s4 };
+    const order = ['wait','meet','staff','cand'];
+    const fp = focusPriority();
+    if (fp && secMap[fp]){
+      order.splice(order.indexOf(fp),1); order.unshift(fp);
+      const h=secMap[fp].querySelector('.k2-sec-h'); if(h) h.innerHTML += ` · <span style="color:var(--k-gold)">${T('твой','ваш')} приоритет</span>`;
+    }
+    order.forEach(k=> w.appendChild(secMap[k]));
     const dispatchCand = ()=>{ if(k2Live.candDone) return;
       const dep=(staff[0]&&staff[0].dep)||profile.domain;
       const inp=[...w.querySelectorAll('#candBreak input')].map(i=>i.value.trim()).filter(Boolean);
@@ -1249,11 +1314,13 @@
   /* системные агенты как фоновые индикаторы (§5.3): учёт/ИБ/аудит/знания */
   function sysStrip(){
     const meter = ($('#meterBtn')?.textContent||'').split('ИИ')[0].trim() || '₽384k';
+    const ind = industryInfo();
     const s=el('div','k2-sys');
     s.innerHTML = `<span title="Агент учёта ресурсов">💰 ${esc(meter)} ИИ/нед</span>
       <span title="Агент ИБ · карантин">🛡️ ИБ: 0 в карантине</span>
       <span title="Агент аудита · след действий">📋 аудит-след: онлайн</span>
-      ${profile.systems?`<span title="Интеграции">🔌 подключено: ${esc(profile.systems)}</span>`:'<span title="Агент знаний">📚 знания: актуальны</span>'}`;
+      ${ind?`<span title="Отраслевой профиль">🏛️ профиль отрасли: ${esc(ind.reg)}</span>`:''}
+      ${profile.systems?`<span title="Интеграции">🔌 подключено: ${esc(profile.systems)}</span>`:(ind?'':'<span title="Агент знаний">📚 знания: актуальны</span>')}`;
     return s;
   }
 
@@ -1488,8 +1555,8 @@
     if (cockpit.height==='dept') return 'Высота отдела: вижу штат и передачи. Показать, у кого затык?';
     if (cockpit.height==='company') return 'Высота компании: обзор всей организации.';
     return profile.focus
-      ? `Собрал ваш день к утру. Знаю, что больше всего у вас уходит на ${profile.focus} — держу это в приоритете.`
-      : 'Собрал ваш день к утру. Начните с того, что подсвечено — остальное ЦС держат сами.';
+      ? `${T('Собрал твой','Собрал ваш')} день к утру. Знаю, что больше всего у ${T('тебя','вас')} уходит на ${profile.focus} — держу это в приоритете.`
+      : `${T('Собрал твой','Собрал ваш')} день к утру. ${T('Начни','Начните')} с того, что подсвечено — остальное ЦС держат сами.`;
   }
   function askAssistant(text){
     const t=String(text).toLowerCase();
@@ -1505,29 +1572,31 @@
     const staff=myStaff();
     const waits=participationPoints().length;
     const rem=[];
-    if(waits) rem.push({icon:'🔴', text:`${waits} ${plural(waits,'точка','точки','точек')} ждут вас`, act:()=>goView('pulse')});
+    if(waits) rem.push({icon:'🔴', text:`${waits} ${plural(waits,'точка','точки','точек')} ждут ${T('тебя','вас')}`, act:()=>goView('pulse')});
     const busy=staff.filter(c=>c.busy).length;
-    if(busy) rem.push({icon:'⏳', text:`${busy} ${plural(busy,'ЦС выполняет','ЦС выполняют','ЦС выполняют')} вашу задачу`, act:()=>goView('pulse')});
-    if(!rem.length) rem.push({icon:'✓', text:'От вас сейчас ничего не ждут — день под контролем.', act:()=>goView('pulse')});
-    // подстройка под привычный инструмент
-    const habitNote = (profile.aiTool ? `подстроен под ${profile.aiTool}` : (profile.habit==='none' ? 'проведёт за руку' : 'знает, на что вы смотрите')) + (profile.tone==='ты' ? ' · на ты' : '');
-    const inHint = profile.habit==='chat' ? `Спросите словами — как в ${profile.aiTool||'чате'}` : (profile.habit==='none' ? 'Напишите, что нужно — я подскажу' : 'Поручите помощнику…');
-    // пустой/типовой штат → помощник спрашивает, с чего начать (развилка задача ↔ штат)
+    if(busy) rem.push({icon:'⏳', text:`${busy} ${plural(busy,'ЦС выполняет','ЦС выполняют','ЦС выполняют')} ${T('твою','вашу')} задачу`, act:()=>goView('pulse')});
+    if(!rem.length) rem.push({icon:'✓', text:`От ${T('тебя','вас')} сейчас ничего не ждут — день под контролем.`, act:()=>goView('pulse')});
+    // habit → плотность подсказок: не пользовался ИИ → режим «за руку»
+    const guided = profile.habit==='none';
+    // подстройка под привычный инструмент + реальный тон
+    const habitNote = profile.aiTool ? `подстроен под ${profile.aiTool}` : (guided ? T('веду за руку','проведу за руку') : T('вижу, на что ты смотришь','вижу, на что вы смотрите'));
+    const inHint = profile.habit==='chat' ? `${T('Спроси','Спросите')} словами — как в ${profile.aiTool||'чате'}` : (guided ? T('Напиши, что нужно — я подскажу','Напишите, что нужно — я подскажу') : T('Поручи помощнику…','Поручите помощнику…'));
+    // пустой/типовой штат ИЛИ новичок в ИИ → развилка «с чего начать»
     const synth = isSynthStaff();
-    const startBlock = synth ? `
+    const startBlock = (synth || guided) ? `
       <div class="k2-start">
         <div class="st-h">С чего начать</div>
         <div class="k2-start-btns">
-          <button class="k2-start-btn" id="stTask"><span class="si">⚡</span><span><span class="sl">Поставить задачу словами</span><span class="ss">опишите — рой разберёт и раздаст ЦС</span></span></button>
-          <button class="k2-start-btn" id="stStaff"><span class="si">🧩</span><span><span class="sl">Собрать штат под себя</span><span class="ss">нанять цифровых сотрудников из библиотеки</span></span></button>
+          <button class="k2-start-btn" id="stTask"><span class="si">⚡</span><span><span class="sl">${T('Поставь задачу словами','Поставить задачу словами')}</span><span class="ss">${T('опиши','опишите')} — рой разберёт и раздаст ЦС</span></span></button>
+          <button class="k2-start-btn" id="stStaff"><span class="si">🧩</span><span><span class="sl">${T('Собери штат под себя','Собрать штат под себя')}</span><span class="ss">нанять цифровых сотрудников из библиотеки</span></span></button>
         </div>
       </div>` : '';
     box.innerHTML = `
       <div class="k2-asst-h"><div class="av">🗓️</div>
-        <div><b>Личный помощник</b><small>ядро вашего дня · ${esc(habitNote)}</small></div></div>
+        <div><b>Личный помощник</b><small>ядро ${T('твоего','вашего')} дня · ${esc(habitNote)}</small></div></div>
       <div class="k2-asst-ctx">${esc(assistantObsC())}</div>
       ${startBlock}
-      <div class="k2-asst-sec">Ждёт вас</div>
+      <div class="k2-asst-sec">${T('Ждёт тебя','Ждёт вас')}</div>
       <div id="asstRems"></div>
       <div class="k2-asst-sec">Могу прямо сейчас</div>
       <div class="k2-asst-chips" id="asstChips"></div>
@@ -1536,11 +1605,11 @@
     const remBox=$('#asstRems',box);
     rem.forEach(r=>{ const b=el('button','k2-asst-rem',`<span>${r.icon}</span><span>${esc(r.text)}</span>`); b.onclick=r.act; remBox.appendChild(b); });
     const chips=[{l:'Мой день',a:()=>goView('pulse')},{l:'Штат отдела',a:()=>{cockpit.height='dept';cockpit.view='pulse';renderStaffRail();renderCockpit();}},{l:'Чего не хватает',a:()=>goView('constructor')}];
-    if(staff[0]){ const taskChip={l:'Поставить задачу '+staff[0].t.split(' ')[0].toLowerCase(),a:()=>goView('cs',staff[0].id)};
+    if(staff[0]){ const taskChip={l:`${T('Поставь','Поставить')} задачу `+staff[0].t.split(' ')[0].toLowerCase(),a:()=>goView('cs',staff[0].id)};
       // предпочтение «поручать» → действие постановки задачи выходит вперёд
       if(profile.postureKey==='delegate') chips.unshift(taskChip); else chips.splice(1,0,taskChip); }
     const chipBox=$('#asstChips',box);
-    chips.slice(0,4).forEach(c=>{ const b=el('button','k2-chip',esc(c.l)); b.onclick=c.a; chipBox.appendChild(b); });
+    chips.slice(0, guided?2:4).forEach(c=>{ const b=el('button','k2-chip',esc(c.l)); b.onclick=c.a; chipBox.appendChild(b); });
     const inp=$('#k2AsstIn',box), gob=$('#k2AsstGo',box);
     const submit=()=>{ const v=inp.value.trim(); if(v) askAssistant(v); };
     if(gob) gob.onclick=submit; if(inp) inp.onkeydown=(e)=>{ if(e.key==='Enter') submit(); };
