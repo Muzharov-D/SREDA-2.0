@@ -986,37 +986,76 @@
   // tone: реальное переключение микротекста (не ярлык «· на ты»)
   const T = (ty, vy) => (profile && profile.tone === 'ты') ? ty : vy;
 
-  // gripe → блок «Среда уже взяла на себя» + анти-gripe ЦС в штат
-  const GRIPE_MAP = {
-    'бесконечные согласования': { e:'✅', act:'свёл согласования в одну очередь — визируются пачкой, а не по одному', cs:{e:'✅',t:'Агент согласований',now:'собирает визы в одну очередь'} },
-    'рутина и копипаст':        { e:'🔁', act:'повторяющуюся сборку делает ЦС по расписанию — приходит готовое',   cs:{e:'🔁',t:'Агент рутины',now:'снимает копипаст по расписанию'} },
-    'информация теряется':      { e:'🧠', act:'единая память ЦС: каждый ответ с провенансом — ничего не теряется',  cs:{e:'🧠',t:'Агент памяти',now:'держит контекст и источники'} },
-    'отчёты и таблицы':         { e:'📑', act:'отчёт собирается к 08:00 сам — остаётся проверить, а не собирать',   cs:{e:'📑',t:'Агент отчётности',now:'готовит отчёт к утру'} },
-    'вечная спешка':            { e:'⏱️', act:'срочное вынесено наверх, остальное ЦС держат в фоне',                cs:{e:'⏱️',t:'Агент приоритетов',now:'сортирует срочное от фонового'} },
+  // Боль (focus + gripe) → канонические ТЕМЫ. Один словарь, обе оси кладутся в него.
+  const PAIN_THEME = {
+    // focus
+    'рутину, которую пора передать':  'routine',
+    'сбор данных и отчёты':           'reports',
+    'согласования и решения':         'approvals',
+    'разбор входящих':                'inbox',
+    'контроль, что всё идёт по плану':'control',
+    // gripe
+    'бесконечные согласования':       'approvals',
+    'рутина и копипаст':              'routine',
+    'информация теряется':            'infoloss',
+    'отчёты и таблицы':               'reports',
+    'вечная спешка':                  'rush',
   };
-  const gripeInfo = () => (profile && profile.gripe) ? GRIPE_MAP[profile.gripe] : null;
+  // Тема → на какую поверхность Пульса она давит (порядок секций — следствие, не хардкод focus→секция)
+  const THEME = {
+    reports:  { surface:'staff' }, approvals:{ surface:'wait' }, routine:{ surface:'staff' },
+    inbox:    { surface:'cand'  }, control:  { surface:'wait' }, infoloss:{ surface:'staff' }, rush:{ surface:'wait' },
+  };
+  const userThemes = () => !profile ? [] : [...new Set([profile.focus, profile.gripe].map(v=>PAIN_THEME[v]).filter(Boolean))];
 
-  // focus → какая секция Пульса поднимается наверх
-  const FOCUS_PRIORITY = {
-    'рутину, которую пора передать':  'staff',
-    'сбор данных и отчёты':           'staff',
-    'согласования и решения':         'wait',
-    'разбор входящих':                'cand',
-    'контроль, что всё идёт по плану':'wait',
+  // Отрасль → регнорма. Маленькая ФАКТ-таблица (объективный факт, не выдуманный UI) — легитимна, как доменный контент.
+  const INDUSTRY_REG = {
+    'строительстве':'44-ФЗ · сметы · ГОСТ', 'финансах':'152-ФЗ · МСФО · ЦБ', 'ИТ':'ИБ · SLA · релизы',
+    'производстве':'ОТиТБ · снабжение', 'торговле':'ЕГАИС · остатки', 'госсекторе':'223-ФЗ · 44-ФЗ · ПДн', 'услугах':'договоры · SLA клиента',
   };
-  const focusPriority = () => (profile && profile.focus && FOCUS_PRIORITY[profile.focus]) || null;
+  const industryReg = () => (profile && profile.industry) ? (INDUSTRY_REG[profile.industry] || null) : null;
 
-  // industry → отраслевой профиль в строке систем + отраслевой ЦС в штат
-  const INDUSTRY_MAP = {
-    'строительстве': { reg:'44-ФЗ · сметы · ГОСТ', cs:{e:'📐',t:'Агент смет и тендеров',now:'сверяет сметы и НМЦК'} },
-    'финансах':      { reg:'152-ФЗ · МСФО · ЦБ',   cs:{e:'🧾',t:'Агент отчётности',now:'сводит отчётность'} },
-    'ИТ':            { reg:'ИБ · SLA · релизы',     cs:{e:'🔀',t:'Агент релизов',now:'следит за PR и инцидентами'} },
-    'производстве':  { reg:'ОТиТБ · снабжение',     cs:{e:'📦',t:'Агент снабжения',now:'держит заявки и остатки'} },
-    'торговле':      { reg:'ЕГАИС · остатки',       cs:{e:'🏷️',t:'Агент остатков',now:'сводит остатки и поставки'} },
-    'госсекторе':    { reg:'223-ФЗ · 44-ФЗ · ПДн',  cs:{e:'🏛️',t:'Агент госзакупок',now:'мониторит закупки'} },
-    'услугах':       { reg:'договоры · SLA клиента', cs:{e:'📄',t:'Агент договоров',now:'ведёт договоры и SLA'} },
-  };
-  const industryInfo = () => (profile && profile.industry) ? INDUSTRY_MAP[profile.industry] : null;
+  // ЕДИНАЯ тегированная библиотека возможностей. Новую возможность добавляешь ОДИН раз с тегами —
+  // она всплывает у любого совпавшего профиля. Ни одно измерение не выдумывает контент под ответ.
+  const CAP_LIB = [
+    { e:'📑', t:'Агент отчётности',       now:'готовит отчёт к утру',            domains:['*'], industries:['*'], themes:['reports'],           systems:['1С','Excel'] },
+    { e:'✅', t:'Агент согласований',      now:'собирает визы в одну очередь',    domains:['*'], industries:['*'], themes:['approvals'],         systems:['CRM','почте'] },
+    { e:'🔁', t:'Агент рутины',            now:'снимает копипаст по расписанию',  domains:['*'], industries:['*'], themes:['routine'],           systems:['Excel','1С'] },
+    { e:'🧠', t:'Агент памяти',            now:'держит контекст и источники',     domains:['*'], industries:['*'], themes:['infoloss'],          systems:['почте','трекерах'] },
+    { e:'✉️', t:'Агент входящих',          now:'разбирает почту и звонки за ночь',domains:['*'], industries:['*'], themes:['inbox'],             systems:['почте'] },
+    { e:'⏱️', t:'Агент приоритетов',       now:'сортирует срочное от фонового',   domains:['*'], industries:['*'], themes:['rush','control'],    systems:['*'] },
+    { e:'🎛️', t:'Агент контроля плана',    now:'следит за планом и отклонениями', domains:['exec','project','ops','analytics'], industries:['*'], themes:['control'], systems:['*'] },
+    { e:'📐', t:'Агент смет и тендеров',    now:'сверяет сметы и НМЦК',            domains:['estimate','sales','project'], industries:['строительстве'], themes:['reports','approvals'], systems:['1С'] },
+    { e:'🏛️', t:'Агент госзакупок',        now:'мониторит закупки 44/223-ФЗ',     domains:['sales','legal','project','exec'], industries:['госсекторе'], themes:['approvals','reports'], systems:['*'] },
+    { e:'📦', t:'Агент снабжения',         now:'держит заявки и остатки',         domains:['ops','project'], industries:['производстве'], themes:['control','routine'], systems:['1С'] },
+    { e:'🏷️', t:'Агент остатков',          now:'сводит остатки и поставки',       domains:['sales','ops','analytics'], industries:['торговле'], themes:['reports','control'], systems:['1С'] },
+    { e:'🛡️', t:'Агент комплаенса',        now:'проверяет 152-ФЗ и риски',        domains:['legal','finance','exec'], industries:['финансах','госсекторе'], themes:['infoloss'], systems:['*'] },
+  ];
+  // scoreProfile: соответствие вычисляется, а не перечисляется. Домен — гейт; отрасль/боль/системы — веса.
+  function scoreCap(cap){
+    if(!cap.domains.includes('*') && !cap.domains.includes(profile.domain)) return 0;                 // не для этого домена
+    if(!cap.industries.includes('*') && !(profile.industry && cap.industries.includes(profile.industry))) return 0; // отраслевой ЦС для другой отрасли
+    let s=0;
+    userThemes().forEach(t=>{ if(cap.themes.includes(t)) s+=3; });                                    // совпала боль
+    if(profile.industry && cap.industries.includes(profile.industry)) s+=4;                           // точное попадание в отрасль
+    if(profile.systems && cap.systems.includes(profile.systems)) s+=1;                                // есть источник
+    return s;
+  }
+  // топ-2 подходящих возможности сверх базового штата роли (дедуп по названию)
+  function matchedCaps(baseTitles){
+    if(!profile) return [];
+    const seen = new Set(baseTitles||[]);
+    return CAP_LIB.map(c=>({c,s:scoreCap(c)})).filter(x=>x.s>0).sort((a,b)=>b.s-a.s)
+      .filter(x=>{ if(seen.has(x.c.t)) return false; seen.add(x.c.t); return true; }).slice(0,2).map(x=>x.c);
+  }
+  // порядок секций Пульса = скоринг поверхностей от тем боли + posture (не хардкод)
+  function surfaceOrder(){
+    const score={wait:0,meet:0,staff:0,cand:0};
+    userThemes().forEach(t=>{ const s=THEME[t]&&THEME[t].surface; if(s) score[s]+=2; });
+    if(profile.postureKey==='self') score.staff+=1; else if(profile.postureKey==='delegate'||profile.postureKey==='direct') score.wait+=1;
+    const base=['wait','meet','staff','cand'];
+    return base.slice().sort((a,b)=> (score[b]-score[a]) || (base.indexOf(a)-base.indexOf(b)));
+  }
 
   // systems → провенанс-источник на карточках ЦС
   const SYSTEM_SOURCE = { '1С':'источник: 1С', 'Excel':'источник: Excel/Таблицы', 'CRM':'источник: CRM', 'трекерах':'источник: трекер', 'почте':'источник: почта' };
@@ -1031,12 +1070,11 @@
       const syn = SYNTH_STAFF[profile.domain] || [{e:'🤖',t:'Цифровой двойник',now:'на связи'}];
       myStaffCache = syn.map((s,i)=>({ id:'cs'+i, e:s.e, t:s.t, now:s.now, busy:false, dep:profile.domain }));  // dep=домен → deptLabel даёт название направления, не undefined
     }
-    // профиль реально меняет СОСТАВ штата: отраслевой ЦС + анти-gripe ЦС (дедуп по названию)
-    const extra = [];
-    const ind = industryInfo();
-    if (ind && !myStaffCache.some(c=>c.t===ind.cs.t)) extra.push({ id:'csind', e:ind.cs.e, t:ind.cs.t, now:ind.cs.now, busy:false, dep:profile.domain, tag:'под вашу отрасль' });
-    const gr = gripeInfo();
-    if (gr && !myStaffCache.some(c=>c.t===gr.cs.t)) extra.push({ id:'csgrp', e:gr.cs.e, t:gr.cs.t, now:gr.cs.now, busy:false, dep:profile.domain, tag:'снимает то, что бесит' });
+    // профиль реально меняет СОСТАВ штата: топ-возможности из библиотеки под профиль (скоринг, не хардкод)
+    const extra = matchedCaps(myStaffCache.map(c=>c.t)).map((cap,i)=>({
+      id:'csm'+i, e:cap.e, t:cap.t, now:cap.now, busy:false, dep:profile.domain, matched:true,
+      tag: (profile.industry && cap.industries.includes(profile.industry)) ? 'под вашу отрасль' : 'под вашу боль',
+    }));
     if (extra.length) myStaffCache = extra.concat(myStaffCache);
     return myStaffCache;
   }
@@ -1232,12 +1270,13 @@
     const when = mins>0 ? `собрал ${T('твой','ваш')} день в 08:00 по ${T('твоему','вашему')} времени · ${ago}` : `готовит ${T('твой','ваш')} день к 08:00 · сейчас ${nowHM()}`;
     w.innerHTML = head('Пульс · сегодня', `${esc(profile.roleTitle||'')} · помощник ${when}`);
     w.appendChild(sysStrip());
-    // gripe → «Среда уже взяла на себя то, что бесит» (блок виден ТОЛЬКО из-за ответа)
-    const gr = gripeInfo();
-    if (gr){
+    // «Среда подобрала под вас» — содержание берётся из САМОЙ подобранной возможности (модель), не из канвы под ответ
+    const mc = staff.find(c=>c.matched);
+    if (mc){
+      const pain = profile.gripe || profile.focus;
       const gb = el('div','k2-panel'); gb.style.borderColor='var(--k-gold)';
-      gb.innerHTML = `<div class="k2-item"><div class="e">${gr.e}</div><div style="flex:1"><div class="b">Среда уже взяла на себя то, что ${T('тебя','вас')} бесит</div>
-        <div class="m">${T('Ты сказал','Вы сказали')}: «${esc(profile.gripe)}» — ${esc(gr.act)}</div></div></div>`;
+      gb.innerHTML = `<div class="k2-item"><div class="e">${mc.e}</div><div style="flex:1"><div class="b">Среда подобрала под ${T('тебя','вас')} — «${esc(mc.t)}»</div>
+        <div class="m">${esc(mc.now)}${pain?` · закрывает ${T('твою','вашу')} боль: «${esc(pain)}»`:''}</div></div></div>`;
       w.appendChild(gb);
     }
     const src = systemSource();
@@ -1272,13 +1311,11 @@
         <div style="display:flex;gap:8px;margin-top:10px"><button class="k2-btn" id="candOk">Подтвердить и раздать</button><button class="k2-tag act" id="candFix">Поправить</button></div>`;
     }
     s4.appendChild(cand);
-    // focus → приоритетная секция реально поднимается наверх (перестановка, не просто текст)
+    // порядок секций = скоринг поверхностей от боли + posture (перестановка, не хардкод focus→секция)
     const secMap = { wait:s1, meet:s2, staff:s3, cand:s4 };
-    const order = ['wait','meet','staff','cand'];
-    const fp = focusPriority();
-    if (fp && secMap[fp]){
-      order.splice(order.indexOf(fp),1); order.unshift(fp);
-      const h=secMap[fp].querySelector('.k2-sec-h'); if(h) h.innerHTML += ` · <span style="color:var(--k-gold)">${T('твой','ваш')} приоритет</span>`;
+    const order = surfaceOrder();
+    if (userThemes().length){   // бейдж приоритета — только когда есть реальный сигнал боли
+      const h=secMap[order[0]].querySelector('.k2-sec-h'); if(h) h.innerHTML += ` · <span style="color:var(--k-gold)">${T('твой','ваш')} приоритет</span>`;
     }
     order.forEach(k=> w.appendChild(secMap[k]));
     const dispatchCand = ()=>{ if(k2Live.candDone) return;
@@ -1314,13 +1351,13 @@
   /* системные агенты как фоновые индикаторы (§5.3): учёт/ИБ/аудит/знания */
   function sysStrip(){
     const meter = ($('#meterBtn')?.textContent||'').split('ИИ')[0].trim() || '₽384k';
-    const ind = industryInfo();
+    const reg = industryReg();
     const s=el('div','k2-sys');
     s.innerHTML = `<span title="Агент учёта ресурсов">💰 ${esc(meter)} ИИ/нед</span>
       <span title="Агент ИБ · карантин">🛡️ ИБ: 0 в карантине</span>
       <span title="Агент аудита · след действий">📋 аудит-след: онлайн</span>
-      ${ind?`<span title="Отраслевой профиль">🏛️ профиль отрасли: ${esc(ind.reg)}</span>`:''}
-      ${profile.systems?`<span title="Интеграции">🔌 подключено: ${esc(profile.systems)}</span>`:(ind?'':'<span title="Агент знаний">📚 знания: актуальны</span>')}`;
+      ${reg?`<span title="Отраслевой профиль">🏛️ профиль отрасли: ${esc(reg)}</span>`:''}
+      ${profile.systems?`<span title="Интеграции">🔌 подключено: ${esc(profile.systems)}</span>`:(reg?'':'<span title="Агент знаний">📚 знания: актуальны</span>')}`;
     return s;
   }
 
