@@ -18,6 +18,7 @@
   const LS_KEY = 'sreda_kam2_profile_v2';
   const LS_STATE = 'sreda_kam2_state_v1';   // состояние кокпита переживает перезагрузку (готовый продукт, не демка)
   const LS_ONBOARD = 'sreda_kam2_onboarded';   // одноразовый онбординг помощником — показать один раз на роль
+  const LS_LAYOUT  = 'sreda_kam2_layout_v1';   // раскладка кабинета, собранная самим пользователем
 
   /* ---------------------------------------------------------------- утилиты */
   const $  = (s, r) => (r||document).querySelector(s);
@@ -100,7 +101,7 @@
   /* ============================================================ ОПРОС      */
   /* Q1–Q3 нащупывают ДОМЕН (по материалу/боли/результату), Q4–Q5 — УРОВЕНЬ. */
   const SURVEY = [
-    { kind:'dom', q:'С чем вы работаете больше всего?',
+    { kind:'dom', multi:true, q:'С чем вы работаете больше всего?',
       opts:[
         { t:'Таблицы, суммы, расчёты',            dom:{finance:2} },
         { t:'Сметы, расценки, спецификации',      dom:{estimate:2} },
@@ -111,7 +112,7 @@
         { t:'Данные, метрики, дашборды',          dom:{analytics:2} },
         { t:'Календарь, задачи, переписка',       dom:{assist:2} },
       ]},
-    { kind:'dom', q:'Что для вас — сделанная работа?',
+    { kind:'dom', multi:true, q:'Что для вас — сделанная работа?',
       opts:[
         { t:'Точный расчёт или смета',            dom:{estimate:2} },
         { t:'Работающая система',                 dom:{eng:2} },
@@ -122,7 +123,7 @@
         { t:'Принятое решение',                   dom:{exec:2} },
         { t:'Разгруженный руководитель',          dom:{assist:2} },
       ]},
-    { kind:'dom', q:'Где ошибка обойдётся вам дороже всего?',
+    { kind:'dom', multi:true, q:'Где ошибка обойдётся вам дороже всего?',
       opts:[
         { t:'В цифре или расчёте',                dom:{finance:2} },
         { t:'В сделке с клиентом',                dom:{sales:2} },
@@ -183,7 +184,7 @@
         { t:'Госсектор',                    industry:'госсекторе' },
         { t:'Услуги / другое',              industry:'услугах' },
       ]},
-    { kind:'systems', q:'В каких системах вы живёте?',
+    { kind:'systems', multi:true, q:'В каких системах вы живёте?',
       opts:[
         { t:'1С',                           systems:'1С' },
         { t:'Excel / Google Таблицы',       systems:'Excel' },
@@ -634,6 +635,52 @@
     .k2-opt:focus-visible,.k2-cta:focus-visible,.k2-btn:focus-visible,.k2-nav-item:focus-visible,.k2-chip:focus-visible,
     .k2-tag.act:focus-visible,.k2-asst-rem:focus-visible,.k2-add:focus-visible,.k2-back:focus-visible,.k2-asst-input input:focus-visible{
       outline:2px solid var(--k-gold); outline-offset:2px; }
+    /* ---- мультивыбор в опросе ---- */
+    .k2-opt.multi{ position:relative; padding-left:42px; }
+    .k2-opt.multi::before{ content:''; position:absolute; left:16px; top:50%; transform:translateY(-50%); width:16px; height:16px;
+      border:1.5px solid var(--k-line2); border-radius:5px; transition:.15s; }
+    .k2-opt.multi.chosen::before{ background:var(--k-gold); border-color:var(--k-gold); }
+    .k2-opt.multi.chosen::after{ content:'✓'; position:absolute; left:19px; top:50%; transform:translateY(-50%); color:var(--k-on); font-size:11px; font-weight:900; }
+    .k2-multi-bar{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px; }
+    .k2-multi-cnt{ font-size:12.5px; color:var(--k-dim); }
+    .k2-mnext{ padding:9px 20px; font-size:13.5px; }
+    .k2-mnext:disabled{ opacity:.4; cursor:not-allowed; }
+
+    /* ---- кабинет, который собирает сам пользователь: виджеты ---- */
+    .k2-cust{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+    .k2-cust-btn{ background:var(--k-panel2); border:1px solid var(--k-line); color:var(--k-dim); border-radius:999px;
+      padding:7px 14px; font-size:12.5px; cursor:pointer; transition:.15s; }
+    .k2-cust-btn:hover{ color:var(--k-txt); border-color:var(--k-gold); }
+    .k2-cust-btn.on{ background:var(--k-soft); border-color:var(--k-gold); color:var(--k-gold); font-weight:700; }
+    .k2-cust-hint{ font-size:12px; color:var(--k-dim); }
+    .k2-sw{ display:inline-flex; gap:6px; align-items:center; }
+    .k2-sw i{ width:18px; height:18px; border-radius:50%; cursor:pointer; border:2px solid transparent; display:block; }
+    .k2-sw i:hover{ transform:scale(1.12); }
+    .k2-sw i.on{ border-color:var(--k-txt); }
+    .k2-sw input[type=color]{ width:22px; height:22px; padding:0; border:1px solid var(--k-line); background:none; border-radius:50%; cursor:pointer; }
+    .k2-hidden-chips{ display:inline-flex; gap:6px; flex-wrap:wrap; }
+
+    .k2-wgrid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; align-items:start; }
+    @media(max-width:900px){ .k2-wgrid{ grid-template-columns:1fr; } .k2-w{ grid-column:span 1 !important; } }
+    .k2-w{ position:relative; min-width:0; border-radius:12px; transition:box-shadow .15s, outline-color .15s; }
+    .k2-w.edit{ outline:1px dashed var(--k-line2); outline-offset:6px; cursor:grab; }
+    .k2-w.edit:hover{ outline-color:var(--k-gold); }
+    .k2-w.drag{ opacity:.45; cursor:grabbing; }
+    .k2-w.over{ outline:2px solid var(--k-gold); outline-offset:6px; }
+    .k2-w-b{ min-width:0; }
+    .k2-w.sized > .k2-w-b{ overflow:auto; height:100%; }
+    .k2-w.sized{ display:flex; flex-direction:column; }
+    .k2-w-tools{ position:absolute; top:-10px; right:4px; z-index:5; display:none; gap:4px; }
+    .k2-w.edit .k2-w-tools{ display:flex; }
+    .k2-w-tools button{ background:var(--k-panel2); border:1px solid var(--k-line2); color:var(--k-dim); width:26px; height:26px;
+      border-radius:7px; font-size:12px; cursor:pointer; display:grid; place-items:center; }
+    .k2-w-tools button:hover{ color:var(--k-gold); border-color:var(--k-gold); }
+    .k2-w-rz{ position:absolute; left:0; right:0; bottom:-6px; height:10px; cursor:ns-resize; display:none; }
+    .k2-w.edit .k2-w-rz{ display:block; }
+    .k2-w.edit .k2-w-rz::after{ content:''; position:absolute; left:50%; transform:translateX(-50%); bottom:3px;
+      width:40px; height:3px; border-radius:3px; background:var(--k-line2); }
+    .k2-w.edit .k2-w-rz:hover::after{ background:var(--k-gold); }
+
     /* ---- одноразовый онбординг: пошаговая подсветка зон ---- */
     .k2-coach-ring{ position:fixed; z-index:130; border-radius:14px; border:2px solid var(--k-gold);
       box-shadow:0 0 0 9999px rgba(6,10,8,.66), 0 0 0 4px var(--k-soft); pointer-events:none;
@@ -679,9 +726,11 @@
     let step = 0;
     const domScore = {}; const lvlSamples = [];
     let depth = 1; let focus = null; let posture = null; let postureKey = null; let aiTool = null; let habit = null;
-    let industry = null; let systems = null; let tone = null; let gripe = null;
+    let industry = null; let tone = null; let gripe = null;
+    let systemsSel = [];   // мультивыбор: систем может быть несколько
+    let multiSel = [];     // выбор текущего мультивыборного шага
     let liveChosen = [];
-    const history = [];   // [{kind, dom?, lvl?, depth?}]
+    const history = [];   // [{kind, qi, text, picks[]}]
     let locked = false;
 
     const layer = el('div','k2-survey'); layer.id='k2Survey';
@@ -730,33 +779,67 @@
       const s = SURVEY[step];
       const dots = SURVEY.map((_,i)=>`<div class="k2-dot ${i<=step?'on':''}"></div>`).join('');
       const left = $('#k2Left', layer);
+      const multi = !!s.multi;
+      multiSel = [];   // выбор текущего шага (мультивыбор)
       left.innerHTML = `
-        <div class="k2-eyebrow">Вопрос ${step+1} из ${SURVEY.length}</div>
+        <div class="k2-eyebrow">Вопрос ${step+1} из ${SURVEY.length}${multi?' · можно выбрать несколько':''}</div>
         <div class="k2-q">${esc(s.q)}</div>
         <div class="k2-opts${s.opts.length>=6?' grid2':''}" id="k2Opts"></div>
+        ${multi?'<div class="k2-multi-bar"><span class="k2-multi-cnt" id="k2MCnt">ничего не выбрано</span><button class="k2-cta k2-mnext" id="k2Next" disabled>Далее →</button></div>':''}
         <div class="k2-progress">${dots}</div>
         ${step>0?'<button class="k2-back" id="k2Back">← назад</button>':''}`;
       const box = $('#k2Opts', left);
       s.opts.forEach(o=>{
-        const b = el('button','k2-opt', esc(o.t));
-        b.onclick = ()=> answer(o, s, b);
+        const b = el('button','k2-opt'+(multi?' multi':''), esc(o.t));
+        b.onclick = multi ? (()=> toggleOpt(o, s, b)) : (()=> answer(o, s, b));
         box.appendChild(b);
       });
+      if (multi) $('#k2Next',left).onclick = ()=> commitMulti(s);
       if (step>0) $('#k2Back',left).onclick = goBack;
     }
 
-    /* ---- ответ ---- */
+    /* ---- применить/снять эффект варианта (общее для одиночного и мульти) ---- */
+    function applyOpt(o, s, dir){
+      if (s.kind==='dom' && o.dom){ for(const d in o.dom){ domScore[d]=(domScore[d]||0)+dir*o.dom[d]; if(domScore[d]<=0) delete domScore[d]; } }
+      else if (s.kind==='systems'){
+        const i = systemsSel.indexOf(o.systems);
+        if (dir>0){ if(i<0) systemsSel.push(o.systems); } else if(i>=0){ systemsSel.splice(i,1); }
+      }
+    }
+
+    /* ---- мультивыбор: переключение с ЖИВЫМ узнаванием на каждый тап ---- */
+    function toggleOpt(o, s, btn){
+      if (locked) return;
+      const i = multiSel.indexOf(o);
+      if (i>=0){ multiSel.splice(i,1); btn.classList.remove('chosen'); applyOpt(o, s, -1); }
+      else { multiSel.push(o); btn.classList.add('chosen'); applyOpt(o, s, +1); }
+      const n = multiSel.length;
+      const cnt = $('#k2MCnt', layer); if(cnt) cnt.textContent = n ? `выбрано: ${n}` : 'ничего не выбрано';
+      const nx = $('#k2Next', layer); if(nx) nx.disabled = !n;
+      updateRight(multiSel[multiSel.length-1]||null, s);   // узнавание пересобирается прямо на глазах
+    }
+    function commitMulti(s){
+      if (locked || !multiSel.length) return; locked = true;
+      history[step] = { kind:s.kind, qi:step, text:multiSel.map(o=>lowerFirst(o.t)).join(', '), picks:multiSel.slice() };
+      setTimeout(()=>{
+        locked = false;
+        if (step < SURVEY.length-1){ step++; drawLeft(); }
+        else finish();
+      }, 260);
+    }
+
+    /* ---- ответ (одиночный выбор) ---- */
     function answer(o, s, btn){
       if (locked) return; locked = true;
       btn.classList.add('chosen');
-      const rec = { kind:s.kind, qi:step, text:o.t };
-      if (s.kind==='dom'){ for(const d in o.dom){ domScore[d]=(domScore[d]||0)+o.dom[d]; } rec.dom=o.dom; }
+      const rec = { kind:s.kind, qi:step, text:o.t, picks:[o] };
+      if (s.kind==='dom'){ applyOpt(o, s, +1); rec.dom=o.dom; }
       else if (s.kind==='lvl'){ lvlSamples.push(o.lvl); rec.lvl=o.lvl; }
       else if (s.kind==='focus'){ focus=o.focus; rec.focus=o.focus; }
       else if (s.kind==='posture'){ posture=o.posture; postureKey=o.pk; rec.posture=o.posture; }
       else if (s.kind==='tools'){ aiTool=o.tool; habit=o.habit; rec.tool=o.tool; }
       else if (s.kind==='industry'){ industry=o.industry; rec.industry=o.industry; }
-      else if (s.kind==='systems'){ systems=o.systems; rec.systems=o.systems; }
+      else if (s.kind==='systems'){ applyOpt(o, s, +1); rec.systems=o.systems; }
       else if (s.kind==='tone'){ tone=o.tone; rec.tone=o.tone; }
       else if (s.kind==='gripe'){ gripe=o.gripe; rec.gripe=o.gripe; }
       else if (s.kind==='depth'){ depth=o.depth; rec.depth=o.depth; }
@@ -773,13 +856,14 @@
       step--;
       const h = history[step];
       if (h){
-        if (h.kind==='dom' && h.dom){ for(const d in h.dom){ domScore[d]=(domScore[d]||0)-h.dom[d]; if(domScore[d]<=0) delete domScore[d]; } }
+        const s = SURVEY[step];
+        // мульти и одиночный откатываются одинаково — через applyOpt по каждому выбору
+        if (h.picks && (h.kind==='dom' || h.kind==='systems')) h.picks.forEach(o=> applyOpt(o, s, -1));
         else if (h.kind==='lvl'){ const i=lvlSamples.lastIndexOf(h.lvl); if(i>=0) lvlSamples.splice(i,1); }
         else if (h.kind==='focus'){ focus=null; }
         else if (h.kind==='posture'){ posture=null; postureKey=null; }
         else if (h.kind==='tools'){ aiTool=null; habit=null; }
         else if (h.kind==='industry'){ industry=null; }
-        else if (h.kind==='systems'){ systems=null; }
         else if (h.kind==='tone'){ tone=null; }
         else if (h.kind==='gripe'){ gripe=null; }
       }
@@ -863,9 +947,10 @@
       if (aiTool)  echo.push(`вы уже работаете в ${aiTool} — Среда встанет привычно`);
       else if (habit==='none') echo.push(`с ИИ вы ещё на «вы» — Среда проведёт за руку`);
       if (industry) echo.push(`ваша компания — в ${industry}`);
-      if (systems)  echo.push(`вы живёте в ${systems} — Среда к ним подключится`);
+      if (systemsSel.length) echo.push(`вы живёте в ${systemsSel.join(', ')} — Среда к ним подключится`);
       if (gripe)    echo.push(`больше всего вас бесит: ${gripe}`);
-      profile = { domain, level, roleTitle: role?role.t:null, depth, focus, posture, postureKey, aiTool, habit, industry, systems, tone, gripe,
+      profile = { domain, level, roleTitle: role?role.t:null, depth, focus, posture, postureKey, aiTool, habit, industry,
+        systems: systemsSel.slice(), tone, gripe,
         chosen: assembleModules(domain, level), echo, baseCount: ROLES.length };
       save(profile);
       drawResult();
@@ -1038,7 +1123,7 @@
     let s=0;
     userThemes().forEach(t=>{ if(cap.themes.includes(t)) s+=3; });                                    // совпала боль
     if(profile.industry && cap.industries.includes(profile.industry)) s+=4;                           // точное попадание в отрасль
-    if(profile.systems && cap.systems.includes(profile.systems)) s+=1;                                // есть источник
+    if(userSystems().some(sys=>cap.systems.includes(sys))) s+=1;                                      // есть хоть один источник (мультивыбор)
     return s;
   }
   // топ-2 подходящих возможности сверх базового штата роли (дедуп по названию)
@@ -1048,6 +1133,38 @@
     return CAP_LIB.map(c=>({c,s:scoreCap(c)})).filter(x=>x.s>0).sort((a,b)=>b.s-a.s)
       .filter(x=>{ if(seen.has(x.c.t)) return false; seen.add(x.c.t); return true; }).slice(0,2).map(x=>x.c);
   }
+  /* ============ КАБИНЕТ СОБИРАЕТ САМ ПОЛЬЗОВАТЕЛЬ ============
+     Среда ПРЕДЛАГАЕТ раскладку скорингом; как только человек сам подвинул/изменил —
+     его раскладка побеждает (custom=true) и живёт между сессиями. Всегда можно вернуть подобранное. */
+  const WKEYS = ['wait','meet','staff','cand'];
+  const WTITLE = { wait:'Ждёт меня', meet:'Встречи дня', staff:'Мои ЦС', cand:'Предложено помощником' };
+  const ACCENTS = ['#36c994','#60a5fa','#e8b448','#e86a5e','#a78bfa','#22d3ee'];
+  let layout = null, editMode = false;
+  const defaultLayout = () => ({ custom:false, order:surfaceOrder(), span:{wait:2,staff:2,meet:1,cand:1}, hidden:[], h:{}, accent:null });
+  function loadLayout(){
+    try{ const s=JSON.parse(localStorage.getItem(LS_LAYOUT)||'null');
+      if(s && s.domain===profile.domain && Array.isArray(s.order)){
+        return { custom:!!s.custom, order:s.order.filter(k=>WKEYS.includes(k)), span:s.span||{},
+                 hidden:(s.hidden||[]).filter(k=>WKEYS.includes(k)), h:s.h||{}, accent:s.accent||null };
+      }
+    }catch(e){}
+    return null;
+  }
+  function saveLayout(){ try{ localStorage.setItem(LS_LAYOUT, JSON.stringify(Object.assign({domain:profile.domain}, layout))); }catch(e){} }
+  function ensureLayout(){
+    if(!layout) layout = loadLayout() || defaultLayout();
+    // пока человек не вмешался — раскладкой правит модель (подбор под профиль)
+    if(!layout.custom) layout.order = surfaceOrder();
+    WKEYS.forEach(k=>{ if(!layout.order.includes(k) && !layout.hidden.includes(k)) layout.order.push(k); });
+    return layout;
+  }
+  function touchLayout(){ layout.custom = true; saveLayout(); }
+  function applyAccent(){
+    const r = document.documentElement, a = layout && layout.accent;
+    if(a){ r.style.setProperty('--acc', a); r.style.setProperty('--acc-hover', a); }
+    else { r.style.removeProperty('--acc'); r.style.removeProperty('--acc-hover'); }
+  }
+
   // порядок секций Пульса = скоринг поверхностей от тем боли + posture (не хардкод)
   function surfaceOrder(){
     const score={wait:0,meet:0,staff:0,cand:0};
@@ -1057,9 +1174,11 @@
     return base.slice().sort((a,b)=> (score[b]-score[a]) || (base.indexOf(a)-base.indexOf(b)));
   }
 
-  // systems → провенанс-источник на карточках ЦС
-  const SYSTEM_SOURCE = { '1С':'источник: 1С', 'Excel':'источник: Excel/Таблицы', 'CRM':'источник: CRM', 'трекерах':'источник: трекер', 'почте':'источник: почта' };
-  const systemSource = () => (profile && profile.systems) ? (SYSTEM_SOURCE[profile.systems] || ('источник: '+profile.systems)) : null;
+  // systems → провенанс-источник на карточках ЦС. Мультивыбор: нормализуем (старые профили хранили строку).
+  const SYSTEM_SOURCE = { '1С':'1С', 'Excel':'Excel/Таблицы', 'CRM':'CRM', 'трекерах':'трекер', 'почте':'почта' };
+  const userSystems = () => { const s = profile && profile.systems; return !s ? [] : (Array.isArray(s) ? s : [s]); };
+  const systemsLabel = () => userSystems().map(s=>SYSTEM_SOURCE[s]||s).join(', ');
+  const systemSource = () => userSystems().length ? ('источник: '+systemsLabel()) : null;
   let myStaffCache = null;
   function myStaff(){
     if (myStaffCache) return myStaffCache;
@@ -1117,6 +1236,7 @@
   function enterCabinet(){
     injectStyles(); firstEnter=true; myStaffCache=null; myAdditions=[]; k2Live=null;
     cockpit.height='me'; cockpit.view='pulse'; cockpit.csId=null;
+    layout=null; editMode=false; ensureLayout(); applyAccent();   // раскладка/цвет, собранные пользователем
     loadState();   // восстановить состояние роли, если было
     initLive();    // добить k2Live, если чистый вход
     // топбар когерентен продукту: профиль = распознанная роль
@@ -1128,7 +1248,8 @@
     const cmd = $('#cmdBtn'); if (cmd){ cmd.onclick = (e)=>{ e.preventDefault(); goView('pulse'); const i=$('#k2AsstIn'); if(i){ i.focus(); i.scrollIntoView({block:'center'}); } }; }
     if (!$('#k2Reset')){
       const r = el('button','k2-reset','↺ пересобрать Среду'); r.id='k2Reset';
-      r.onclick = ()=>{ localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_STATE); localStorage.removeItem(LS_ONBOARD); profile=null; active=null;
+      r.onclick = ()=>{ localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_STATE); localStorage.removeItem(LS_ONBOARD); localStorage.removeItem(LS_LAYOUT);
+        layout=null; editMode=false; applyAccent(); profile=null; active=null;
         k2Live=null; myStaffCache=null; myAdditions=[]; Object.keys(specDone).forEach(k=>delete specDone[k]); Object.keys(csStore).forEach(k=>delete csStore[k]);
         location.hash=''; runSurvey(); };
       document.body.appendChild(r);
@@ -1311,13 +1432,20 @@
         <div style="display:flex;gap:8px;margin-top:10px"><button class="k2-btn" id="candOk">Подтвердить и раздать</button><button class="k2-tag act" id="candFix">Поправить</button></div>`;
     }
     s4.appendChild(cand);
-    // порядок секций = скоринг поверхностей от боли + posture (перестановка, не хардкод focus→секция)
+    // ---- раскладка: Среда предложила скорингом, пользователь пересобрал под себя ----
     const secMap = { wait:s1, meet:s2, staff:s3, cand:s4 };
-    const order = surfaceOrder();
-    if (userThemes().length){   // бейдж приоритета — только когда есть реальный сигнал боли
-      const h=secMap[order[0]].querySelector('.k2-sec-h'); if(h) h.innerHTML += ` · <span style="color:var(--k-gold)">${T('твой','ваш')} приоритет</span>`;
+    ensureLayout();
+    if (!layout.custom && userThemes().length){   // бейдж приоритета — только пока раскладку ведёт модель
+      const hh=secMap[layout.order[0]] && secMap[layout.order[0]].querySelector('.k2-sec-h');
+      if(hh) hh.innerHTML += ` · <span style="color:var(--k-gold)">${T('твой','ваш')} приоритет</span>`;
     }
-    order.forEach(k=> w.appendChild(secMap[k]));
+    w.appendChild(custBar());
+    const grid = el('div','k2-wgrid');
+    layout.order.forEach(k=>{
+      if(layout.hidden.includes(k) || !secMap[k]) return;
+      grid.appendChild(widget(k, secMap[k]));
+    });
+    w.appendChild(grid);
     const dispatchCand = ()=>{ if(k2Live.candDone) return;
       const dep=(staff[0]&&staff[0].dep)||profile.domain;
       const inp=[...w.querySelectorAll('#candBreak input')].map(i=>i.value.trim()).filter(Boolean);
@@ -1335,6 +1463,84 @@
       fix.style.display='none';
     };
   }
+  /* ---- панель настройки кабинета ---- */
+  function custBar(){
+    const bar = el('div','k2-cust');
+    const edit = el('button','k2-cust-btn'+(editMode?' on':''), editMode?'✓ Готово':'⚙ Настроить');
+    edit.onclick = ()=>{ editMode=!editMode; renderCockpit(); };
+    bar.appendChild(edit);
+    if (!editMode){
+      const hint = el('span','k2-cust-hint', layout.custom ? 'кабинет собран вами' : 'раскладку подобрала Среда — можно пересобрать');
+      bar.appendChild(hint);
+      return bar;
+    }
+    bar.appendChild(el('span','k2-cust-hint','тяните карточки · ⬌ ширина · ↕ низ карточки · ✕ скрыть'));
+    // цвет
+    const sw = el('span','k2-sw');
+    ACCENTS.forEach(c=>{ const i=el('i'); i.style.background=c;
+      if(layout.accent===c) i.classList.add('on');
+      i.title='Цвет акцента'; i.onclick=()=>{ layout.accent=c; touchLayout(); applyAccent(); renderCockpit(); }; sw.appendChild(i); });
+    const pick = el('input'); pick.type='color'; pick.value = layout.accent || '#36c994'; pick.title='Свой цвет';
+    pick.oninput = (e)=>{ layout.accent=e.target.value; touchLayout(); applyAccent(); };
+    sw.appendChild(pick); bar.appendChild(sw);
+    // скрытые → вернуть
+    if (layout.hidden.length){
+      const hc = el('span','k2-hidden-chips');
+      layout.hidden.forEach(k=>{ const b=el('button','k2-cust-btn','+ '+WTITLE[k]);
+        b.onclick=()=>{ layout.hidden=layout.hidden.filter(x=>x!==k); if(!layout.order.includes(k)) layout.order.push(k); touchLayout(); renderCockpit(); };
+        hc.appendChild(b); });
+      bar.appendChild(hc);
+    }
+    const rst = el('button','k2-cust-btn','↺ вернуть подобранное Средой');
+    rst.onclick = ()=>{ layout = defaultLayout(); try{ localStorage.removeItem(LS_LAYOUT); }catch(e){} applyAccent(); renderCockpit(); cabToast('↺ Вернул раскладку, которую подобрала Среда'); };
+    bar.appendChild(rst);
+    return bar;
+  }
+
+  /* ---- виджет: перетаскивание, ширина, высота, скрытие ---- */
+  let dragKey = null;
+  function widget(k, secEl){
+    const wrap = el('div','k2-w'+(editMode?' edit':''));
+    wrap.dataset.w = k;
+    const span = layout.span[k] || 1;
+    wrap.style.gridColumn = 'span '+span;
+    if (layout.h[k]){ wrap.style.height = layout.h[k]+'px'; wrap.classList.add('sized'); }
+    // инструменты
+    const tools = el('div','k2-w-tools');
+    const bSpan = el('button',null,'⬌'); bSpan.title='Ширина: половина / во всю';
+    bSpan.onclick = (e)=>{ e.stopPropagation(); layout.span[k] = (span===2?1:2); touchLayout(); renderCockpit(); };
+    const bHide = el('button',null,'✕'); bHide.title='Скрыть карточку';
+    bHide.onclick = (e)=>{ e.stopPropagation(); if(!layout.hidden.includes(k)) layout.hidden.push(k);
+      layout.order = layout.order.filter(x=>x!==k); touchLayout(); renderCockpit(); };
+    tools.appendChild(bSpan); tools.appendChild(bHide); wrap.appendChild(tools);
+    const body = el('div','k2-w-b'); body.appendChild(secEl); wrap.appendChild(body);
+    if (editMode){
+      // перетаскивание — реальная перестановка порядка
+      wrap.draggable = true;
+      wrap.addEventListener('dragstart', e=>{ dragKey=k; wrap.classList.add('drag'); e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',k);}catch(_){} });
+      wrap.addEventListener('dragend',   ()=>{ dragKey=null; wrap.classList.remove('drag'); });
+      wrap.addEventListener('dragover',  e=>{ if(dragKey&&dragKey!==k){ e.preventDefault(); wrap.classList.add('over'); } });
+      wrap.addEventListener('dragleave', ()=> wrap.classList.remove('over'));
+      wrap.addEventListener('drop', e=>{ e.preventDefault(); wrap.classList.remove('over');
+        if(!dragKey || dragKey===k) return;
+        const o = layout.order.filter(x=>x!==dragKey);
+        o.splice(o.indexOf(k), 0, dragKey);
+        layout.order = o; dragKey=null; touchLayout(); renderCockpit(); });
+      // высота — тянем низ карточки
+      const rz = el('div','k2-w-rz');
+      rz.addEventListener('pointerdown', e=>{
+        e.preventDefault(); e.stopPropagation();
+        const startY=e.clientY, startH=wrap.offsetHeight;
+        rz.setPointerCapture(e.pointerId);
+        const mv = ev=>{ const h=Math.max(120, startH+(ev.clientY-startY)); wrap.style.height=h+'px'; wrap.classList.add('sized'); layout.h[k]=h; };
+        const up = ()=>{ rz.removeEventListener('pointermove',mv); rz.removeEventListener('pointerup',up); touchLayout(); };
+        rz.addEventListener('pointermove',mv); rz.addEventListener('pointerup',up);
+      });
+      wrap.appendChild(rz);
+    }
+    return wrap;
+  }
+
   function section(title, badge){ const s=el('div'); s.style.marginBottom='14px';
     s.innerHTML=`<div class="k2-sec-h">${esc(title)}${badge?` · <b>${esc(badge)}</b>`:''}</div>`; return s; }
   function emptyEl(t){ const p=el('div','k2-panel'); p.innerHTML=`<div class="k2-empty">${esc(t)}</div>`; return p; }
@@ -1357,7 +1563,7 @@
       <span title="Агент ИБ · карантин">🛡️ ИБ: 0 в карантине</span>
       <span title="Агент аудита · след действий">📋 аудит-след: онлайн</span>
       ${reg?`<span title="Отраслевой профиль">🏛️ профиль отрасли: ${esc(reg)}</span>`:''}
-      ${profile.systems?`<span title="Интеграции">🔌 подключено: ${esc(profile.systems)}</span>`:(reg?'':'<span title="Агент знаний">📚 знания: актуальны</span>')}`;
+      ${userSystems().length?`<span title="Интеграции">🔌 подключено: ${esc(systemsLabel())}</span>`:(reg?'':'<span title="Агент знаний">📚 знания: актуальны</span>')}`;
     return s;
   }
 
