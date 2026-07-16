@@ -770,6 +770,10 @@
     .k2-w.drag{ opacity:.45; cursor:grabbing; }
     .k2-w.over{ outline:2px solid var(--k-gold); outline-offset:6px; }
     .k2-w-b{ min-width:0; }
+    /* РОЙ №2: в режиме настройки клики по содержимому не были нейтрализованы — целясь перетащить
+       карточку, можно было попасть в «Принять»/«Одобрить» и выполнить необратимое. Тулбар и
+       ресайз-ручка лежат вне .k2-w-b, поэтому продолжают работать; pointerdown уходит на саму карточку. */
+    .k2-w.edit .k2-w-b{ pointer-events:none; user-select:none; }
     .k2-w.sized > .k2-w-b{ overflow:auto; height:100%; }
     .k2-w.sized{ display:flex; flex-direction:column; }
     .k2-w-tools{ position:absolute; top:-10px; right:4px; z-index:5; display:none; gap:4px; }
@@ -1452,16 +1456,22 @@
   let myStaffCache = null;
   function myStaff(){
     if (myStaffCache) return myStaffCache;
-    const dep = DOMAIN_DEPT[profile.domain];
-    if (dep && ORG.digital && Array.isArray(ORG.digital[dep])){
-      myStaffCache = ORG.digital[dep].slice(0,4).map((a,i)=>({ id:'cs'+i, e:a.emoji||'🤖', t:a.title||a.name, now:a.now||'на связи', ji:a.ji, busy:false, dep }));
+    // РОЙ №2: базовые ЦС получали dep = id отдела ('eng'→'dev'), а подобранные — ключ ДОМЕНА ('eng').
+    // Подобранные встают первыми, а фильтр передач смотрит на staff[0].dep и не находил ни строки,
+    // т.к. лента живёт на id отделов. Ломалось у eng/exec/analytics/project/ops (5 из 8), плюс в одном
+    // рейле рисовались два разных названия отдела. Один ключ на ВЕСЬ штат.
+    const mapped = DOMAIN_DEPT[profile.domain];
+    const hasReal = mapped && ORG.digital && Array.isArray(ORG.digital[mapped]);
+    const depKey = hasReal ? mapped : profile.domain;   // нет реального отдела → домен (deptLabel даст название направления)
+    if (hasReal){
+      myStaffCache = ORG.digital[mapped].slice(0,4).map((a,i)=>({ id:'cs'+i, e:a.emoji||'🤖', t:a.title||a.name, now:a.now||'на связи', ji:a.ji, busy:false, dep:depKey }));
     } else {
       const syn = SYNTH_STAFF[profile.domain] || [{e:'🤖',t:'Цифровой двойник',now:'на связи'}];
-      myStaffCache = syn.map((s,i)=>({ id:'cs'+i, e:s.e, t:s.t, now:s.now, busy:false, dep:profile.domain }));  // dep=домен → deptLabel даёт название направления, не undefined
+      myStaffCache = syn.map((s,i)=>({ id:'cs'+i, e:s.e, t:s.t, now:s.now, busy:false, dep:depKey }));
     }
     // профиль реально меняет СОСТАВ штата: топ-возможности из библиотеки под профиль (скоринг, не хардкод)
     const extra = matchedCaps(myStaffCache.map(c=>c.t)).map((cap,i)=>({
-      id:'csm'+i, e:cap.e, t:cap.t, now:cap.now, busy:false, dep:profile.domain, matched:true,
+      id:'csm'+i, e:cap.e, t:cap.t, now:cap.now, busy:false, dep:depKey, matched:true,
       // КРИТИК: было бинарно — «не отрасль» автоматически объявлялось «болью». Теперь ярлык
       // говорит РЕАЛЬНОЕ основание, а не то, что осталось по остаточному принципу.
       tag: capHitsIndustry(cap) ? 'под вашу отрасль' : (capHitsPain(cap) ? 'под вашу боль' : 'под ваши системы'),
