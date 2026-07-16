@@ -134,7 +134,7 @@
         { t:'В выводе по данным',                 dom:{analytics:2} },
         { t:'В стратегии',                        dom:{exec:2} },
       ]},
-    { kind:'lvl', q:'Кто отвечает за результат перед вами?',
+    { kind:'lvl', multi:true, q:'Кто отвечает за результат перед вами?',
       opts:[
         { t:'Только я',                           lvl:1 },
         { t:'Один-два человека',                  lvl:2 },
@@ -142,7 +142,7 @@
         { t:'Несколько отделов',                  lvl:4 },
         { t:'Вся компания',                       lvl:5 },
       ]},
-    { kind:'lvl', q:'Как принимаются решения в вашей зоне?',
+    { kind:'lvl', multi:true, q:'Как принимаются решения в вашей зоне?',
       opts:[
         { t:'Предлагаю — решают выше',            lvl:1 },
         { t:'Решаю сам в своей зоне',             lvl:2 },
@@ -150,7 +150,7 @@
         { t:'Задаю правила отделу',               lvl:4 },
         { t:'Финальное слово за мной',            lvl:5 },
       ]},
-    { kind:'focus', q:'Что сейчас съедает больше всего вашего времени?',
+    { kind:'focus', multi:true, q:'Что сейчас съедает больше всего вашего времени?',
       opts:[
         { t:'Рутина, которую можно передать',      focus:'рутину, которую пора передать' },
         { t:'Сбор данных и отчёты',                focus:'сбор данных и отчёты' },
@@ -158,23 +158,23 @@
         { t:'Разбор входящих — почта, звонки, чаты',focus:'разбор входящих' },
         { t:'Контроль, что всё идёт по плану',     focus:'контроль, что всё идёт по плану' },
       ]},
-    { kind:'posture', q:'Вам ближе — делать самому или поручать?',
+    { kind:'posture', multi:true, q:'Вам ближе — делать самому или поручать?',
       opts:[
         { t:'Делать самому — так надёжнее',        posture:'делать самому', pk:'self' },
         { t:'Поручать и проверять результат',      posture:'поручать и проверять', pk:'delegate' },
         { t:'Задавать направление, а не делать',   posture:'задавать направление', pk:'direct' },
       ]},
-    { kind:'tools', q:'Каким ИИ вы уже пользуетесь?',
+    { kind:'tools', multi:true, q:'Каким ИИ вы уже пользуетесь?',
       opts:[
         { t:'ChatGPT',                    tool:'ChatGPT',            habit:'chat' },
         { t:'Claude',                     tool:'Claude',            habit:'chat' },
         { t:'Gemini / Google',            tool:'Gemini',            habit:'chat' },
         { t:'GigaChat или YandexGPT',     tool:'GigaChat/YandexGPT',habit:'chat' },
         { t:'Copilot в Office',           tool:'Copilot',           habit:'office' },
-        { t:'Пробовал, но не прижилось',  tool:null,                habit:'none' },
-        { t:'Ещё не пробовал',            tool:null,                habit:'none' },
+        { t:'Пробовал, но не прижилось',  tool:null,                habit:'none', solo:true },
+        { t:'Ещё не пробовал',            tool:null,                habit:'none', solo:true },
       ]},
-    { kind:'industry', q:'В какой сфере работает ваша компания?',
+    { kind:'industry', multi:true, q:'В какой сфере работает ваша компания?',
       opts:[
         { t:'Строительство и недвижимость', industry:'строительстве' },
         { t:'Финансы и банки',              industry:'финансах' },
@@ -192,12 +192,14 @@
         { t:'Таск-трекеры (Jira, Trello)',  systems:'трекерах' },
         { t:'Почта и мессенджеры',          systems:'почте' },
       ]},
-    { kind:'tone', q:'Как вам удобнее общаться?',
+    // x:'<группа>' — варианты внутри группы взаимоисключающи (модель знает, что «на ты» и «на вы» вместе — бессмыслица)
+    { kind:'tone', multi:true, q:'Как вам удобнее общаться?',
       opts:[
-        { t:'На «ты», по-простому',         tone:'ты' },
-        { t:'На «вы», по-деловому',         tone:'вы' },
+        { t:'На «ты», по-простому',         tone:'ты', x:'tone' },
+        { t:'На «вы», по-деловому',         tone:'вы', x:'tone' },
+        { t:'Коротко, без воды',            brief:true },
       ]},
-    { kind:'gripe', q:'Что в работе бесит больше всего?',
+    { kind:'gripe', multi:true, q:'Что в работе бесит больше всего?',
       opts:[
         { t:'Бесконечные согласования',     gripe:'бесконечные согласования' },
         { t:'Рутина и копипаст',            gripe:'рутина и копипаст' },
@@ -205,10 +207,15 @@
         { t:'Отчёты и таблицы',             gripe:'отчёты и таблицы' },
         { t:'Вечная спешка',                gripe:'вечная спешка' },
       ]},
-    { kind:'depth', q:'Насколько важно видеть, как именно всё сделано?',
+    // depth перестал быть бинарным: это НАБОР того, что человек хочет видеть.
+    // Каждый пункт реально включает свою секцию в карточке ЦС. solo:true — «достаточно результата» отменяет остальные.
+    { kind:'depth', multi:true, q:'Что вы хотите видеть, когда ЦС приносит результат?',
       opts:[
-        { t:'Достаточно результата',              depth:0 },
-        { t:'Хочу видеть исполнителя и источники',depth:1 },
+        { t:'Достаточно результата',        want:null,   solo:true },
+        { t:'Кто именно сделал',            want:'who' },
+        { t:'Из чего собран ответ',         want:'prov' },
+        { t:'Что цифровой сотрудник знает', want:'mem' },
+        { t:'След в аудите',                want:'audit' },
       ]},
   ];
 
@@ -752,9 +759,10 @@
     injectStyles();
     let step = 0;
     const domScore = {}; const lvlSamples = [];
-    let depth = 1; let focus = null; let posture = null; let postureKey = null; let aiTool = null; let habit = null;
-    let industry = null; let tone = null; let gripe = null;
-    let systemsSel = [];   // мультивыбор: систем может быть несколько
+    // мультивыбор ВЕЗДЕ → почти все измерения стали наборами
+    let tone = null, brief = false;
+    let focusSel = [], postureSel = [], postureKeySel = [], toolSel = [], habitSel = [],
+        industrySel = [], systemsSel = [], gripeSel = [], wantsSel = [];
     let multiSel = [];     // выбор текущего мультивыборного шага
     let askedIdx = [];     // какие вопросы реально задали (ветвление пропускает лишние)
     let liveChosen = [];
@@ -842,8 +850,9 @@
         <div class="k2-progress">${dots}</div>
         ${step>0?'<button class="k2-back" id="k2Back">← назад</button>':''}`;
       const box = $('#k2Opts', left);
-      s.opts.forEach(o=>{
+      s.opts.forEach((o,oi)=>{
         const b = el('button','k2-opt'+(multi?' multi':''), esc(o.t));
+        b.dataset.oi = oi;   // нужен, чтобы взаимоисключения (x/solo) могли снять галку с соседа
         b.onclick = multi ? (()=> toggleOpt(o, s, b)) : (()=> answer(o, s, b));
         box.appendChild(b);
       });
@@ -851,21 +860,43 @@
       if (step>0) $('#k2Back',left).onclick = goBack;
     }
 
-    /* ---- применить/снять эффект варианта (общее для одиночного и мульти) ---- */
+    /* ---- применить/снять эффект варианта (общее для одиночного и мульти, все измерения) ---- */
     function applyOpt(o, s, dir){
+      const set = (a, v) => { if(v==null) return; const i=a.indexOf(v);
+        if (dir>0){ if(i<0) a.push(v); } else if(i>=0){ a.splice(i,1); } };
       if (s.kind==='dom' && o.dom){ for(const d in o.dom){ domScore[d]=(domScore[d]||0)+dir*o.dom[d]; if(domScore[d]<=0) delete domScore[d]; } }
-      else if (s.kind==='systems'){
-        const i = systemsSel.indexOf(o.systems);
-        if (dir>0){ if(i<0) systemsSel.push(o.systems); } else if(i>=0){ systemsSel.splice(i,1); }
+      else if (s.kind==='lvl'){ if(dir>0) lvlSamples.push(o.lvl); else { const i=lvlSamples.lastIndexOf(o.lvl); if(i>=0) lvlSamples.splice(i,1); } }
+      else if (s.kind==='focus'){ set(focusSel, o.focus); }
+      else if (s.kind==='posture'){ set(postureSel, o.posture); set(postureKeySel, o.pk); }
+      else if (s.kind==='tools'){ set(toolSel, o.tool); set(habitSel, o.habit); }
+      else if (s.kind==='industry'){ set(industrySel, o.industry); }
+      else if (s.kind==='systems'){ set(systemsSel, o.systems); }
+      else if (s.kind==='gripe'){ set(gripeSel, o.gripe); }
+      else if (s.kind==='depth'){ set(wantsSel, o.want); }
+      else if (s.kind==='tone'){
+        if (o.tone!=null) tone = dir>0 ? o.tone : null;
+        if (o.brief!=null) brief = dir>0;
       }
     }
 
-    /* ---- мультивыбор: переключение с ЖИВЫМ узнаванием на каждый тап ---- */
+    /* ---- мультивыбор: переключение с ЖИВЫМ узнаванием на каждый тап ----
+       Модель знает про взаимоисключения: x — группа, solo — вариант, отменяющий все прочие. */
     function toggleOpt(o, s, btn){
       if (locked) return;
+      const box = $('#k2Opts', layer);
+      const drop = other => {
+        const j = multiSel.indexOf(other); if (j<0) return;
+        multiSel.splice(j,1); applyOpt(other, s, -1);
+        const b = box.querySelector('[data-oi="'+s.opts.indexOf(other)+'"]'); if(b) b.classList.remove('chosen');
+      };
       const i = multiSel.indexOf(o);
       if (i>=0){ multiSel.splice(i,1); btn.classList.remove('chosen'); applyOpt(o, s, -1); }
-      else { multiSel.push(o); btn.classList.add('chosen'); applyOpt(o, s, +1); }
+      else {
+        if (o.solo) multiSel.slice().forEach(drop);                              // «достаточно результата» гасит остальное
+        else multiSel.slice().filter(x=>x.solo).forEach(drop);                   // и наоборот
+        if (o.x) multiSel.slice().filter(x=>x.x===o.x).forEach(drop);            // «на ты» гасит «на вы»
+        multiSel.push(o); btn.classList.add('chosen'); applyOpt(o, s, +1);
+      }
       const n = multiSel.length;
       const cnt = $('#k2MCnt', layer); if(cnt) cnt.textContent = n ? `выбрано: ${n}` : 'ничего не выбрано';
       const nx = $('#k2Next', layer); if(nx) nx.disabled = !n;
@@ -882,22 +913,12 @@
       },260);
     }
 
-    /* ---- ответ (одиночный выбор) ---- */
+    /* ---- ответ (одиночный выбор; сейчас все вопросы мультивыборные — путь оставлен как безопасный) ---- */
     function answer(o, s, btn){
       if (locked) return; locked = true;
       btn.classList.add('chosen');
-      const rec = { kind:s.kind, qi:step, text:o.t, picks:[o] };
-      if (s.kind==='dom'){ applyOpt(o, s, +1); rec.dom=o.dom; }
-      else if (s.kind==='lvl'){ lvlSamples.push(o.lvl); rec.lvl=o.lvl; }
-      else if (s.kind==='focus'){ focus=o.focus; rec.focus=o.focus; }
-      else if (s.kind==='posture'){ posture=o.posture; postureKey=o.pk; rec.posture=o.posture; }
-      else if (s.kind==='tools'){ aiTool=o.tool; habit=o.habit; rec.tool=o.tool; }
-      else if (s.kind==='industry'){ industry=o.industry; rec.industry=o.industry; }
-      else if (s.kind==='systems'){ applyOpt(o, s, +1); rec.systems=o.systems; }
-      else if (s.kind==='tone'){ tone=o.tone; rec.tone=o.tone; }
-      else if (s.kind==='gripe'){ gripe=o.gripe; rec.gripe=o.gripe; }
-      else if (s.kind==='depth'){ depth=o.depth; rec.depth=o.depth; }
-      history[step] = rec;
+      applyOpt(o, s, +1);
+      history[step] = { kind:s.kind, qi:step, text:lowerFirst(o.t), picks:[o] };
       updateRight(o, s);
       setTimeout(()=>{
         locked = false;
@@ -911,18 +932,8 @@
       askedIdx = askedIdx.filter(i=> i<step);          // текущий больше не «задан»
       step = prevAskable(step-1); if(step<0){ step=0; }
       const h = history[step];
-      if (h){
-        const s = SURVEY[step];
-        // мульти и одиночный откатываются одинаково — через applyOpt по каждому выбору
-        if (h.picks && (h.kind==='dom' || h.kind==='systems')) h.picks.forEach(o=> applyOpt(o, s, -1));
-        else if (h.kind==='lvl'){ const i=lvlSamples.lastIndexOf(h.lvl); if(i>=0) lvlSamples.splice(i,1); }
-        else if (h.kind==='focus'){ focus=null; }
-        else if (h.kind==='posture'){ posture=null; postureKey=null; }
-        else if (h.kind==='tools'){ aiTool=null; habit=null; }
-        else if (h.kind==='industry'){ industry=null; }
-        else if (h.kind==='tone'){ tone=null; }
-        else if (h.kind==='gripe'){ gripe=null; }
-      }
+      // все измерения откатываются одинаково — applyOpt(-1) по каждому сделанному выбору
+      if (h && h.picks) h.picks.forEach(o=> applyOpt(o, SURVEY[step], -1));
       history.length = step;
       drawLeft();
       updateRight(null, null);
@@ -997,16 +1008,21 @@
         if (h.qi===2) return `дороже всего ошибиться ${t}`;
         return t;
       });
-      // профилирование: фокус, предпочтение, привычный ИИ — в портрет узнавания
-      if (focus)   echo.push(`больше всего времени у вас уходит на ${focus}`);
-      if (posture) echo.push(`вам ближе ${posture}`);
-      if (aiTool)  echo.push(`вы уже работаете в ${aiTool} — Среда встанет привычно`);
+      // профилирование в портрет узнавания — теперь наборами (мультивыбор везде)
+      const habit = habitSel.includes('chat') ? 'chat' : (habitSel.includes('office') ? 'office' : 'none');
+      if (focusSel.length)    echo.push(`больше всего времени у вас уходит на ${focusSel.join(' и ')}`);
+      if (postureSel.length)  echo.push(`вам ближе ${postureSel.join(', ')}`);
+      if (toolSel.length)     echo.push(`вы уже работаете в ${toolSel.join(', ')} — Среда встанет привычно`);
       else if (habit==='none') echo.push(`с ИИ вы ещё на «вы» — Среда проведёт за руку`);
-      if (industry) echo.push(`ваша компания — в ${industry}`);
-      if (systemsSel.length) echo.push(`вы живёте в ${systemsSel.join(', ')} — Среда к ним подключится`);
-      if (gripe)    echo.push(`больше всего вас бесит: ${gripe}`);
-      profile = { domain, level, roleTitle: role?role.t:null, depth, focus, posture, postureKey, aiTool, habit, industry,
-        systems: systemsSel.slice(), tone, gripe,
+      if (industrySel.length) echo.push(`ваша компания — в ${industrySel.join(' и ')}`);
+      if (systemsSel.length)  echo.push(`вы живёте в ${systemsSel.join(', ')} — Среда к ним подключится`);
+      if (gripeSel.length)    echo.push(`больше всего вас бесит: ${gripeSel.join(', ')}`);
+      if (wantsSel.length)    echo.push(`от результата вам важно видеть: ${wantsSel.map(w=>WANT_LABEL[w]||w).join(', ')}`);
+      profile = { domain, level, roleTitle: role?role.t:null,
+        wants: wantsSel.slice(), depth: wantsSel.includes('who') ? 1 : 0,   // depth оставлен производным для совместимости
+        focus: focusSel.slice(), posture: postureSel.slice(), postureKey: postureKeySel.slice(),
+        aiTool: toolSel.slice(), habit, industry: industrySel.slice(), systems: systemsSel.slice(),
+        tone, brief, gripe: gripeSel.slice(),
         chosen: assembleModules(domain, level), echo, baseCount: ROLES.length };
       save(profile);
       drawResult();
@@ -1151,6 +1167,19 @@
   // tone: реальное переключение микротекста (не ярлык «· на ты»)
   const T = (ty, vy) => (profile && profile.tone === 'ты') ? ty : vy;
 
+  // Мультивыбор ВЕЗДЕ → почти все измерения профиля стали наборами.
+  // arr() нормализует и старые профили (скаляры), и новые (массивы) — обратная совместимость.
+  const arr = v => v==null ? [] : (Array.isArray(v) ? v.filter(x=>x!=null) : [v]);
+  const userFocus    = () => arr(profile && profile.focus);
+  const userGripe    = () => arr(profile && profile.gripe);
+  const userIndustry = () => arr(profile && profile.industry);
+  const userPosture  = () => arr(profile && profile.postureKey);
+  const userTools    = () => arr(profile && profile.aiTool);
+  const userWants    = () => arr(profile && profile.wants);
+  const WANT_LABEL = { who:'кто сделал', prov:'из чего собран ответ', mem:'что он знает', audit:'след в аудите' };
+  // «что хочу видеть» реально включает секции карточки ЦС; если человек не отвечал — показываем всё (как раньше)
+  const wants = k => { const w = userWants(); return w.length ? w.includes(k) : true; };
+
   // Боль (focus + gripe) → канонические ТЕМЫ. Один словарь, обе оси кладутся в него.
   const PAIN_THEME = {
     // focus
@@ -1171,14 +1200,16 @@
     reports:  { surface:'staff' }, approvals:{ surface:'wait' }, routine:{ surface:'staff' },
     inbox:    { surface:'cand'  }, control:  { surface:'wait' }, infoloss:{ surface:'staff' }, rush:{ surface:'wait' },
   };
-  const userThemes = () => !profile ? [] : [...new Set([profile.focus, profile.gripe].map(v=>PAIN_THEME[v]).filter(Boolean))];
+  const userThemes = () => !profile ? [] : [...new Set(userFocus().concat(userGripe()).map(v=>PAIN_THEME[v]).filter(Boolean))];
 
   // Отрасль → регнорма. Маленькая ФАКТ-таблица (объективный факт, не выдуманный UI) — легитимна, как доменный контент.
   const INDUSTRY_REG = {
     'строительстве':'44-ФЗ · сметы · ГОСТ', 'финансах':'152-ФЗ · МСФО · ЦБ', 'ИТ':'ИБ · SLA · релизы',
     'производстве':'ОТиТБ · снабжение', 'торговле':'ЕГАИС · остатки', 'госсекторе':'223-ФЗ · 44-ФЗ · ПДн', 'услугах':'договоры · SLA клиента',
   };
-  const industryReg = () => (profile && profile.industry) ? (INDUSTRY_REG[profile.industry] || null) : null;
+  // отраслей может быть несколько (холдинг) → регнормы объединяем без дублей
+  const industryReg = () => { const r=[...new Set(userIndustry().map(i=>INDUSTRY_REG[i]).filter(Boolean).flatMap(s=>s.split(' · ')))];
+    return r.length ? r.join(' · ') : null; };
 
   // ЕДИНАЯ тегированная библиотека возможностей. Новую возможность добавляешь ОДИН раз с тегами —
   // она всплывает у любого совпавшего профиля. Ни одно измерение не выдумывает контент под ответ.
@@ -1198,12 +1229,13 @@
   ];
   // scoreProfile: соответствие вычисляется, а не перечисляется. Домен — гейт; отрасль/боль/системы — веса.
   function scoreCap(cap){
+    const inds = userIndustry();
     if(!cap.domains.includes('*') && !cap.domains.includes(profile.domain)) return 0;                 // не для этого домена
-    if(!cap.industries.includes('*') && !(profile.industry && cap.industries.includes(profile.industry))) return 0; // отраслевой ЦС для другой отрасли
+    if(!cap.industries.includes('*') && !inds.some(i=>cap.industries.includes(i))) return 0;          // отраслевой ЦС для другой отрасли
     let s=0;
-    userThemes().forEach(t=>{ if(cap.themes.includes(t)) s+=3; });                                    // совпала боль
-    if(profile.industry && cap.industries.includes(profile.industry)) s+=4;                           // точное попадание в отрасль
-    if(userSystems().some(sys=>cap.systems.includes(sys))) s+=1;                                      // есть хоть один источник (мультивыбор)
+    userThemes().forEach(t=>{ if(cap.themes.includes(t)) s+=3; });                                    // совпала боль (focus+gripe, мультивыбор)
+    if(inds.some(i=>cap.industries.includes(i))) s+=4;                                                // точное попадание в отрасль
+    if(userSystems().some(sys=>cap.systems.includes(sys))) s+=1;                                      // есть хоть один источник
     return s;
   }
   // топ-2 подходящих возможности сверх базового штата роли (дедуп по названию)
@@ -1251,9 +1283,11 @@
     userThemes().forEach(t=>{ const s=THEME[t]&&THEME[t].surface; if(s) score[s]+=2; });
     // posture теперь реально двигает акцент кабинета, а не только порядок чипа:
     // «сам» → делать (мои ЦС), «поручать/направлять» → принимать (ждёт меня + передачи)
-    if(profile.postureKey==='self') score.staff+=1;
-    else if(profile.postureKey==='delegate'){ score.wait+=1; score.flow+=1; }
-    else if(profile.postureKey==='direct'){ score.wait+=2; score.flow+=1; }
+    userPosture().forEach(pk=>{   // predпочтений может быть несколько — веса складываются
+      if(pk==='self') score.staff+=1;
+      else if(pk==='delegate'){ score.wait+=1; score.flow+=1; }
+      else if(pk==='direct'){ score.wait+=2; score.flow+=1; }
+    });
     const base=['wait','flow','meet','staff','cand'];
     return base.slice().sort((a,b)=> (score[b]-score[a]) || (base.indexOf(a)-base.indexOf(b)));
   }
@@ -1276,7 +1310,7 @@
     // профиль реально меняет СОСТАВ штата: топ-возможности из библиотеки под профиль (скоринг, не хардкод)
     const extra = matchedCaps(myStaffCache.map(c=>c.t)).map((cap,i)=>({
       id:'csm'+i, e:cap.e, t:cap.t, now:cap.now, busy:false, dep:profile.domain, matched:true,
-      tag: (profile.industry && cap.industries.includes(profile.industry)) ? 'под вашу отрасль' : 'под вашу боль',
+      tag: userIndustry().some(i=>cap.industries.includes(i)) ? 'под вашу отрасль' : 'под вашу боль',
     }));
     if (extra.length) myStaffCache = extra.concat(myStaffCache);
     return myStaffCache;
@@ -1483,7 +1517,10 @@
     // «Среда подобрала под вас» — содержание берётся из САМОЙ подобранной возможности (модель), не из канвы под ответ
     const mc = staff.find(c=>c.matched);
     if (mc){
-      const pain = profile.gripe || profile.focus;
+      // честно: называем ту боль, которую подобранный ЦС РЕАЛЬНО закрывает (а не первую попавшуюся)
+      const capThemes = (CAP_LIB.find(c=>c.t===mc.t) || {}).themes || [];
+      const pains = userGripe().concat(userFocus());
+      const pain = pains.find(p => capThemes.includes(PAIN_THEME[p])) || pains[0];
       const gb = el('div','k2-panel'); gb.style.borderColor='var(--k-gold)';
       gb.innerHTML = `<div class="k2-item"><div class="e">${mc.e}</div><div style="flex:1"><div class="b">Среда подобрала под ${T('тебя','вас')} — «${esc(mc.t)}»</div>
         <div class="m">${esc(mc.now)}${pain?` · закрывает ${T('твою','вашу')} боль: «${esc(pain)}»`:''}</div></div></div>`;
@@ -1874,19 +1911,23 @@
     w.appendChild(card);
     // Этапы текущей задачи (§7.2)
     if (cs.busy){ const lf=section('Этап текущей задачи',''); lf.appendChild(taskLifecycle(cs.stageIdx!=null?cs.stageIdx:2)); w.appendChild(lf); }
-    // Память — что знает (§4.2)
-    const mem=section('Что знает · память','');
-    const mp=el('div','k2-panel'); csMemory(cs).forEach(f=> mp.appendChild(rowEl('🧠', f, '', null))); mem.appendChild(mp); w.appendChild(mem);
+    // Память — что знает (§4.2). Показываем, только если человек этого хотел (ответ «что хочу видеть»)
+    if (wants('mem')){
+      const mem=section('Что знает · память','');
+      const mp=el('div','k2-panel'); csMemory(cs).forEach(f=> mp.appendChild(rowEl('🧠', f, '', null))); mem.appendChild(mp); w.appendChild(mem);
+    }
     // Расписание — регулярные/отложенные (§7.1)
     const sch=section('Регулярные и отложенные задачи', `${st.schedule.length}`);
     const spn=el('div','k2-panel'); if(!st.schedule.length) spn.appendChild(emptyEl('регулярных задач нет'));
     st.schedule.forEach(s=> spn.appendChild(rowEl(s.kind==='regular'?'🔁':'⏱', s.text, (s.kind==='regular'?'регулярно · ':'отложено · ')+s.when, null)));
     sch.appendChild(spn); w.appendChild(sch);
-    // Журнал — из чего собран ответ (провенанс, §4.2)
-    const jr=section('Журнал · из чего собран ответ','');
-    const jp=el('div','k2-panel'); st.journal.slice(0,5).forEach(e=>{ const it=el('div','k2-item');
-      it.innerHTML=`<div class="e">📓</div><div><div class="b">${esc(e.text)}</div><div class="m">на основе: ${esc((e.prov||[]).join(' · '))}</div></div>`; jp.appendChild(it); });
-    jr.appendChild(jp); w.appendChild(jr);
+    // Журнал — из чего собран ответ (провенанс, §4.2). Тоже по ответу «что хочу видеть»
+    if (wants('prov')){
+      const jr=section('Журнал · из чего собран ответ','');
+      const jp=el('div','k2-panel'); st.journal.slice(0,5).forEach(e=>{ const it=el('div','k2-item');
+        it.innerHTML=`<div class="e">📓</div><div><div class="b">${esc(e.text)}</div><div class="m">на основе: ${esc((e.prov||[]).join(' · '))}</div></div>`; jp.appendChild(it); });
+      jr.appendChild(jp); w.appendChild(jr);
+    }
     // Поставить задачу с типом (§7.1: разовая/отложенная/регулярная)
     const p=el('div','k2-panel'); p.innerHTML='<h3>Поставить задачу</h3>';
     const ta=el('textarea','k2-ta'); ta.placeholder=`Напр.: ${cs.now}…`; ta.style.minHeight='80px'; p.appendChild(ta);
@@ -2020,8 +2061,8 @@
     if (cockpit.view==='constructor') return 'Скажите, чего не хватает — добавлю из библиотеки или эскалирую админ-ЦС.';
     if (cockpit.height==='dept') return 'Высота отдела: вижу штат и передачи. Показать, у кого затык?';
     if (cockpit.height==='company') return 'Высота компании: обзор всей организации.';
-    return profile.focus
-      ? `${T('Собрал твой','Собрал ваш')} день к утру. Знаю, что больше всего у ${T('тебя','вас')} уходит на ${profile.focus} — держу это в приоритете.`
+    return userFocus().length
+      ? `${T('Собрал твой','Собрал ваш')} день к утру. Знаю, что больше всего у ${T('тебя','вас')} уходит на ${userFocus().join(' и ')} — держу это в приоритете.`
       : `${T('Собрал твой','Собрал ваш')} день к утру. ${T('Начни','Начните')} с того, что подсвечено — остальное ЦС держат сами.`;
   }
   function askAssistant(text){
@@ -2057,8 +2098,9 @@
     // habit → плотность подсказок: не пользовался ИИ → режим «за руку»
     const guided = profile.habit==='none';
     // подстройка под привычный инструмент + реальный тон
-    const habitNote = profile.aiTool ? `подстроен под ${profile.aiTool}` : (guided ? T('веду за руку','проведу за руку') : T('вижу, на что ты смотришь','вижу, на что вы смотрите'));
-    const inHint = profile.habit==='chat' ? `${T('Спроси','Спросите')} словами — как в ${profile.aiTool||'чате'}` : (guided ? T('Напиши, что нужно — я подскажу','Напишите, что нужно — я подскажу') : T('Поручи помощнику…','Поручите помощнику…'));
+    const tools = userTools();
+    const habitNote = tools.length ? `подстроен под ${tools.join(' и ')}` : (guided ? T('веду за руку','проведу за руку') : T('вижу, на что ты смотришь','вижу, на что вы смотрите'));
+    const inHint = profile.habit==='chat' ? `${T('Спроси','Спросите')} словами — как в ${tools[0]||'чате'}` : (guided ? T('Напиши, что нужно — я подскажу','Напишите, что нужно — я подскажу') : T('Поручи помощнику…','Поручите помощнику…'));
     // пустой/типовой штат ИЛИ новичок в ИИ → развилка «с чего начать»
     const synth = isSynthStaff();
     const startBlock = (synth || guided) ? `
@@ -2085,7 +2127,7 @@
     const chips=[{l:'Мой день',a:()=>goView('pulse')},{l:'Штат отдела',a:()=>{cockpit.height='dept';cockpit.view='pulse';renderStaffRail();renderCockpit();}},{l:'Чего не хватает',a:()=>goView('constructor')}];
     if(staff[0]){ const taskChip={l:`${T('Поставь','Поставить')} задачу `+staff[0].t.split(' ')[0].toLowerCase(),a:()=>goView('cs',staff[0].id)};
       // предпочтение «поручать» → действие постановки задачи выходит вперёд
-      if(profile.postureKey==='delegate') chips.unshift(taskChip); else chips.splice(1,0,taskChip); }
+      if(userPosture().includes('delegate')) chips.unshift(taskChip); else chips.splice(1,0,taskChip); }
     const chipBox=$('#asstChips',box);
     chips.slice(0, guided?2:4).forEach(c=>{ const b=el('button','k2-chip',esc(c.l)); b.onclick=c.a; chipBox.appendChild(b); });
     const inp=$('#k2AsstIn',box), gob=$('#k2AsstGo',box);
