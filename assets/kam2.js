@@ -657,6 +657,18 @@
     .k2-opt:focus-visible,.k2-cta:focus-visible,.k2-btn:focus-visible,.k2-nav-item:focus-visible,.k2-chip:focus-visible,
     .k2-tag.act:focus-visible,.k2-asst-rem:focus-visible,.k2-add:focus-visible,.k2-back:focus-visible,.k2-asst-input input:focus-visible{
       outline:2px solid var(--k-gold); outline-offset:2px; }
+    /* ---- brief «коротко, без воды»: не только текст — реально плотнее вёрстка ---- */
+    body.k2-brief .k2-wrap{ gap:12px; padding:16px 20px 44px; }
+    body.k2-brief .k2-item{ padding:8px 10px; }
+    body.k2-brief .k2-panel{ padding:12px 14px; }
+    body.k2-brief .k2-sec-h{ margin-bottom:6px; }
+    body.k2-brief .k2-empty{ padding:8px 2px; font-size:13px; }
+    body.k2-brief .k2-head h1{ font-size:21px; }
+    body.k2-brief .k2-wgrid{ gap:10px; }
+    body.k2-brief .k2-asst-ctx{ font-size:12.5px; line-height:1.4; }
+    body.k2-brief .k2-agent .mission{ font-size:13px; }
+    body.k2-brief .k2-loadbar{ display:none; }   /* декоративные полосы — вода */
+
     /* ---- отказ по границе полномочий (исполняется кодом, не памятка) ---- */
     .k2-deny{ margin-top:12px; border:1px solid var(--k-red,#e86a5e); border-radius:12px; padding:14px 16px;
       background:color-mix(in srgb, var(--k-red,#e86a5e) 10%, transparent); }
@@ -1166,6 +1178,8 @@
      не эхо в финале опроса, а живые изменения интерфейса и состава штата.   */
   // tone: реальное переключение микротекста (не ярлык «· на ты»)
   const T = (ty, vy) => (profile && profile.tone === 'ты') ? ty : vy;
+  // brief («коротко, без воды»): режет многословие по всему кабинету + уплотняет вёрстку (класс k2-brief)
+  const B = (short, long) => (profile && profile.brief) ? short : long;
 
   // Мультивыбор ВЕЗДЕ → почти все измерения профиля стали наборами.
   // arr() нормализует и старые профили (скаляры), и новые (массивы) — обратная совместимость.
@@ -1359,6 +1373,7 @@
     auditLog=[]; metrics=M0();
     cockpit.height='me'; cockpit.view='pulse'; cockpit.csId=null;
     layout=null; editMode=false; ensureLayout(); applyAccent();   // раскладка/цвет, собранные пользователем
+    document.body.classList.toggle('k2-brief', !!profile.brief);  // «коротко, без воды» — реально плотнее
     loadState();   // восстановить состояние роли, если было
     initLive();    // добить k2Live, если чистый вход
     // топбар когерентен продукту: профиль = распознанная роль
@@ -1371,7 +1386,7 @@
     if (!$('#k2Reset')){
       const r = el('button','k2-reset','↺ пересобрать Среду'); r.id='k2Reset';
       r.onclick = ()=>{ localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_STATE); localStorage.removeItem(LS_ONBOARD); localStorage.removeItem(LS_LAYOUT);
-        layout=null; editMode=false; applyAccent(); profile=null; active=null;
+        layout=null; editMode=false; applyAccent(); document.body.classList.remove('k2-brief'); profile=null; active=null;
         k2Live=null; myStaffCache=null; myAdditions=[]; Object.keys(specDone).forEach(k=>delete specDone[k]); Object.keys(csStore).forEach(k=>delete csStore[k]);
         location.hash=''; runSurvey(); };
       document.body.appendChild(r);
@@ -1511,8 +1526,10 @@
     const staff = myStaff();
     const mins = minsSince(8);
     const ago = mins<60 ? `${mins} мин назад` : `${Math.floor(mins/60)} ч назад`;
-    const when = mins>0 ? `собрал ${T('твой','ваш')} день в 08:00 по ${T('твоему','вашему')} времени · ${ago}` : `готовит ${T('твой','ваш')} день к 08:00 · сейчас ${nowHM()}`;
-    w.innerHTML = head('Пульс · сегодня', `${esc(profile.roleTitle||'')} · помощник ${when}`);
+    const when = mins>0
+      ? B(`день собран к 08:00 · ${ago}`, `помощник собрал ${T('твой','ваш')} день в 08:00 по ${T('твоему','вашему')} времени · ${ago}`)
+      : B(`день собирается к 08:00`, `помощник готовит ${T('твой','ваш')} день к 08:00 · сейчас ${nowHM()}`);
+    w.innerHTML = head('Пульс · сегодня', `${esc(profile.roleTitle||'')} · ${when}`);
     w.appendChild(sysStrip());
     // «Среда подобрала под вас» — содержание берётся из САМОЙ подобранной возможности (модель), не из канвы под ответ
     const mc = staff.find(c=>c.matched);
@@ -1522,15 +1539,16 @@
       const pains = userGripe().concat(userFocus());
       const pain = pains.find(p => capThemes.includes(PAIN_THEME[p])) || pains[0];
       const gb = el('div','k2-panel'); gb.style.borderColor='var(--k-gold)';
-      gb.innerHTML = `<div class="k2-item"><div class="e">${mc.e}</div><div style="flex:1"><div class="b">Среда подобрала под ${T('тебя','вас')} — «${esc(mc.t)}»</div>
-        <div class="m">${esc(mc.now)}${pain?` · закрывает ${T('твою','вашу')} боль: «${esc(pain)}»`:''}</div></div></div>`;
+      gb.innerHTML = `<div class="k2-item"><div class="e">${mc.e}</div><div style="flex:1">
+        <div class="b">${B('Подобрано', `Среда подобрала под ${T('тебя','вас')}`)} — «${esc(mc.t)}»</div>
+        <div class="m">${esc(mc.now)}${pain?B(` · «${esc(pain)}»`,` · закрывает ${T('твою','вашу')} боль: «${esc(pain)}»`):''}</div></div></div>`;
       w.appendChild(gb);
     }
     const src = systemSource();
     // 1. Ждёт меня — точки участия
     const waits = participationPoints();
     const s1 = section('Ждёт меня', waits.length?`${waits.length}`:'чисто');
-    if(!waits.length) s1.appendChild(emptyEl(`✓ Всё, что можно, ЦС сделали сами — от ${T('тебя','вас')} сейчас ничего не нужно.`));
+    if(!waits.length) s1.appendChild(emptyEl(B('✓ Чисто.', `✓ Всё, что можно, ЦС сделали сами — от ${T('тебя','вас')} сейчас ничего не нужно.`)));
     waits.forEach(p=> s1.appendChild(pointEl(p)));
     // 2. Встречи дня (под домен роли)
     const s2 = section('Встречи дня','');
@@ -1553,7 +1571,7 @@
       cand.innerHTML = `<div class="k2-item"><div class="e">✓</div><div><div class="b">Роздано ЦС</div><div class="m">задачи из звонка ушли в работу</div></div></div>`;
     } else {
       cand.innerHTML = `<div class="k2-item"><div class="e">🎧</div><div style="flex:1"><div class="b">${esc(dc.cand.text)}</div>
-        <div class="m">помощник разобрал транскрипт — ${T('подтверди или поправь','подтвердите или поправьте')}, прежде чем я раздам ЦС</div></div></div>
+        <div class="m">${B('разобрал звонок — '+T('подтверди','подтвердите'), `помощник разобрал транскрипт — ${T('подтверди или поправь','подтвердите или поправьте')}, прежде чем я раздам ЦС`)}</div></div></div>
         <div id="candBreak"></div>
         <div style="display:flex;gap:8px;margin-top:10px"><button class="k2-btn" id="candOk">Подтвердить и раздать</button><button class="k2-tag act" id="candFix">Поправить</button></div>`;
     }
@@ -1569,7 +1587,7 @@
     } else {
       fp.innerHTML = `<div class="k2-item"><div class="e">🔀</div><div style="flex:1">
         <div class="b">Ваш ход: ${esc(dc2.cand.draft.replace(/^Черновик\s*/,''))}</div>
-        <div class="m">пришло из смежного направления · ${T('примешь','примете')} — уйдёт дальше по цепочке, выход станет входом коллеге</div></div></div>
+        <div class="m">${B('из смежного направления', `пришло из смежного направления · ${T('примешь','примете')} — уйдёт дальше по цепочке, выход станет входом коллеге`)}</div></div></div>
         <div style="display:flex;gap:8px;margin-top:10px">
           <button class="k2-btn" id="flowGo">Принять и передать дальше ▶</button>
           <button class="k2-tag act" id="flowBack">↩ Вернуть автору</button>
@@ -1624,11 +1642,11 @@
     edit.onclick = ()=>{ editMode=!editMode; renderCockpit(); };
     bar.appendChild(edit);
     if (!editMode){
-      const hint = el('span','k2-cust-hint', layout.custom ? 'кабинет собран вами' : 'раскладку подобрала Среда — можно пересобрать');
+      const hint = el('span','k2-cust-hint', layout.custom ? B('собран вами','кабинет собран вами') : B('подобрано Средой','раскладку подобрала Среда — можно пересобрать'));
       bar.appendChild(hint);
       return bar;
     }
-    bar.appendChild(el('span','k2-cust-hint','тяните карточки · ⬌ ширина · ↕ низ карточки · ✕ скрыть'));
+    bar.appendChild(el('span','k2-cust-hint', B('тяните · ⬌ ширина · ↕ высота · ✕ скрыть','тяните карточки · ⬌ ширина · ↕ низ карточки · ✕ скрыть')));
     // цвет
     const sw = el('span','k2-sw');
     ACCENTS.forEach(c=>{ const i=el('i'); i.style.background=c;
@@ -1906,7 +1924,7 @@
     const ji=cs.ji||{}; const duties=(ji.duties||[]).slice(0,3).map(d=>`<li>${esc(d)}</li>`).join('');
     const card = el('div','k2-agent');
     card.innerHTML = `<div class="ah"><div class="e">${cs.e}</div><div><b>${esc(cs.t)}</b><small>${cs.busy?'⏳ ':''}${esc(cs.now)} · вы — его РЦС</small></div></div>
-      ${ji.mission?`<div class="mission">${esc(ji.mission)}</div>`:'<div class="mission">Цифровой сотрудник вашего штата. Ставьте задачу словами — сделает сам, вернёт на приёмку.</div>'}
+      ${ji.mission?`<div class="mission">${esc(ji.mission)}</div>`:`<div class="mission">${B('Ставьте задачу словами — вернёт на приёмку.','Цифровой сотрудник вашего штата. Ставьте задачу словами — сделает сам, вернёт на приёмку.')}</div>`}
       ${duties?`<ul>${duties}</ul>`:''}`;
     w.appendChild(card);
     // Этапы текущей задачи (§7.2)
@@ -1940,7 +1958,9 @@
     // ---- Границы полномочий: не памятка, а исполняемый код (§ДИ, допуски A/P/B) ----
     const gb = section('Границы полномочий · что он НЕ сделает', accessLetter());
     const gp = el('div','k2-panel');
-    gp.innerHTML = `<div class="k2-empty">Допуск роли — <b>${accessLetter()}</b> (${accessLabel()}). Проверьте сами: нажмите — и он откажет <b>до выполнения</b>, а попытка ляжет в аудит.</div>`;
+    gp.innerHTML = `<div class="k2-empty">${B(
+      `Допуск <b>${accessLetter()}</b> — ${accessLabel()}. Нажмите: откажет до выполнения, попытка в аудит.`,
+      `Допуск роли — <b>${accessLetter()}</b> (${accessLabel()}). Проверьте сами: нажмите — и он откажет <b>до выполнения</b>, а попытка ляжет в аудит.`)}</div>`;
     const gr = el('div'); gr.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-top:10px';
     BOUNDARIES.forEach(b=>{
       if (b.needs && profile.level >= b.needs) return;         // тем, кому можно, провокацию не показываем
@@ -1970,7 +1990,7 @@
   /* ---- АУДИТ-ЭКРАН: обещание «аудит-след: онлайн» с веществом + метрики пилота ---- */
   function renderAudit(w){
     w.innerHTML = `<button class="k2-back" id="auBack">← к Пульсу</button>` +
-      head('Аудит-след', 'каждая приёмка, возврат, санкция и отказ по границе — здесь. След неизменяем.');
+      head('Аудит-след', B('приёмки, возвраты, санкции, отказы. Неизменяем.', 'каждая приёмка, возврат, санкция и отказ по границе — здесь. След неизменяем.'));
     // Метрики пилота: то, что мы обещаем мерить с первого дня
     const m = initMetrics();
     const cleanPct = m.accepted ? Math.round(m.clean/m.accepted*100) : 0;
@@ -2057,13 +2077,17 @@
   /* ---- личный помощник = движок Пульса, сквозной (§5) ---- */
   function plural(n, one, few, many){ const a=n%10, b=n%100; if(a===1&&b!==11)return one; if(a>=2&&a<=4&&(b<10||b>=20))return few; return many; }
   function assistantObsC(){
-    if (cockpit.view==='cs'){ const cs=myStaff().find(x=>x.id===cockpit.csId); return cs?`Вы смотрите на «${cs.t}». Поставить ему задачу или посмотреть очередь?`:''; }
-    if (cockpit.view==='constructor') return 'Скажите, чего не хватает — добавлю из библиотеки или эскалирую админ-ЦС.';
-    if (cockpit.height==='dept') return 'Высота отдела: вижу штат и передачи. Показать, у кого затык?';
-    if (cockpit.height==='company') return 'Высота компании: обзор всей организации.';
+    if (cockpit.view==='cs'){ const cs=myStaff().find(x=>x.id===cockpit.csId);
+      return cs?B(`«${cs.t}» — поставить задачу?`, `Вы смотрите на «${cs.t}». Поставить ему задачу или посмотреть очередь?`):''; }
+    if (cockpit.view==='audit') return B('След действий.', 'Аудит: каждое решение и каждый отказ оставили след.');
+    if (cockpit.view==='constructor') return B('Чего не хватает?', 'Скажите, чего не хватает — добавлю из библиотеки или эскалирую админ-ЦС.');
+    if (cockpit.height==='dept') return B('Отдел: штат и передачи.', 'Высота отдела: вижу штат и передачи. Показать, у кого затык?');
+    if (cockpit.height==='company') return B('Компания: обзор.', 'Высота компании: обзор всей организации.');
     return userFocus().length
-      ? `${T('Собрал твой','Собрал ваш')} день к утру. Знаю, что больше всего у ${T('тебя','вас')} уходит на ${userFocus().join(' и ')} — держу это в приоритете.`
-      : `${T('Собрал твой','Собрал ваш')} день к утру. ${T('Начни','Начните')} с того, что подсвечено — остальное ЦС держат сами.`;
+      ? B(`День собран. Приоритет: ${userFocus().join(', ')}.`,
+          `${T('Собрал твой','Собрал ваш')} день к утру. Знаю, что больше всего у ${T('тебя','вас')} уходит на ${userFocus().join(' и ')} — держу это в приоритете.`)
+      : B('День собран. Начните с подсвеченного.',
+          `${T('Собрал твой','Собрал ваш')} день к утру. ${T('Начни','Начните')} с того, что подсвечено — остальное ЦС держат сами.`);
   }
   function askAssistant(text){
     const t=String(text).toLowerCase();
@@ -2077,7 +2101,8 @@
     // ЧЕСТНО: не делаем вид, что поняли. Врать «принял» хуже, чем назвать рамку.
     const out=$('#k2AsstOut');
     if(out){
-      out.innerHTML = `<div><b>${T('Не понял','Не понял')} — и не буду делать вид.</b> Свободные формулировки я начну разбирать, когда подключат модель (на пилоте). Пока веду по командам:</div>`;
+      out.innerHTML = `<div>${B('<b>Не понял.</b> Свободный ввод — на пилоте, с моделью. Команды:',
+        `<b>Не понял — и не буду делать вид.</b> Свободные формулировки я начну разбирать, когда подключат модель (на пилоте). Пока веду по командам:`)}</div>`;
       const chips = el('div'); chips.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-top:8px';
       [['мой день',()=>goView('pulse')],['аудит',()=>goView('audit')],['штат отдела',()=>{cockpit.height='dept';cockpit.view='pulse';renderStaffRail();renderCockpit();}],
        ['чего не хватает',()=>goView('constructor')]].forEach(([l,a])=>{
@@ -2107,13 +2132,13 @@
       <div class="k2-start">
         <div class="st-h">С чего начать</div>
         <div class="k2-start-btns">
-          <button class="k2-start-btn" id="stTask"><span class="si">⚡</span><span><span class="sl">${T('Поставь задачу словами','Поставить задачу словами')}</span><span class="ss">${T('опиши','опишите')} — рой разберёт и раздаст ЦС</span></span></button>
-          <button class="k2-start-btn" id="stStaff"><span class="si">🧩</span><span><span class="sl">${T('Собери штат под себя','Собрать штат под себя')}</span><span class="ss">нанять цифровых сотрудников из библиотеки</span></span></button>
+          <button class="k2-start-btn" id="stTask"><span class="si">⚡</span><span><span class="sl">${T('Поставь задачу словами','Поставить задачу словами')}</span>${B('',`<span class="ss">${T('опиши','опишите')} — рой разберёт и раздаст ЦС</span>`)}</span></button>
+          <button class="k2-start-btn" id="stStaff"><span class="si">🧩</span><span><span class="sl">${T('Собери штат под себя','Собрать штат под себя')}</span>${B('','<span class="ss">нанять цифровых сотрудников из библиотеки</span>')}</span></button>
         </div>
       </div>` : '';
     box.innerHTML = `
       <div class="k2-asst-h"><div class="av">🗓️</div>
-        <div><b>Личный помощник</b><small>ядро ${T('твоего','вашего')} дня · ${esc(habitNote)}</small></div></div>
+        <div><b>Личный помощник</b><small>${B('', `ядро ${T('твоего','вашего')} дня · `)}${esc(habitNote)}</small></div></div>
       <div class="k2-asst-ctx">${esc(assistantObsC())}</div>
       ${startBlock}
       <div class="k2-asst-sec">${T('Ждёт тебя','Ждёт вас')}</div>
