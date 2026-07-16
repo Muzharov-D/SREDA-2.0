@@ -467,7 +467,12 @@
     /* ---- база опроса ---- */
     /* перф: hero-bg.png весил 5.6МБ и стоял background-attachment:fixed (дорогая композиция,
        из-за неё вис рендер) — под 90% затемнением он был не виден. Оставлены градиенты. */
-    .k2-survey{ position:fixed; inset:0; z-index:120; display:flex; align-items:center; justify-content:center; padding:24px; overflow:auto;
+    /* ЛИНЗА ВИДИМОСТИ: align-items:center + overflow:auto = ловушка flexbox — контент выше контейнера
+       выпирает В ОБЕ стороны, но scrollTop не может быть < 0, и верхний оверфлоу недостижим НИЧЕМ.
+       На 1280×800 верх карточки результата стоял на -108px: эхо-портрет («Среда прочитала ваши ответы»)
+       был обрезан навсегда — то есть вау-момент показа. margin:auto центрирует так же, но при
+       переполнении честно упирается в верх. */
+    .k2-survey{ position:fixed; inset:0; z-index:120; display:flex; align-items:flex-start; justify-content:center; padding:24px; overflow:auto;
       background:
         radial-gradient(1100px 560px at 72% -12%, rgba(54,201,148,.10), transparent 62%),
         radial-gradient(900px 500px at 20% 110%, rgba(54,201,148,.05), transparent 60%),
@@ -489,7 +494,7 @@
     @keyframes k2materialize{ 0%{opacity:1; transform:scale(1)} 100%{opacity:0; transform:scale(1.05)} }
     @keyframes k2fadein{ from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
     .k2-shell.k2-enter{ animation:k2fadein .55s cubic-bezier(.22,1,.36,1); }
-    .k2-card{ width:min(720px,94vw); background:var(--k-panel); border:1px solid var(--k-line); border-radius:18px;
+    .k2-card{ width:min(720px,94vw); margin:auto; background:var(--k-panel); border:1px solid var(--k-line); border-radius:18px;
       padding:38px 40px 30px; box-shadow:var(--k-sh-xl); animation:k2rise .5s cubic-bezier(.22,1,.36,1); }
     .k2-eyebrow{ color:var(--k-gold); font-size:11px; letter-spacing:.16em; text-transform:uppercase; font-weight:700; }
     .k2-q{ font-size:24px; line-height:1.26; font-weight:750; margin:14px 0 22px; letter-spacing:-.015em; color:var(--k-txt); }
@@ -610,6 +615,9 @@
     .k2-chip{ display:inline-flex; gap:6px; align-items:center; background:var(--k-panel2); border:1px solid var(--k-line); border-radius:999px; padding:6px 12px; font-size:12.5px; margin:4px 6px 0 0; cursor:pointer; }
     .k2-chip:hover{ border-color:var(--k-gold); }
     .k2-chip.on{ border-color:var(--k-gold); color:var(--k-gold); background:var(--k-soft); }
+    /* ЛИНЗА ВИДИМОСТИ: fixed-кнопка сноса накрывала нижнюю половину «+ штат» в скроллящемся рейле —
+       промах = мгновенная потеря профиля/штата/раскладки. Резервируем место под неё в конце рейла. */
+    #nav{ padding-bottom:64px; }
     .k2-reset{ position:fixed; bottom:16px; left:16px; z-index:60; background:var(--k-panel); border:1px solid var(--k-line); color:var(--k-dim); font-size:12px; border-radius:999px; padding:8px 14px; cursor:pointer; }
     .k2-reset:hover{ color:var(--k-txt); border-color:var(--k-gold); }
     .k2-agent{ background:var(--k-panel); border:1px solid var(--k-line); border-radius:14px; padding:16px; margin-bottom:12px; }
@@ -1429,7 +1437,10 @@
     const cmd = $('#cmdBtn'); if (cmd){ cmd.onclick = (e)=>{ e.preventDefault(); goView('pulse'); const i=$('#k2AsstIn'); if(i){ i.focus(); i.scrollIntoView({block:'center'}); } }; }
     if (!$('#k2Reset')){
       const r = el('button','k2-reset','↺ пересобрать Среду'); r.id='k2Reset';
-      r.onclick = ()=>{ localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_STATE); localStorage.removeItem(LS_ONBOARD); localStorage.removeItem(LS_LAYOUT);
+      r.onclick = ()=>{
+        // Необратимый снос всего (профиль, штат, раскладка, аудит) — второй слой защиты от промаха мимо «+ штат»
+        if(!confirm('Пересобрать Среду с нуля?\n\nПрофиль, набранный штат, раскладка кабинета и аудит-след будут удалены безвозвратно.')) return;
+        localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_STATE); localStorage.removeItem(LS_ONBOARD); localStorage.removeItem(LS_LAYOUT);
         layout=null; editMode=false; applyAccent(); document.body.classList.remove('k2-brief'); profile=null; active=null;
         k2Live=null; myStaffCache=null; myAdditions=[]; Object.keys(specDone).forEach(k=>delete specDone[k]); Object.keys(csStore).forEach(k=>delete csStore[k]);
         location.hash=''; runSurvey(); };
@@ -1469,8 +1480,10 @@
     const ring = el('div','k2-coach-ring'); const tip = el('div','k2-coach-tip');
     document.body.appendChild(ring); document.body.appendChild(tip);
     let i = 0;
+    const scrollHosts = [document, $('#stage'), $('#nav')].filter(Boolean);   // всё, что может уехать под кольцом
     const finish = ()=>{ try{ localStorage.setItem(LS_ONBOARD,'1'); }catch(e){}
-      ring.remove(); tip.remove(); document.removeEventListener('keydown', onKey); window.removeEventListener('resize', onResize); };
+      ring.remove(); tip.remove(); document.removeEventListener('keydown', onKey); window.removeEventListener('resize', onResize);
+      scrollHosts.forEach(h=> h.removeEventListener('scroll', onResize)); };
     function onKey(e){ if(e.key==='Escape'){ finish(); } else if(e.key==='Enter'){ e.preventDefault(); adv(); } }
     function onResize(){ if(document.body.contains(ring)) draw(); }
     function adv(){ if(i>=steps.length-1){ finish(); return; } i++; draw(); }
@@ -1500,6 +1513,9 @@
     }
     document.addEventListener('keydown', onKey);
     window.addEventListener('resize', onResize, {passive:true});
+    // ЛИНЗА ВИДИМОСТИ (регрессия от #stage{overflow-y:auto}): кольцо позиционируется по
+    // getBoundingClientRect, а #stage теперь скроллится — при прокрутке подсветка отставала от зоны.
+    scrollHosts.forEach(h=> h.addEventListener('scroll', onResize, {passive:true}));
     draw();
   }
   function goView(view, csId){ cockpit.view=view; cockpit.csId=csId||null;
@@ -2024,6 +2040,17 @@
     box.classList.remove('pop'); void box.offsetWidth; box.classList.add('pop');
     const a = el('button','k2-tag act','Открыть аудит →'); a.style.marginTop='10px';
     a.onclick = ()=> goView('audit'); box.appendChild(a);
+    // ЛИНЗА ВИДИМОСТИ: если кнопка-провокация была у нижней кромки, панель отказа рендерилась ЗА экраном —
+    // 0 видимых пикселей. Продукт зовёт «нажмите и убедитесь», а в ответ тишина = «кнопка не работает».
+    // Скроллим здесь, чтобы работало на ОБОИХ путях (кнопки и текст задачи).
+    // behavior:'smooth' крутится через rAF — а он не тикает в фоновой вкладке (та же грабля, что была
+    // с онбордингом). Скроллим мгновенно и вручную: надёжно везде.
+    const st = $('#stage');
+    if (st){
+      const br = box.getBoundingClientRect(), sr = st.getBoundingClientRect();
+      const delta = (br.top - sr.top) - (st.clientHeight/2 - br.height/2);
+      st.scrollTop = Math.max(0, st.scrollTop + delta);
+    } else { try{ box.scrollIntoView({block:'center'}); }catch(e){} }
   }
 
   /* ---- ЦС: память + журнал + расписание + постановка задачи (§4.2,§7.1,§7.2) ---- */
@@ -2092,7 +2119,7 @@
       // и это на том же экране, где блок «Границы полномочий». Теперь проверка настоящая: то же правило,
       // что и в BOUNDARIES, применяется к тексту задачи ДО выполнения.
       const bad = admissibility(t);
-      if(bad){ denyAction(cs, bad, gp); gp.scrollIntoView({block:'center'}); return; }
+      if(bad){ denyAction(cs, bad, gp); return; }   // скролл теперь внутри denyAction — работает на обоих путях
       if(kind==='now'){ go.disabled=true; go.textContent='ставлю…'; if(!cs._idle) cs._idle=cs.now; cs.busy=true; cs.now='выполняет: '+t; cs.stageIdx=2;
         bump('tasks'); k2Audit('Задача поставлена ЦС', `${cs.t}: ${t}`, 'ok');
         st.journal.unshift({text:'Взял задачу: '+t, prov:['поставлено РЦС · '+nowHM(),`проверка допустимости: пройдена (допуск ${accessLetter()}, границы ДИ)`,'контекст роли']});
