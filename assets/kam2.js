@@ -34,6 +34,11 @@
     const base = (dep && ORG.digital && Array.isArray(ORG.digital[dep]))
       ? ORG.digital[dep].slice(0,4).map(a=>({ e:a.emoji||'🤖', t:a.title||a.name, now:a.now||'на связи' }))
       : (SYNTH_STAFF[domain] || [{e:'🤖',t:'Цифровой двойник',now:'на связи'}]).map(s=>({e:s.e,t:s.t,now:s.now}));
+    // РОЙ №2: превью показывало ТОЛЬКО базу, а myStaff добавляет ещё matchedCaps → финал обещал «3 сотрудника»,
+    // в рейле оказывалось 5. Обещание и факт должны совпадать — добираем те же подобранные возможности.
+    if (profile && profile.domain === domain){
+      matchedCaps(base.map(c=>c.t)).forEach(cap=> base.unshift({ e:cap.e, t:cap.t, now:cap.now }));
+    }
     return base;
   }
   const load = () => { try { return JSON.parse(localStorage.getItem(LS_KEY)||'null'); } catch(e){ return null; } };
@@ -1068,11 +1073,9 @@
       const echoHtml = (profile.echo||[]).map((line,i)=>
         `<div class="k2-echo-line" style="animation-delay:${(0.2+i*0.55).toFixed(2)}s">${esc(line)}</div>`).join('');
       const vDelay = (0.2 + (profile.echo||[]).length*0.55 + 0.25).toFixed(2);
-      // превью цифрового штата, который соберёт кокпит (а не мёртвые модули)
-      const dep0 = DOMAIN_DEPT[dom];
-      const staffPrev = (dep0 && ORG.digital && Array.isArray(ORG.digital[dep0]))
-        ? ORG.digital[dep0].slice(0,4).map(a=>({e:a.emoji||'🤖', t:a.title||a.name, now:a.now||'на связи'}))
-        : (SYNTH_STAFF[dom]||[{e:'🤖',t:'Цифровой двойник',now:'на связи'}]);
+      // РОЙ №2: здесь была СВОЯ копия логики штата без matchedCaps → финал обещал «3 сотрудника», а в рейле
+      // оказывалось 5. Один источник правды с кабинетом: previewStaff (профиль уже собран → добирает подобранных).
+      const staffPrev = previewStaff(dom);
       const mods = staffPrev.map(cs=>
         `<div class="k2-mod"><div class="i">${cs.e}</div><div class="n">${esc(cs.t)}</div><div class="h">${esc(cs.now)}</div></div>`).join('');
       c.innerHTML = `
@@ -1084,7 +1087,7 @@
           <div class="k2-meta">
             ${dom?`<div class="k2-pill">${DOMAINS[dom].icon} <b>${esc(DOMAINS[dom].label)}</b></div>`:''}
             <div class="k2-pill">🎚️ <b>${esc(LEVELS[profile.level])}</b></div>
-            <div class="k2-pill">🧬 одна из <b>${profile.baseCount}</b> ролей, что различает Среда</div>
+            <div class="k2-pill">🧬 одна из <b>${profile.baseCount}</b> ролей в библиотеке Среды</div>
           </div>
           <div class="k2-sub">Среда укомплектовала под вашу роль цифровой штат — ${staffPrev.length} ${plural(staffPrev.length,'сотрудник','сотрудника','сотрудников')}. Ставьте им задачи, а Пульс соберёт ваш день. Не вы? «↺ пересобрать» внизу.</div>
           <div class="k2-picked">${mods}</div>
@@ -1100,7 +1103,8 @@
         const box = $('#k2Near'); if(!box) return;
         if (box.dataset.open){ box.innerHTML=''; delete box.dataset.open; return; }
         box.dataset.open='1';
-        const near = nearbyRoles(profile.domain, profile.level, profile.roleTitle);
+        // домены, которые реально конкурировали в ответах (а не первые попавшиеся в массиве)
+        const near = nearbyRoles(profile.domain, profile.level, profile.roleTitle, topDomains(domScore, 5));
         box.innerHTML = `<div class="k2-near-h">Кто вы на самом деле? Среда пересоберётся под выбранную роль:</div>`;
         const g = el('div','k2-near');
         near.forEach(r=>{
@@ -1324,6 +1328,8 @@
   const hex2rgb = h => { const s=String(h).replace('#',''); const n=parseInt(s.length===3?s.split('').map(c=>c+c).join(''):s,16);
     return [(n>>16)&255,(n>>8)&255,n&255]; };
   const luma = h => { try{ const [r,g,b]=hex2rgb(h); return (0.2126*r+0.7152*g+0.0722*b)/255; }catch(e){ return 0.5; } };
+  // акцентом красится и ТЕКСТ на тёмном фоне — слишком тёмный цвет делает его невидимым. Поднимаем до читаемого.
+  const ensureReadable = h => { let c=h, guard=0; while(luma(c) < 0.42 && guard++ < 12) c = shade(c, 0.14); return c; };
   const shade = (h, amt) => { try{ const [r,g,b]=hex2rgb(h);
     const f = v => Math.round(Math.min(255, v + (255-v)*amt));
     return '#'+[f(r),f(g),f(b)].map(v=>v.toString(16).padStart(2,'0')).join(''); }catch(e){ return h; } };
@@ -1393,6 +1399,7 @@
           else if(cp.height==='dept') cockpit.height='dept';
           if(cp.view==='cs' && cp.csId && (myStaffCache||[]).some(c=>c.id===cp.csId)){ cockpit.view='cs'; cockpit.csId=cp.csId; }
           else if(cp.view==='constructor') cockpit.view='constructor';
+          else if(cp.view==='audit') cockpit.view='audit';   // РОЙ №2: persist сохранял 'audit', а whitelist его не знал → reload выкидывал на Пульс
           else if(cp.view==='onboard' && canCompany()) cockpit.view='onboard';
         }
         // восстановить счётчик id выше сохранённого max, иначе новые id столкнутся с восстановленными
@@ -1495,7 +1502,9 @@
     window.addEventListener('resize', onResize, {passive:true});
     draw();
   }
-  function goView(view, csId){ cockpit.view=view; cockpit.csId=csId||null; renderStaffRail(); renderCockpit(); }
+  function goView(view, csId){ cockpit.view=view; cockpit.csId=csId||null;
+    const st=$('#stage'); if(st) st.scrollTop=0;   // смена экрана — единственный законный повод сбросить скролл
+    renderStaffRail(); renderCockpit(); }
   /* совместимость: старые модульные функции (не в навигации кокпита) деградируют мягко */
   function renderActive(){ renderCockpit(); }
   function goModule(){ goView('pulse'); }
@@ -1525,7 +1534,12 @@
 
   /* ---- центр: кокпит (шапка высоты + Пульс/ЦС/конструктор + ассистент) ---- */
   function renderCockpit(){
-    const stage = $('#stage'); if(!stage) return; stage.innerHTML='';
+    const stage = $('#stage'); if(!stage) return;
+    // РОЙ №2 (регрессия от #stage{overflow-y:auto}): renderCockpit пересобирает stage на КАЖДОЕ действие
+    // (приёмка, санкция, ширина, скрыть, конец drag) — без этого зрителя телепортировало к шапке,
+    // и результат его же клика оставался за сгибом. Позицию сбрасывает только смена экрана (goView).
+    const keepScroll = stage.scrollTop;
+    stage.innerHTML='';
     const shell = el('div','k2-shell'+(firstEnter?' k2-enter':'')); firstEnter=false;
     const main  = el('div','k2-main');
     // шапка высоты (только для Пульса)
@@ -1544,6 +1558,7 @@
     }
     renderAssistant(aside);
     const ann=$('#routeAnnounce'); if(ann) ann.textContent='Пульс';
+    stage.scrollTop = keepScroll;   // вернуть зрителя туда, где он был (см. keepScroll выше)
     persist();   // готовый продукт помнит состояние
   }
   function heightBar(){
@@ -1552,7 +1567,11 @@
     heights.forEach(([h,lab])=>{
       const locked = (h==='company' && !canCompany());
       const b = el('button','k2-height'+(cockpit.height===h?' on':'')+(locked?' locked':''), lab+(locked?' 🔒':''));
-      b.onclick = ()=>{ if(locked){ cabToast('Высота «Компания» — только Оркестратору (директор/владелец)'); return; } cockpit.height=h; renderCockpit(); };
+      b.onclick = ()=>{ if(locked){
+          // РОЙ №2: НАСТОЯЩИЙ отказ по допуску шёл без следа и без метрики — логировалась только витрина в карточке ЦС
+          bump('denied'); k2Audit('Отказ по допуску', 'Высота «Компания» · допуск '+accessLetter(), 'deny'); persist();
+          cabToast('⛔ Высота «Компания» — только Оркестратору (директор/владелец). Попытка в аудите'); return; }
+        cockpit.height=h; renderCockpit(); };
       bar.appendChild(b);
     });
     return bar;
@@ -1592,13 +1611,14 @@
     dcontent().meet.forEach(m=> s2.appendChild(rowEl('📅', `${m[0]} · ${m[1]}`, m[2], null)));
     // 3. Мои ЦС в работе
     const s3 = section('Мои ЦС в работе', `${staff.length}`);
-    staff.forEach((cs,i)=>{ const pct=cs.busy?45:[72,60,88,54][i%4];
+    // РОЙ №2: полоска «загрузки» рисовалась из позиции в массиве ([72,60,88,54][i%4]) и выдавалась за живую —
+    // занятый ЦС показывал МЕНЬШЕ свободного. Числа с потолка убраны: показываем реальный этап задачи.
+    staff.forEach((cs,i)=>{
       const sc=csState(cs).schedule[0];
       const r=el('div','k2-item'); r.style.cursor='pointer';
       const tagHtml = cs.tag?` · <span style="color:var(--k-gold)">${esc(cs.tag)}</span>`:'';
       const srcHtml = src?` · ${esc(src)}`:'';   // systems → провенанс-источник на карточке
-      r.innerHTML=`<div class="e">${cs.e}</div><div style="flex:1"><div class="b">${esc(cs.t)}${tagHtml}${cs.busy?` · <span style="color:var(--k-gold)">этап: ${esc(TASK_STAGES[cs.stageIdx!=null?cs.stageIdx:2])}</span>`:''}</div><div class="m">${esc(cs.now)}${srcHtml}${sc?` · 🔁 ${esc(sc.text)} ${esc(sc.when)}`:''}</div>
-        <div class="k2-loadbar" style="max-width:220px"><i style="width:${pct}%;background:var(--k-gold)"></i></div></div>`;
+      r.innerHTML=`<div class="e">${cs.e}</div><div style="flex:1"><div class="b">${esc(cs.t)}${tagHtml}${cs.busy?` · <span style="color:var(--k-gold)">этап: ${esc(TASK_STAGES[cs.stageIdx!=null?cs.stageIdx:2])}</span>`:` · <span style="color:var(--k-dim)">свободен</span>`}</div><div class="m">${esc(cs.now)}${srcHtml}${sc?` · 🔁 ${esc(sc.text)} ${esc(sc.when)}`:''}</div></div>`;
       r.onclick=()=>goView('cs', cs.id); s3.appendChild(r); });
     // 4. Предложено помощником — кандидаты из Zoom/почты (§6), под домен, одноразово
     const dc = dcontent();
@@ -1614,9 +1634,11 @@
     }
     s4.appendChild(cand);
     // 5. Передачи (слой №3: выход одного = вход другого) — этого в кокпите не было
-    const s5 = section('Передачи', k2Live.flow && k2Live.flow.mine ? 'ваш ход' : '');
-    const fp = el('div','k2-panel');
+    // РОЙ №2: flow читался на строку РАНЬШЕ, чем создавался → бейдж «ваш ход» не показывался при первом входе
+    // и самозарождался после первого же клика. Создаём до чтения.
     if (!k2Live.flow) k2Live.flow = { mine:true, done:false };
+    const s5 = section('Передачи', k2Live.flow.mine ? 'ваш ход' : '');
+    const fp = el('div','k2-panel');
     const dc2 = dcontent();
     if (k2Live.flow.done){
       fp.innerHTML = `<div class="k2-item"><div class="e">✓</div><div><div class="b">Передано дальше</div>
@@ -1693,7 +1715,9 @@
       // хотя человек ничего не двигал. Цвет просто сохраняем.
       i.title='Цвет акцента'; i.onclick=()=>{ layout.accent=c; saveLayout(); applyAccent(); renderCockpit(); }; sw.appendChild(i); });
     const pick = el('input'); pick.type='color'; pick.value = layout.accent || '#36c994'; pick.title='Свой цвет';
-    pick.oninput = (e)=>{ layout.accent=e.target.value; saveLayout(); applyAccent(); };
+    // РОЙ №2: пипетка не ограничивалась по яркости — очень тёмный акцент делал ВЕСЬ акцентный текст невидимым
+    // (акцентом красится и текст, не только фон) и переживал перезагрузку. Поднимаем яркость до читаемой.
+    pick.oninput = (e)=>{ layout.accent = ensureReadable(e.target.value); saveLayout(); applyAccent(); };
     sw.appendChild(pick); bar.appendChild(sw);
     // скрытые → вернуть
     if (layout.hidden.length){
@@ -1704,7 +1728,10 @@
       bar.appendChild(hc);
     }
     const rst = el('button','k2-cust-btn','↺ вернуть подобранное Средой');
-    rst.onclick = ()=>{ layout = defaultLayout(); try{ localStorage.removeItem(LS_LAYOUT); }catch(e){} applyAccent(); renderCockpit(); cabToast('↺ Вернул раскладку, которую подобрала Среда'); };
+    // РОЙ №2: сброс молча стирал и ЦВЕТ, хотя правка №14 специально развела цвет и раскладку — цвет не раскладка.
+    rst.onclick = ()=>{ const keepAccent = layout.accent;
+      layout = defaultLayout(); layout.accent = keepAccent; saveLayout(); applyAccent(); renderCockpit();
+      cabToast('↺ Вернул раскладку, которую подобрала Среда (цвет оставил)'); };
     bar.appendChild(rst);
     return bar;
   }
@@ -1816,7 +1843,10 @@
     const mine = id => { const s=String(id); return s.indexOf('apn')===0 || s.indexOf('drt')===0 || s.indexOf('drc')===0; };
     const apprOk  = a => orch || mine(a.id) || a.dept===myLabel;
     const draftOk = d => orch || mine(d.id) || d.dept===myDep || deptLabel(d.dept)===myLabel;
-    liveApprovals().filter(apprOk).forEach(a=> pts.push({ kind:'sanction', id:a.id, icon:'🔴', label:'Разрешить', title:a.task, meta:`${a.dept} · ${a.cost} · риск ${a.risk}` }));
+    // РОЙ №2: единственное место, где dept шёл БЕЗ deptLabel — из-за этого мои же addApproval (эскалация,
+    // раздача из звонка) с dept=ключом домена рисовали на проекторе «… · finance · риск low».
+    // deptLabel безопасен и для готовых меток (вернёт как есть), поэтому лечим на выходе — закрывает и будущие источники.
+    liveApprovals().filter(apprOk).forEach(a=> pts.push({ kind:'sanction', id:a.id, icon:'🔴', label:'Разрешить', title:a.task, meta:`${deptLabel(a.dept)} · ${a.cost} · риск ${a.risk}` }));
     liveDrafts().filter(draftOk).slice(0,6).forEach(d=> pts.push({ kind:'intake', id:d.id, icon:'🔴', label:'Принять', title:d.text, meta:`${deptLabel(d.dept)}${profile.depth?' · '+d.who:''}` }));
     (k2Live.clarify||[]).forEach(c=> pts.push({ kind:'clarify', id:c.id, icon:'🟡', label:'Ответить', title:c.text, meta:c.who }));
     (k2Live.coord||[]).forEach(c=> pts.push({ kind:'coord', id:c.id, icon:'🟡', label:'Согласовать', title:c.text, meta:c.who }));
@@ -1831,11 +1861,15 @@
     ok.onclick=()=> animateOut(it, ()=>{
       if(p.kind==='intake') acceptDraft(p.id);
       else if(p.kind==='sanction') resolveApproval(p.id,true);
-      else if(p.kind==='coord'){ k2Live.coord=(k2Live.coord||[]).filter(c=>c.id!==p.id); cabToast('✓ Согласовано — ваш ЦС подключён к задаче'); refreshLive(); }
-      else { k2Live.clarify=(k2Live.clarify||[]).filter(c=>c.id!==p.id); cabToast('✓ Ответ отправлен ЦС'); refreshLive(); }
+      // РОЙ №2: «согласование» и «уточнение» решались БЕЗ следа и без метрики, хотя экран аудита заявляет полноту
+      else if(p.kind==='coord'){ k2Live.coord=(k2Live.coord||[]).filter(c=>c.id!==p.id);
+        k2Audit('Согласование выдано', p.title, 'ok'); cabToast('✓ Согласовано — ваш ЦС подключён к задаче'); refreshLive(); }
+      else { k2Live.clarify=(k2Live.clarify||[]).filter(c=>c.id!==p.id);
+        k2Audit('Уточнение: ответ дан ЦС', p.title, 'ok'); cabToast('✓ Ответ отправлен ЦС'); refreshLive(); }
     });
     if(p.kind==='sanction'){ it.querySelectorAll('.act')[1].onclick=()=> animateOut(it, ()=> resolveApproval(p.id,false)); }
-    else if(p.kind==='coord'){ it.querySelectorAll('.act')[1].onclick=()=> animateOut(it, ()=>{ k2Live.coord=(k2Live.coord||[]).filter(c=>c.id!==p.id); cabToast('✗ Отклонено — ваш ЦС не подключён'); refreshLive(); }); }
+    else if(p.kind==='coord'){ it.querySelectorAll('.act')[1].onclick=()=> animateOut(it, ()=>{ k2Live.coord=(k2Live.coord||[]).filter(c=>c.id!==p.id);
+      k2Audit('Согласование отклонено', p.title, 'deny'); cabToast('✗ Отклонено — ваш ЦС не подключён'); refreshLive(); }); }
     else if(p.kind==='intake'){ it.querySelectorAll('.act')[1].onclick=()=> animateOut(it, ()=> rejectDraft(p.id)); }
     return it;
   }
@@ -1925,11 +1959,19 @@
   }
 
   // соседние роли: тот же домен (другие уровни) + соседние домены на том же уровне
-  function nearbyRoles(domain, level, exclude){
+  // РОЙ №2: соседей из ЧУЖИХ доменов брали просто первыми по порядку массива ROLES — из-за этого
+  // разработчику предлагали трёх бухгалтеров. Соседи должны быть из доменов, которые РЕАЛЬНО конкурировали
+  // в ответах (altDomains — топ по domScore), иначе это не «ближайшие», а случайные.
+  function nearbyRoles(domain, level, exclude, altDomains){
     const out=[], seen=new Set([exclude]);
     const push=r=>{ if(r && !seen.has(r.t)){ seen.add(r.t); out.push(r); } };
+    // 1) тот же домен, соседние уровни — самые вероятные
     ROLES.filter(r=>r.d===domain && r.l!==level).sort((a,b)=>Math.abs(a.l-level)-Math.abs(b.l-level)).slice(0,3).forEach(push);
-    ROLES.filter(r=>r.d!==domain && r.l===level).slice(0,4).forEach(push);
+    // 2) домены, которые competed в опросе, на том же уровне
+    (altDomains||[]).filter(d=>d!==domain).forEach(d=>{
+      ROLES.filter(r=>r.d===d && r.l===level).slice(0,1).forEach(push);
+      if(out.length<6) ROLES.filter(r=>r.d===d && Math.abs(r.l-level)===1).slice(0,1).forEach(push);
+    });
     return out.slice(0,6);
   }
 
@@ -1948,9 +1990,31 @@
     { label:'Удалить журнал задачи', why:'аудит неизменяем',
       rule:'След аудита неизменяем по построению — его нельзя стереть ни человеку, ни цифровому сотруднику. Прозрачность — свойство среды, а не настройка.' },
   ];
+  // Настоящая проверка допустимости текста задачи: те же границы, что и в BOUNDARIES.
+  // Возвращает нарушенную границу или null. Без неё журнал врал, что проверка «пройдена».
+  const ADMIT = [
+    { re:/отправ|разошл|пошли|направь/i, needsNone:true, label:'Отправить клиенту самому', why:'внешнее действие необратимо',
+      rule:'Отправляет человек. У цифрового сотрудника такой кнопки нет по построению — это граница ДИ, исполняемая кодом. Задача не принята.' },
+    { re:/удали|сотри|очисти.*(журнал|аудит|след)/i, needsNone:true, label:'Удалить журнал задачи', why:'аудит неизменяем',
+      rule:'След аудита нельзя стереть ни человеку, ни цифровому сотруднику. Задача не принята.' },
+    { re:/(все|чуж|весь отдел).*(сделк|контракт)|сделки отдела/i, needs:3, label:'Показать все сделки отдела', why:'допуск B — только свои объекты',
+      rule:'Ваш допуск B (только своё). Запрос отклонён ДО выполнения, данные не читались.' },
+    { re:/финанс.*(сводк|отч[её]т компании)|сводка по компании/i, needs:4, label:'Открыть финансовую сводку', why:'сводка — уровень A',
+      rule:'Финансовая сводка закрыта всем, кроме допуска A. Отклонено до выполнения.' },
+  ];
+  function admissibility(text){
+    const t = String(text||'');
+    for (const a of ADMIT){
+      if (!a.re.test(t)) continue;
+      if (a.needsNone) return a;                 // запрещено всем, независимо от уровня
+      if (a.needs && profile.level < a.needs) return a;
+    }
+    return null;
+  }
   function denyAction(cs, b, host){
     bump('denied');
     k2Audit('Отказ по границе полномочий', `${b.label} → ${cs.t}`, 'deny');
+    persist();   // РОЙ №2: экран клялся «попытка записана в аудит-след», а reload стирал и запись, и метрику
     let box = host.querySelector('.k2-deny');
     if(!box){ box = el('div','k2-deny'); host.appendChild(box); }
     box.innerHTML = `<div class="dh">⛔ Отклонено до выполнения</div>
@@ -2024,9 +2088,14 @@
     gp.appendChild(gr); gb.appendChild(gp); w.appendChild(gb);
     $('#csBack',w).onclick=()=>goView('pulse');
     go.onclick=()=>{ const t=ta.value.trim(); if(!t){ta.focus();return;} if(go.disabled)return;
+      // РОЙ №2: журнал клялся «проверка допустимости (ИБ/комплаенс): пройдена», а проверки не было ВООБЩЕ —
+      // и это на том же экране, где блок «Границы полномочий». Теперь проверка настоящая: то же правило,
+      // что и в BOUNDARIES, применяется к тексту задачи ДО выполнения.
+      const bad = admissibility(t);
+      if(bad){ denyAction(cs, bad, gp); gp.scrollIntoView({block:'center'}); return; }
       if(kind==='now'){ go.disabled=true; go.textContent='ставлю…'; if(!cs._idle) cs._idle=cs.now; cs.busy=true; cs.now='выполняет: '+t; cs.stageIdx=2;
         bump('tasks'); k2Audit('Задача поставлена ЦС', `${cs.t}: ${t}`, 'ok');
-        st.journal.unshift({text:'Взял задачу: '+t, prov:['поставлено РЦС · '+nowHM(),'проверка допустимости (ИБ/комплаенс): пройдена','контекст роли']});
+        st.journal.unshift({text:'Взял задачу: '+t, prov:['поставлено РЦС · '+nowHM(),`проверка допустимости: пройдена (допуск ${accessLetter()}, границы ДИ)`,'контекст роли']});
         setTimeout(()=>{ if(!k2Live) return;   // гард: пользователь мог «пересобрать» за эти 650мс
           k2Live.drafts.unshift({id:'drt'+(apSeq++), text:'Черновик: '+t, dept:cs.dep, who:cs.t, csId:cs.id});
           cabToast(`✓ ${cs.t} взял задачу — черновик придёт на приёмку`); goView('pulse'); }, 650);
@@ -2110,7 +2179,9 @@
         if(!atCompany){ it.querySelector('.ok').onclick=()=>{
           // §7.2/§4.3: подъём в дефолт роли/компании — только с санкцией владельца контекста
           if(a.stage===0 && profile.level<3){ cabToast('Подъём в дефолт отдела — санкция руководителя/владельца отдела'); return; }
-          if(a.stage===1 && !canCompany()){ cabToast('Подъём в дефолт компании = новый дефолт роли для всех — санкция Оркестратора'); return; }
+          if(a.stage===1 && !canCompany()){
+            bump('denied'); k2Audit('Отказ по допуску', 'Подъём в дефолт компании: '+a.t+' · допуск '+accessLetter(), 'deny'); persist();
+            cabToast('⛔ Подъём в дефолт компании = новый дефолт роли для всех — санкция Оркестратора. Попытка в аудите'); return; }
           a.stage++;
           k2Audit('Подъём в дефолт: '+STAGES[a.stage], a.t+' · санкция РЦС', 'ok');   // РОЙ: самое необратимое действие шло без следа
           cabToast(`✓ «${a.t}» поднят до «${STAGES[a.stage]}» с провенансом — ${a.stage>=2?'стал дефолтом роли для всех компаний СРЕДЫ':'виден всему отделу'}`); renderCockpit();
@@ -2275,10 +2346,26 @@
     k2Audit('Приёмка: принято', (d&&d.text)||'', 'ok');
     cabToast('✓ Принято'); refreshLive(); }
   function rejectDraft(id){ initLive(); const d=(k2Live.drafts||[]).find(x=>x.id===id);
-    k2Live.drafts = k2Live.drafts.filter(x=>x.id!==id);   // §4: приёмка = принять/отклонить; отклонён → ЦС дорабатывает
-    if(d&&d.csId){ const cs=(myStaffCache||[]).find(c=>c.id===d.csId); if(cs){ cs.busy=true; cs.stageIdx=2; cs.now='дорабатывает: '+String(d.text||'').replace(/^Черновик:\s*/,''); } }
+    k2Live.drafts = k2Live.drafts.filter(x=>x.id!==id);
     bump('rejected'); k2Audit('Приёмка: возвращено на доработку', (d&&d.text)||'', 'warn');
-    cabToast('↩ Возвращено на доработку'); refreshLive(); }
+    // РОЙ №2: доработки НЕ СУЩЕСТВОВАЛО — ЦС уходил в «дорабатывает» навсегда, черновик не возвращался,
+    // помощник вечно рапортовал «1 ЦС выполняет задачу», цикл приёмки был оборван. Замыкаем цикл по-настоящему.
+    const base = String((d&&d.text)||'').replace(/^Черновик(\s*\(v\d+\))?:\s*/,'');
+    if(d&&d.csId){
+      const cs=(myStaffCache||[]).find(c=>c.id===d.csId);
+      if(cs){ cs.busy=true; cs.stageIdx=2; cs.now='дорабатывает: '+base;
+        const v=(d.v||1)+1;
+        setTimeout(()=>{ if(!k2Live) return;   // гард: «пересобрать» за эти 900мс
+          k2Live.drafts.unshift({ id:'drt'+(apSeq++), text:`Черновик (v${v}): `+base, dept:cs.dep, who:cs.t, csId:cs.id, v });
+          csState(cs).journal.unshift({ text:`Доработал по возврату (v${v}): `+base, prov:['возврат РЦС · '+nowHM(),'учтено замечание','контекст роли'] });
+          cs.stageIdx=3; cs.now='ждёт приёмки: '+base;   // сдал — больше не «дорабатывает» (иначе строка врёт)
+          cabToast(`↩ ${cs.t} доработал — черновик v${v} на приёмке`); refreshLive();
+        }, 900);
+      }
+      cabToast('↩ Возвращено на доработку — ЦС переделывает'); refreshLive(); return;
+    }
+    // черновик без исполнителя дорабатывать некому — не врём про доработку
+    cabToast('↩ Снято с приёмки'); refreshLive(); }
   let apSeq = 0;
   function addApproval(obj){ initLive(); k2Live.approvals.unshift(Object.assign({ id:'apn'+(apSeq++) }, obj)); }
   function refreshLive(){ renderStaffRail(); renderCockpit(); }   // рейл штата (занятость ЦС) + кокпит + помощник
