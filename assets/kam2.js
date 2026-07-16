@@ -1151,6 +1151,15 @@
           <div id="k2Near"></div>
         </div>`;
       layer.appendChild(c);
+      // ПРОГОН ПОКАЗА: карточка результата с длинным эхом выше экрана (889px при окне 800) — вердикт
+      // с кнопкой «Войти в мою Среду» оказывался ПОД СГИБОМ ровно в кульминации, и ведущий искал её
+      // скроллом при зале. Когда вердикт проявился — сами доводим его в зону видимости.
+      setTimeout(()=>{
+        const vd = c.querySelector('.k2-verdict'); if(!vd || !layer.isConnected) return;
+        const r = vd.getBoundingClientRect();
+        const over = r.bottom - window.innerHeight;
+        if (over > 0) layer.scrollTop += over + 20;   // мгновенно: smooth не крутится в фоне (rAF)
+      }, Math.round(parseFloat(vDelay)*1000) + 650);
       // «Это не я» — соседние роли по весам, поправить в один клик (а не проходить 13 вопросов заново)
       $('#k2NotMe').onclick = ()=>{
         const box = $('#k2Near'); if(!box) return;
