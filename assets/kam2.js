@@ -25,6 +25,17 @@
   const el = (tag, cls, html) => { const n=document.createElement(tag); if(cls)n.className=cls; if(html!=null)n.innerHTML=html; return n; };
   const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const lowerFirst = s => s ? s.charAt(0).toLowerCase()+s.slice(1) : s;
+  const cssEsc = s => String(s).replace(/["\\]/g,'\\$&');
+  // Превью штата = ровно то, что соберётся в кабинете (один источник правды для опроса и финала).
+  // Нужен, потому что показывать в опросе несуществующие «инструменты» — потёмкинская деревня.
+  function previewStaff(domain){
+    if(!domain) return [];
+    const dep = DOMAIN_DEPT[domain];
+    const base = (dep && ORG.digital && Array.isArray(ORG.digital[dep]))
+      ? ORG.digital[dep].slice(0,4).map(a=>({ e:a.emoji||'🤖', t:a.title||a.name, now:a.now||'на связи' }))
+      : (SYNTH_STAFF[domain] || [{e:'🤖',t:'Цифровой двойник',now:'на связи'}]).map(s=>({e:s.e,t:s.t,now:s.now}));
+    return base;
+  }
   const load = () => { try { return JSON.parse(localStorage.getItem(LS_KEY)||'null'); } catch(e){ return null; } };
   const save = p  => { try { localStorage.setItem(LS_KEY, JSON.stringify(p)); } catch(e){} };
   const clamp = (x,a,b) => Math.max(a, Math.min(b, x));
@@ -211,7 +222,7 @@
     // Каждый пункт реально включает свою секцию в карточке ЦС. solo:true — «достаточно результата» отменяет остальные.
     { kind:'depth', multi:true, q:'Что вы хотите видеть, когда ЦС приносит результат?',
       opts:[
-        { t:'Достаточно результата',        want:null,   solo:true },
+        { t:'Достаточно результата',        want:'result', solo:true },
         { t:'Кто именно сделал',            want:'who' },
         { t:'Из чего собран ответ',         want:'prov' },
         { t:'Что цифровой сотрудник знает', want:'mem' },
@@ -443,6 +454,10 @@
       --k-soft:var(--acc-soft,rgba(54,201,148,.1)); --k-on:var(--on-acc,#03130d);
       --k-sh:var(--shadow-sm,0 1px 2px rgba(0,0,0,.35)); --k-sh-md:var(--shadow-md,0 6px 14px rgba(0,0,0,.42));
       --k-sh-xl:var(--shadow-xl,0 24px 56px rgba(0,0,0,.55)); }
+    /* БЛОКЕР (рой критиков): .stage в styles.css имеет overflow:hidden и высоту 100vh−topbar.
+       app.js кладёт внутрь прослойку .work со скроллом, а kam2 вешает .k2-shell прямо в #stage —
+       скроллить было нечему: на 1280×800 половина кабинета была физически недостижима. */
+    #stage{ overflow-y:auto; }
     .k2-wrap{ display:flex; flex-direction:column; gap:18px; padding:22px 26px 60px; color:var(--k-txt); }
     /* ---- база опроса ---- */
     /* перф: hero-bg.png весил 5.6МБ и стоял background-attachment:fixed (дорогая композиция,
@@ -815,8 +830,8 @@
               </div>
               <div class="k2-role" id="k2Role" style="display:none"></div>
             </div>
-            <div class="k2-tray-h">Ваши инструменты · <b id="k2Cnt">0</b></div>
-            <div class="k2-tray" id="k2Tray"><div class="k2-tray-empty" id="k2Empty">пока пусто — Среда наполнит его под вашу работу</div></div>
+            <div class="k2-tray-h">Ваш цифровой штат · <b id="k2Cnt">0</b></div>
+            <div class="k2-tray" id="k2Tray"><div class="k2-tray-empty" id="k2Empty">пока пусто — Среда укомплектует его под вашу работу</div></div>
             <div class="k2-toast" id="k2Toast"></div>
           </aside>
         </div>`;
@@ -832,12 +847,10 @@
         if (d.length>=2 && (domScore[d[0]] - domScore[d[1]]) >= 4) return false;
         return true;
       }
-      if (s.kind==='industry'){
-        // отрасль спрашиваем, только если для этого домена в библиотеке ЕСТЬ отраслевые ЦС —
-        // иначе ответ не изменит ни штат, ни сборку, и вопрос лишний
-        const dom = detectDomain(domScore); if(!dom) return true;
-        return CAP_LIB.some(c => !c.industries.includes('*') && (c.domains.includes('*') || c.domains.includes(dom)));
-      }
+      // РОЙ: отрасль питает не только CAP_LIB, но и видимую плашку «профиль отрасли» (INDUSTRY_REG).
+      // Выключать вопрос по одному лишь отсутствию отраслевых ЦС — значит молча лишать eng/marketing/hr/assist
+      // регнормы, которую они бы получили. Ответ меняет интерфейс ВСЕГДА → вопрос всегда уместен.
+      if (s.kind==='industry') return true;
       return true;
     }
     function nextAskable(from){ let i=from; while(i<SURVEY.length && !shouldAsk(i)) i++; return i; }
@@ -880,7 +893,10 @@
       else if (s.kind==='lvl'){ if(dir>0) lvlSamples.push(o.lvl); else { const i=lvlSamples.lastIndexOf(o.lvl); if(i>=0) lvlSamples.splice(i,1); } }
       else if (s.kind==='focus'){ set(focusSel, o.focus); }
       else if (s.kind==='posture'){ set(postureSel, o.posture); set(postureKeySel, o.pk); }
-      else if (s.kind==='tools'){ set(toolSel, o.tool); set(habitSel, o.habit); }
+      // РОЙ: habitSel было множеством без счётчика ссылок — снятие ОДНОЙ галки чат-инструмента
+      // убивало habit='chat', хотя второй чат-инструмент оставался выбран. Пишем habit как список с повторами.
+      else if (s.kind==='tools'){ set(toolSel, o.tool);
+        if (dir>0){ habitSel.push(o.habit); } else { const i=habitSel.indexOf(o.habit); if(i>=0) habitSel.splice(i,1); } }
       else if (s.kind==='industry'){ set(industrySel, o.industry); }
       else if (s.kind==='systems'){ set(systemsSel, o.systems); }
       else if (s.kind==='gripe'){ set(gripeSel, o.gripe); }
@@ -941,6 +957,9 @@
     }
     function goBack(){
       if (locked || step===0) return;
+      // РОЙ: тапы текущего вопроса применяются сразу (toggleOpt), но в history попадают только на «Далее».
+      // Если не снять их здесь — их веса останутся в domScore навсегда, и призрачный домен победит реальный ответ.
+      multiSel.forEach(o=> applyOpt(o, SURVEY[step], -1)); multiSel = [];
       askedIdx = askedIdx.filter(i=> i<step);          // текущий больше не «задан»
       step = prevAskable(step-1); if(step<0){ step=0; }
       const h = history[step];
@@ -982,16 +1001,18 @@
           <div class="rs">${DOMAINS[role.d].icon} ${esc(DOMAINS[role.d].label)} · ${esc(LEVELS[role.l])}</div>`;
         roleBox.classList.remove('pop'); void roleBox.offsetWidth; roleBox.classList.add('pop');
       } else { roleBox.style.display='none'; }
-      // модули
+      // РОЙ (потёмкинское): панель собирала карточки MODULES, которых в кабинете НЕ СУЩЕСТВУЕТ
+      // (ни один m.render не вызывается). Теперь на глазах зала собирается РЕАЛЬНЫЙ штат — тот же,
+      // что человек увидит в рейле после входа.
       const tray = $('#k2Tray', layer);
-      const nc = assembleModules(domain, level);
-      const added   = nc.filter(id=>!liveChosen.includes(id));
-      const removed = liveChosen.filter(id=>!nc.includes(id));
-      removed.forEach(id=>{ const c=tray.querySelector('[data-m="'+id+'"]'); if(c){ c.classList.add('leaving'); setTimeout(()=>c.remove(),320); } });
-      added.forEach(id=>{
-        const m = MODULES.find(x=>x.id===id); if(!m) return;
-        const card = el('div','k2-tcard'); card.dataset.m=id;
-        card.innerHTML = `<span class="ci">${m.icon}</span><div><div class="cn">${esc(m.name)}</div><div class="ch">${esc(m.hint)}</div></div>`;
+      const nc = previewStaff(domain);
+      const key = c => c.t;
+      const added   = nc.filter(c=>!liveChosen.some(x=>key(x)===key(c)));
+      const removed = liveChosen.filter(c=>!nc.some(x=>key(x)===key(c)));
+      removed.forEach(c=>{ const n=tray.querySelector('[data-m="'+cssEsc(key(c))+'"]'); if(n){ n.classList.add('leaving'); setTimeout(()=>n.remove(),320); } });
+      added.forEach(c=>{
+        const card = el('div','k2-tcard'); card.dataset.m=key(c);
+        card.innerHTML = `<span class="ci">${c.e}</span><div><div class="cn">${esc(c.t)}</div><div class="ch">${esc(c.now)}</div></div>`;
         tray.appendChild(card);
       });
       liveChosen = nc.slice();
@@ -1001,7 +1022,7 @@
       let msg='';
       if (s && s.kind==='dom' && domain){ msg = `▲ Среда распознаёт: ${DOMAINS[domain].label}`; }
       else if (s && s.kind==='lvl' && level){ msg = `▲ Уровень: ${LEVELS[level]}`; }
-      else if (added.length){ const m=MODULES.find(x=>x.id===added[0]); msg=`▲ готов инструмент «${m.name}»`; }
+      else if (added.length){ msg=`▲ в штат добавлен «${added[0].t}»`; }
       if (msg) showToast(msg);
     }
     let toastTimer=null;
@@ -1190,9 +1211,14 @@
   const userPosture  = () => arr(profile && profile.postureKey);
   const userTools    = () => arr(profile && profile.aiTool);
   const userWants    = () => arr(profile && profile.wants);
-  const WANT_LABEL = { who:'кто сделал', prov:'из чего собран ответ', mem:'что он знает', audit:'след в аудите' };
-  // «что хочу видеть» реально включает секции карточки ЦС; если человек не отвечал — показываем всё (как раньше)
-  const wants = k => { const w = userWants(); return w.length ? w.includes(k) : true; };
+  const WANT_LABEL = { result:'только результат', who:'кто сделал', prov:'из чего собран ответ', mem:'что он знает', audit:'след в аудите' };
+  // «что хочу видеть» реально включает секции карточки ЦС.
+  // РОЙ: раньше «Достаточно результата» клало want:null → wants[] оставался пуст и был неотличим от
+  // «не отвечал» → срабатывал фолбэк «показать всё», т.е. ответ давал ОБРАТНЫЙ эффект. Теперь это явный 'result'.
+  const wants = k => { const w = userWants();
+    if (!w.length) return true;          // не отвечал (или старый профиль) — показываем всё, как раньше
+    if (w.includes('result')) return false;   // «достаточно результата» — кухню не показываем
+    return w.includes(k); };
 
   // Боль (focus + gripe) → канонические ТЕМЫ. Один словарь, обе оси кладутся в него.
   const PAIN_THEME = {
@@ -1287,9 +1313,20 @@
   function touchLayout(){ layout.custom = true; saveLayout(); }
   function applyAccent(){
     const r = document.documentElement, a = layout && layout.accent;
-    if(a){ r.style.setProperty('--acc', a); r.style.setProperty('--acc-hover', a); }
-    else { r.style.removeProperty('--acc'); r.style.removeProperty('--acc-hover'); }
+    if(a){
+      r.style.setProperty('--acc', a);
+      // РОЙ: --acc-hover ставился тем же цветом → hover переставал читаться. Осветляем на ~12%.
+      r.style.setProperty('--acc-hover', shade(a, 0.12));
+      // и подбираем контрастный текст на акценте, иначе тёмный цвет из пипетки делал подписи нечитаемыми
+      r.style.setProperty('--on-acc', luma(a) > 0.55 ? '#0b140f' : '#ffffff');
+    } else { r.style.removeProperty('--acc'); r.style.removeProperty('--acc-hover'); r.style.removeProperty('--on-acc'); }
   }
+  const hex2rgb = h => { const s=String(h).replace('#',''); const n=parseInt(s.length===3?s.split('').map(c=>c+c).join(''):s,16);
+    return [(n>>16)&255,(n>>8)&255,n&255]; };
+  const luma = h => { try{ const [r,g,b]=hex2rgb(h); return (0.2126*r+0.7152*g+0.0722*b)/255; }catch(e){ return 0.5; } };
+  const shade = (h, amt) => { try{ const [r,g,b]=hex2rgb(h);
+    const f = v => Math.round(Math.min(255, v + (255-v)*amt));
+    return '#'+[f(r),f(g),f(b)].map(v=>v.toString(16).padStart(2,'0')).join(''); }catch(e){ return h; } };
 
   // порядок секций Пульса = скоринг поверхностей от тем боли + posture (не хардкод)
   function surfaceOrder(){
@@ -1617,6 +1654,7 @@
       const items = inp.length ? inp : [dc.cand.task, dc.cand.draft.replace(/^Черновик\s*/,'')];  // читаем правки, если раскрыт разбор
       addApproval({task:items[0], dept:dep, cost:'₽12 / задача', risk:'low'});
       items.slice(1).forEach(t=> k2Live.drafts.unshift({id:'drc'+(apSeq++), text:'Черновик: '+t, dept:dep, who:'помощник'}));
+      bump('tasks', items.length); k2Audit('Задачи из звонка розданы ЦС', items.join(' · '), 'ok');   // РОЙ: тост рапортовал, а следа не было
       k2Live.candDone=true;
       cabToast(`✓ ${items.length} ${plural(items.length,'задача роздана','задачи розданы','задач роздано')} ЦС`); renderCockpit(); };
     // передачи: приняв, человек двигает работу дальше — со следом
@@ -1651,9 +1689,11 @@
     const sw = el('span','k2-sw');
     ACCENTS.forEach(c=>{ const i=el('i'); i.style.background=c;
       if(layout.accent===c) i.classList.add('on');
-      i.title='Цвет акцента'; i.onclick=()=>{ layout.accent=c; touchLayout(); applyAccent(); renderCockpit(); }; sw.appendChild(i); });
+      // РОЙ: цвет — не раскладка. touchLayout() помечал кабинет «собран вами» и гасил бейдж «ваш приоритет»,
+      // хотя человек ничего не двигал. Цвет просто сохраняем.
+      i.title='Цвет акцента'; i.onclick=()=>{ layout.accent=c; saveLayout(); applyAccent(); renderCockpit(); }; sw.appendChild(i); });
     const pick = el('input'); pick.type='color'; pick.value = layout.accent || '#36c994'; pick.title='Свой цвет';
-    pick.oninput = (e)=>{ layout.accent=e.target.value; touchLayout(); applyAccent(); };
+    pick.oninput = (e)=>{ layout.accent=e.target.value; saveLayout(); applyAccent(); };
     sw.appendChild(pick); bar.appendChild(sw);
     // скрытые → вернуть
     if (layout.hidden.length){
@@ -1710,8 +1750,12 @@
           const target = over && over.dataset.w;
           dragKey=null;
           if(!target || target===k) return;
+          // РОЙ: вставляли всегда ПЕРЕД целью → положить карточку в последний слот было невозможно.
+          // Смотрим, куда именно уронили: в нижнюю половину цели — значит ПОСЛЕ неё.
+          const r = over.getBoundingClientRect();
+          const after = ev.clientY > r.top + r.height/2;
           const o = layout.order.filter(x=>x!==k);
-          o.splice(o.indexOf(target), 0, k);
+          o.splice(o.indexOf(target) + (after ? 1 : 0), 0, k);
           layout.order = o; touchLayout(); renderCockpit();
         };
         wrap.addEventListener('pointermove',mv); wrap.addEventListener('pointerup',up); wrap.addEventListener('pointercancel',up);
@@ -1749,11 +1793,13 @@
     const meter = ($('#meterBtn')?.textContent||'').split('ИИ')[0].trim() || '₽384k';
     const reg = industryReg();
     const s=el('div','k2-sys');
-    s.innerHTML = `<span title="Агент учёта ресурсов">💰 ${esc(meter)} ИИ/нед</span>
-      <span title="Агент ИБ · карантин">🛡️ ИБ: 0 в карантине</span>
-      <span class="k2-sys-link" id="sysAudit" role="button" tabindex="0" title="Открыть аудит-след">📋 аудит-след: ${auditLog.length?auditLog.length+' записей':'онлайн'} →</span>
+    // РОЙ: «🛡️ ИБ: 0 в карантине» и «📚 знания: актуальны» — ярлыки-обещания, за которыми не было НИ СТРОКИ кода.
+    // Убраны. Осталось только то, за чем есть вещество: счётчик ИИ (мок-данные, как весь DASH),
+    // кликабельный аудит (реальный экран), отраслевой профиль и подключённые системы (из ответов).
+    s.innerHTML = `<span title="Агент учёта ресурсов · демо-данные">💰 ${esc(meter)} ИИ/нед</span>
+      <span class="k2-sys-link" id="sysAudit" role="button" tabindex="0" title="Открыть аудит-след">📋 аудит-след: ${auditLog.length?auditLog.length+' записей':'пуст'} →</span>
       ${reg?`<span title="Отраслевой профиль">🏛️ профиль отрасли: ${esc(reg)}</span>`:''}
-      ${userSystems().length?`<span title="Интеграции">🔌 подключено: ${esc(systemsLabel())}</span>`:(reg?'':'<span title="Агент знаний">📚 знания: актуальны</span>')}`;
+      ${userSystems().length?`<span title="Интеграции">🔌 подключено: ${esc(systemsLabel())}</span>`:''}`;
     const au=$('#sysAudit',s);
     if(au){ const open=()=>goView('audit'); au.onclick=open; au.onkeydown=(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(); } }; }
     return s;
@@ -1939,6 +1985,13 @@
     const spn=el('div','k2-panel'); if(!st.schedule.length) spn.appendChild(emptyEl('регулярных задач нет'));
     st.schedule.forEach(s=> spn.appendChild(rowEl(s.kind==='regular'?'🔁':'⏱', s.text, (s.kind==='regular'?'регулярно · ':'отложено · ')+s.when, null)));
     sch.appendChild(spn); w.appendChild(sch);
+    // Хотел видеть след в аудите — даём прямой вход из карточки ЦС (иначе want 'audit' был бы мёртвым)
+    if (wants('audit')){
+      const ab=el('div','k2-panel'); ab.style.cursor='pointer';
+      ab.innerHTML=`<div class="k2-item"><div class="e">📋</div><div style="flex:1"><div class="b">След в аудите${auditLog.length?` · ${auditLog.length}`:''}</div>
+        <div class="m">${B('решения и отказы','каждое решение, возврат и отказ по границе — со следом')}</div></div><div class="k2-tag act">Открыть →</div></div>`;
+      ab.onclick=()=>goView('audit'); w.appendChild(ab);
+    }
     // Журнал — из чего собран ответ (провенанс, §4.2). Тоже по ответу «что хочу видеть»
     if (wants('prov')){
       const jr=section('Журнал · из чего собран ответ','');
@@ -1980,6 +2033,7 @@
       } else {
         const when = kind==='regular'?'ежедневно 09:00':'завтра 09:00';
         st.schedule.unshift({kind, text:t, when});
+        bump('tasks'); k2Audit(kind==='regular'?'Регулярная задача поставлена ЦС':'Отложенная задача поставлена ЦС', `${cs.t}: ${t} · ${when}`, 'ok');   // РОЙ: логировалась только ветка «Сейчас»
         st.journal.unshift({text:(kind==='regular'?'Поставлено регулярно: ':'Отложено: ')+t, prov:['расписание · '+when,'помощник запустит сам к утру']});
         cabToast(kind==='regular'?'✓ Регулярная задача — помощник запустит ежедневно к утру':'✓ Отложено на завтра 09:00 — помощник запустит сам');
         renderCockpit();
@@ -1993,12 +2047,15 @@
       head('Аудит-след', B('приёмки, возвраты, санкции, отказы. Неизменяем.', 'каждая приёмка, возврат, санкция и отказ по границе — здесь. След неизменяем.'));
     // Метрики пилота: то, что мы обещаем мерить с первого дня
     const m = initMetrics();
-    const cleanPct = m.accepted ? Math.round(m.clean/m.accepted*100) : 0;
+    // РОЙ: метрика «без правок» была структурно всегда 100% (edited никто не передавал, править черновик негде) —
+    // это враньё в цифре. Меряем то, что реально наблюдаем: доля принятых с первого раза vs возвращённых.
+    const seen = m.accepted + m.rejected;
+    const firstPass = seen ? Math.round(m.accepted/seen*100) : 0;
     const ms = section('Метрики пилота · с первого дня','');
     const mp = el('div','k2-kpi');
     mp.innerHTML = `
       <span>приёмок <b>${m.accepted}</b></span>
-      <span>без правок <b>${cleanPct}%</b></span>
+      <span>принято с первого раза <b>${firstPass}%</b></span>
       <span>возвратов <b>${m.rejected}</b></span>
       <span>отказов по границе <b>${m.denied}</b></span>
       <span>задач роздано <b>${m.tasks}</b></span>
@@ -2036,7 +2093,7 @@
       it.querySelector('.ok').onclick=()=> animateOut(it, ()=>{
         if(myStaff().some(cs=>cs.t===s.t)){ cabToast('Такой ЦС уже в штате'); return; }
         myStaff().push({id:'csx'+(apSeq++), e:s.e, t:s.t, now:'адаптация…', busy:false, dep:DOMAIN_DEPT[s.d]||s.d});
-        myAdditions.push({ t:s.t, stage:0, demand: 6+((s.t.length)%40) });
+        myAdditions.push({ t:s.t, stage:0 });   // РОЙ: убран demand — число «спроса» бралось из ДЛИНЫ НАЗВАНИЯ и выдавалось за телеметрию
         bump('hired'); k2Audit('Нанят цифровой сотрудник', s.t, 'ok');
         cabToast('✓ '+s.t+' добавлен в ваш штат'); renderStaffRail(); renderCockpit(); });
       cat.appendChild(it); });
@@ -2048,13 +2105,15 @@
         const it=el('div','k2-item');
         const atCompany = a.stage>=2;
         it.innerHTML=`<div class="e">🧬</div><div style="flex:1"><div class="b">${esc(a.t)}</div>
-          <div class="m">уровень: <b style="color:var(--k-gold)">${esc(STAGES[a.stage])}</b> · телеметрия спроса: ещё ${a.demand} компаний просили похожее</div></div>
+          <div class="m">уровень: <b style="color:var(--k-gold)">${esc(STAGES[a.stage])}</b>${a.stage<2?' · подъём сделает эту доработку дефолтом для следующей роли':' · стал дефолтом роли'}</div></div>
           <div>${atCompany?'<span class="k2-tag">в дефолте роли ✓</span>':'<button class="k2-tag act ok">поднять выше</button>'}</div>`;
         if(!atCompany){ it.querySelector('.ok').onclick=()=>{
           // §7.2/§4.3: подъём в дефолт роли/компании — только с санкцией владельца контекста
           if(a.stage===0 && profile.level<3){ cabToast('Подъём в дефолт отдела — санкция руководителя/владельца отдела'); return; }
           if(a.stage===1 && !canCompany()){ cabToast('Подъём в дефолт компании = новый дефолт роли для всех — санкция Оркестратора'); return; }
-          a.stage++; cabToast(`✓ «${a.t}» поднят до «${STAGES[a.stage]}» с провенансом — ${a.stage>=2?'стал дефолтом роли для всех компаний СРЕДЫ':'виден всему отделу'}`); renderCockpit();
+          a.stage++;
+          k2Audit('Подъём в дефолт: '+STAGES[a.stage], a.t+' · санкция РЦС', 'ok');   // РОЙ: самое необратимое действие шло без следа
+          cabToast(`✓ «${a.t}» поднят до «${STAGES[a.stage]}» с провенансом — ${a.stage>=2?'стал дефолтом роли для всех компаний СРЕДЫ':'виден всему отделу'}`); renderCockpit();
         }; }
         up.appendChild(it);
       });
@@ -2068,7 +2127,13 @@
     p.innerHTML=`<div class="k2-empty">Опишите, какого ЦС, навыка или инструмента не хватает — уйдёт эскалацией на ЦС администратора платформы. Он провижинит (MCP-инструмент / навык / «найм») со статусом.</div>`;
     const ta=el('textarea','k2-ta'); ta.placeholder='Напр.: нужен ЦС для работы с 1С…'; ta.style.minHeight='70px'; p.appendChild(ta);
     const b=el('button','k2-btn','Эскалировать админ-ЦС ▶'); b.style.marginTop='8px'; p.appendChild(b);
-    b.onclick=()=>{ if(!ta.value.trim()){ ta.focus(); cabToast('Опишите, чего не хватает — тогда эскалирую'); return; } cabToast('✓ Эскалация ушла админ-ЦС — соберёт и вернёт со статусом'); ta.value=''; };
+    // РОЙ: тост обещал «соберёт и вернёт со статусом», но не создавалось ни объекта, ни записи — статус не вернулся бы никогда.
+    // Теперь эскалация — реальная точка участия в очереди + след в аудите.
+    b.onclick=()=>{ const t=ta.value.trim();
+      if(!t){ ta.focus(); cabToast('Опишите, чего не хватает — тогда эскалирую'); return; }
+      addApproval({ task:'Эскалация админ-ЦС: '+t, dept:profile.domain, cost:'—', risk:'low' });
+      k2Audit('Эскалация админ-ЦС', t, 'ok');
+      cabToast('✓ Эскалация ушла — появилась в «Ждёт меня» со статусом'); ta.value=''; renderCockpit(); };
     esc2.appendChild(p); w.appendChild(esc2);
     $('#ctorBack',w).onclick=()=>goView('pulse');
   }
@@ -2204,9 +2269,9 @@
     k2Audit(ok?'Санкция выдана':'Санкция отклонена', (a&&a.task)||'', ok?'ok':'deny');
     cabToast(ok?'✓ Одобрено — отправлено в работу':'✗ Отклонено — вернул на доработку'); refreshLive(); }
   function freeCs(csId){ const cs=(myStaffCache||[]).find(c=>c.id===csId); if(cs){ cs.busy=false; cs.stageIdx=3; cs.now=cs._idle||'на связи'; } }   // §7.2: приёмка завершает цикл — ЦС освобождается
-  function acceptDraft(id, edited){ initLive(); const d=(k2Live.drafts||[]).find(x=>x.id===id);
+  function acceptDraft(id){ initLive(); const d=(k2Live.drafts||[]).find(x=>x.id===id);
     k2Live.drafts = k2Live.drafts.filter(x=>x.id!==id); if(d&&d.csId) freeCs(d.csId);
-    bump('accepted'); if(!edited) bump('clean');   // доля приёмок без правок = прямой показатель качества
+    bump('accepted');
     k2Audit('Приёмка: принято', (d&&d.text)||'', 'ok');
     cabToast('✓ Принято'); refreshLive(); }
   function rejectDraft(id){ initLive(); const d=(k2Live.drafts||[]).find(x=>x.id===id);
