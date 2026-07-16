@@ -194,7 +194,7 @@
         { t:'Perplexity — поиск с ИИ',    tool:'Perplexity',        habit:'chat' },
         { t:'Корпоративный ИИ у нас внутри', tool:'корпоративный ИИ', habit:'chat' },
         { t:'Copilot в Office',           tool:'Copilot',           habit:'office' },
-        { t:'Copilot / Cursor в коде',    tool:'Copilot в коде',    habit:'office' },
+        { t:'Copilot / Cursor в коде',    tool:'Cursor/Copilot',    habit:'office' },
         { t:'Пробовал, но не прижилось',  tool:null,                habit:'none', solo:true },
         { t:'Ещё не пробовал',            tool:null,                habit:'none', solo:true },
       ]},
@@ -228,6 +228,9 @@
         { t:'САПР и сметы (AutoCAD, Гранд-Смета)',systems:'САПР' },
         { t:'Банк-клиент, казначейство',        systems:'банк' },
         { t:'BI и дашборды (Power BI, DataLens)',systems:'BI' },
+        // КРИТИК: без этого варианта 12 систем читаются как «Среда работает только с этими двенадцатью».
+        // Вариант ничего не выдумывает и ничего не обещает — он честно снимает ощущение «меня тут нет».
+        { t:'Другое — расскажу на пилоте',      systems:null },
       ]},
     // x:'<группа>' — варианты внутри группы взаимоисключающи (модель знает, что «на ты» и «на вы» вместе — бессмыслица)
     { kind:'tone', multi:true, q:'Как вам удобнее общаться?',
@@ -880,10 +883,18 @@
     function shouldAsk(i){
       const s = SURVEY[i]; if(!s) return false;
       if (s.kind==='dom'){
-        // домен уже решён с запасом — оставшиеся доменные вопросы его не перевернут
+        // Ветвление было мёртвым не из-за порога, а из-за гарда d.length>=2: при ЕДИНСТВЕННОМ наборавшем
+        // домене сравнивать было не с кем, и условие не срабатывало никогда. Соперника нет = у него ноль.
+        // Порог считаем честно: каждый домен встречается в вопросе ровно раз (+2), значит соперник может
+        // набрать 2 × (число ОСТАВШИХСЯ доменных вопросов, включая этот). Пропускаем, только если
+        // отрыв больше этого потолка — иначе рискуем залочить неверный домен.
         const d = topDomains(domScore, 2);
-        if (d.length>=2 && (domScore[d[0]] - domScore[d[1]]) >= 4) return false;
-        return true;
+        if (!d.length) return true;                                   // ещё ничего не набрано — спрашиваем
+        const lead = domScore[d[0]];
+        const second = d.length>1 ? domScore[d[1]] : 0;
+        let remaining = 0;
+        for (let j=i; j<SURVEY.length; j++) if (SURVEY[j].kind==='dom') remaining++;
+        return (lead - second) <= 2 * remaining;                      // догонит → спрашиваем; не догонит → пропускаем
       }
       // РОЙ: отрасль питает не только CAP_LIB, но и видимую плашку «профиль отрасли» (INDUSTRY_REG).
       // Выключать вопрос по одному лишь отсутствию отраслевых ЦС — значит молча лишать eng/marketing/hr/assist
@@ -1083,10 +1094,10 @@
       const habit = habitSel.includes('chat') ? 'chat' : (habitSel.includes('office') ? 'office' : 'none');
       if (focusSel.length)    echo.push(`больше всего времени у вас уходит на ${focusSel.join(' и ')}`);
       if (postureSel.length)  echo.push(`вам ближе ${postureSel.join(', ')}`);
-      if (toolSel.length)     echo.push(`вы уже работаете в ${toolSel.join(', ')} — Среда встанет привычно`);
+      if (toolSel.length)     echo.push(`вы уже работаете в ${toolSel.map(t=>TOOL_IN[t]||t).join(', ')} — Среда встанет привычно`);
       else if (habit==='none') echo.push(`с ИИ вы ещё на «вы» — Среда проведёт за руку`);
       if (industrySel.length) echo.push(`ваша компания — в ${industrySel.join(' и ')}`);
-      if (systemsSel.length)  echo.push(`вы живёте в ${systemsSel.join(', ')} — Среда к ним подключится`);
+      if (systemsSel.length)  echo.push(`вы живёте в ${systemsSel.map(s=>SYS_IN[s]||s).join(', ')} — Среда к ним подключится`);
       if (gripeSel.length)    echo.push(`больше всего вас бесит: ${gripeSel.join(', ')}`);
       if (wantsSel.length)    echo.push(`от результата вам важно видеть: ${wantsSel.map(w=>WANT_LABEL[w]||w).join(', ')}`);
       profile = { domain, level, roleTitle: role?role.t:null,
@@ -1103,9 +1114,14 @@
       layer.classList.remove('two'); layer.innerHTML='';
       const c = el('div','k2-card k2-result');
       const dom = profile.domain;
-      const echoHtml = (profile.echo||[]).map((line,i)=>
-        `<div class="k2-echo-line" style="animation-delay:${(0.2+i*0.55).toFixed(2)}s">${esc(line)}</div>`).join('');
-      const vDelay = (0.2 + (profile.echo||[]).length*0.55 + 0.25).toFixed(2);
+      // КРИТИК: шаг был фиксированный 0.55с → при 10 строках эха (после расширения опроса это норма)
+      // вердикт с кнопкой «Войти в мою Среду» появлялся через 5.95с — на показе это мёртвая пауза.
+      // Каскад укладываем в ~3с при любом числе строк: эхо всё так же дозируется, но зал не ждёт.
+      const echoLines = profile.echo || [];
+      const step = Math.min(0.55, 3.0 / Math.max(1, echoLines.length));
+      const echoHtml = echoLines.map((line,i)=>
+        `<div class="k2-echo-line" style="animation-delay:${(0.2+i*step).toFixed(2)}s">${esc(line)}</div>`).join('');
+      const vDelay = (0.2 + echoLines.length*step + 0.25).toFixed(2);
       // РОЙ №2: здесь была СВОЯ копия логики штата без matchedCaps → финал обещал «3 сотрудника», а в рейле
       // оказывалось 5. Один источник правды с кабинетом: previewStaff (профиль уже собран → добирает подобранных).
       const staffPrev = previewStaff(dom);
@@ -1324,6 +1340,11 @@
     { e:'🚚', t:'Агент перевозок',         now:'следит за маршрутами и ЭТрН',     domains:['ops','project','analytics'], industries:['логистике'], themes:['control','reports'], systems:['ERP','трекеры'] },
     { e:'⚕️', t:'Агент медкомплаенса',      now:'проверяет 323-ФЗ и врачебную тайну', domains:['legal','ops','hr','exec'], industries:['медицине'], themes:['quality','infoloss'], systems:['*'] },
     { e:'⚡', t:'Агент техприсоединения',   now:'ведёт заявки и сроки Ростехнадзора', domains:['ops','project','legal'], industries:['энергетике'], themes:['approvals','control'], systems:['ЭДО','ERP'] },
+    // КРИТИК: образование/телеком/агро давали только регнорму без единого ЦС — на показе асимметрия
+    // с медициной была бы заметна. Выравниваем покрытие.
+    { e:'🎓', t:'Агент учебных программ',  now:'сверяет программы с ФГОС и лицензией', domains:['ops','project','hr','legal'], industries:['образовании'], themes:['quality','control'], systems:['диски','ЭДО'] },
+    { e:'📡', t:'Агент сети и SLA',        now:'следит за инцидентами и SLA сети',  domains:['eng','ops','analytics'], industries:['телекоме'], themes:['control','rush'], systems:['трекеры','BI'] },
+    { e:'🌾', t:'Агент Меркурия',          now:'ведёт ветдокументы и субсидии',     domains:['ops','legal','finance'], industries:['агро'], themes:['routine','approvals'], systems:['ЭДО','1С'] },
   ];
   // scoreProfile: соответствие вычисляется, а не перечисляется. Домен — гейт; отрасль/боль/системы — веса.
   function scoreCap(cap){
@@ -1333,14 +1354,22 @@
     let s=0;
     userThemes().forEach(t=>{ if(cap.themes.includes(t)) s+=3; });                                    // совпала боль (focus+gripe, мультивыбор)
     if(inds.some(i=>cap.industries.includes(i))) s+=4;                                                // точное попадание в отрасль
-    if(userSystems().some(sys=>cap.systems.includes(sys))) s+=1;                                      // есть хоть один источник
+    // КРИТИК: джокер '*' работал для domains/industries, но НЕ здесь — ['*'].includes('1С') === false,
+    // и ЦС с systems:['*'] никогда не получал этот балл. Мёртвая нотация.
+    if(cap.systems.includes('*') || userSystems().some(sys=>cap.systems.includes(sys))) s+=1;          // есть хоть один источник
     return s;
   }
+  // Основание найма: боль (+3) или отрасль (+4). Совпадение по системе (+1) — только тай-брейкер.
+  const capHitsPain = cap => userThemes().some(t=>cap.themes.includes(t));
+  const capHitsIndustry = cap => userIndustry().some(i=>cap.industries.includes(i));
   // топ-2 подходящих возможности сверх базового штата роли (дедуп по названию)
   function matchedCaps(baseTitles){
     if(!profile) return [];
     const seen = new Set(baseTitles||[]);
-    return CAP_LIB.map(c=>({c,s:scoreCap(c)})).filter(x=>x.s>0).sort((a,b)=>b.s-a.s)
+    // КРИТИК: порог был s>0 — значит ЦС нанимался за ОДНО совпадение системы, без боли и отрасли,
+    // и получал ярлык «под вашу боль». С 12 системами это стало срабатывать почти всегда.
+    // Нанимаем только по реальному основанию; система остаётся тай-брейкером внутри отбора.
+    return CAP_LIB.map(c=>({c,s:scoreCap(c)})).filter(x=>x.s>=3).sort((a,b)=>b.s-a.s)
       .filter(x=>{ if(seen.has(x.c.t)) return false; seen.add(x.c.t); return true; }).slice(0,2).map(x=>x.c);
   }
   /* ============ КАБИНЕТ СОБИРАЕТ САМ ПОЛЬЗОВАТЕЛЬ ============
@@ -1410,6 +1439,13 @@
     // старые ключи из профилей, сохранённых до расширения опроса
     'трекерах':'трекер', 'почте':'почта',
   };
+  // КРИТИК: ключ ≠ словоформа. Эхо-портрет вставляет систему в ПРЕДЛОЖНЫЙ слот («вы живёте в …»),
+  // и старые ключи ('почте','трекерах') были такими именно поэтому. Переименовав их ради лукапа,
+  // я сломал грамматику на экране узнавания. Разводим ключ и падежную форму.
+  const SYS_IN = { 'трекеры':'трекерах', 'почта':'почте', 'диски':'дисках', 'закупки':'порталах закупок',
+    'банк':'банк-клиенте', 'САПР':'САПР и сметах', 'ЭДО':'ЭДО', '1С':'1С', 'ERP':'ERP', 'Excel':'Excel', 'CRM':'CRM', 'BI':'BI',
+    'трекерах':'трекерах', 'почте':'почте' };
+  const TOOL_IN = { 'корпоративный ИИ':'корпоративном ИИ' };   // «работаете в …» / «как в …»
   const userSystems = () => { const s = profile && profile.systems; return !s ? [] : (Array.isArray(s) ? s : [s]); };
   const systemsLabel = () => userSystems().map(s=>SYSTEM_SOURCE[s]||s).join(', ');
   const systemSource = () => userSystems().length ? ('источник: '+systemsLabel()) : null;
@@ -1426,7 +1462,9 @@
     // профиль реально меняет СОСТАВ штата: топ-возможности из библиотеки под профиль (скоринг, не хардкод)
     const extra = matchedCaps(myStaffCache.map(c=>c.t)).map((cap,i)=>({
       id:'csm'+i, e:cap.e, t:cap.t, now:cap.now, busy:false, dep:profile.domain, matched:true,
-      tag: userIndustry().some(i=>cap.industries.includes(i)) ? 'под вашу отрасль' : 'под вашу боль',
+      // КРИТИК: было бинарно — «не отрасль» автоматически объявлялось «болью». Теперь ярлык
+      // говорит РЕАЛЬНОЕ основание, а не то, что осталось по остаточному принципу.
+      tag: capHitsIndustry(cap) ? 'под вашу отрасль' : (capHitsPain(cap) ? 'под вашу боль' : 'под ваши системы'),
     }));
     if (extra.length) myStaffCache = extra.concat(myStaffCache);
     return myStaffCache;
@@ -2339,7 +2377,7 @@
     // подстройка под привычный инструмент + реальный тон
     const tools = userTools();
     const habitNote = tools.length ? `подстроен под ${tools.join(' и ')}` : (guided ? T('веду за руку','проведу за руку') : T('вижу, на что ты смотришь','вижу, на что вы смотрите'));
-    const inHint = profile.habit==='chat' ? `${T('Спроси','Спросите')} словами — как в ${tools[0]||'чате'}` : (guided ? T('Напиши, что нужно — я подскажу','Напишите, что нужно — я подскажу') : T('Поручи помощнику…','Поручите помощнику…'));
+    const inHint = profile.habit==='chat' ? `${T('Спроси','Спросите')} словами — как в ${tools[0]?(TOOL_IN[tools[0]]||tools[0]):'чате'}` : (guided ? T('Напиши, что нужно — я подскажу','Напишите, что нужно — я подскажу') : T('Поручи помощнику…','Поручите помощнику…'));
     // пустой/типовой штат ИЛИ новичок в ИИ → развилка «с чего начать»
     const synth = isSynthStaff();
     const startBlock = (synth || guided) ? `
