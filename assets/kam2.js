@@ -173,6 +173,10 @@
         { t:'Согласования и решения',              focus:'согласования и решения' },
         { t:'Разбор входящих — почта, звонки, чаты',focus:'разбор входящих' },
         { t:'Контроль, что всё идёт по плану',     focus:'контроль, что всё идёт по плану' },
+        { t:'Совещания и созвоны',                 focus:'совещания и созвоны' },
+        { t:'Поиск информации — где что лежит',    focus:'поиск информации' },
+        { t:'Исправление чужих ошибок',            focus:'исправление чужих ошибок' },
+        { t:'Тушение пожаров — всё срочно',        focus:'тушение пожаров' },
       ]},
     { kind:'posture', multi:true, q:'Вам ближе — делать самому или поручать?',
       opts:[
@@ -186,7 +190,11 @@
         { t:'Claude',                     tool:'Claude',            habit:'chat' },
         { t:'Gemini / Google',            tool:'Gemini',            habit:'chat' },
         { t:'GigaChat или YandexGPT',     tool:'GigaChat/YandexGPT',habit:'chat' },
+        { t:'DeepSeek, Qwen и подобные',  tool:'DeepSeek',          habit:'chat' },
+        { t:'Perplexity — поиск с ИИ',    tool:'Perplexity',        habit:'chat' },
+        { t:'Корпоративный ИИ у нас внутри', tool:'корпоративный ИИ', habit:'chat' },
         { t:'Copilot в Office',           tool:'Copilot',           habit:'office' },
+        { t:'Copilot / Cursor в коде',    tool:'Copilot в коде',    habit:'office' },
         { t:'Пробовал, но не прижилось',  tool:null,                habit:'none', solo:true },
         { t:'Ещё не пробовал',            tool:null,                habit:'none', solo:true },
       ]},
@@ -198,15 +206,28 @@
         { t:'Производство',                 industry:'производстве' },
         { t:'Торговля и ритейл',            industry:'торговле' },
         { t:'Госсектор',                    industry:'госсекторе' },
+        { t:'Медицина и фарма',             industry:'медицине' },
+        { t:'Образование',                  industry:'образовании' },
+        { t:'Логистика и транспорт',        industry:'логистике' },
+        { t:'Энергетика и ЖКХ',             industry:'энергетике' },
+        { t:'Телеком и связь',              industry:'телекоме' },
+        { t:'Агро и пищепром',              industry:'агро' },
         { t:'Услуги / другое',              industry:'услугах' },
       ]},
     { kind:'systems', multi:true, q:'В каких системах вы живёте?',
       opts:[
-        { t:'1С',                           systems:'1С' },
-        { t:'Excel / Google Таблицы',       systems:'Excel' },
-        { t:'CRM (Bitrix, amoCRM…)',        systems:'CRM' },
-        { t:'Таск-трекеры (Jira, Trello)',  systems:'трекерах' },
-        { t:'Почта и мессенджеры',          systems:'почте' },
+        { t:'1С (Бухгалтерия, ЗУП, УТ)',        systems:'1С' },
+        { t:'SAP, Oracle или своя ERP',         systems:'ERP' },
+        { t:'Excel / Google Таблицы',           systems:'Excel' },
+        { t:'CRM (Bitrix24, amoCRM, Мегаплан)', systems:'CRM' },
+        { t:'Таск-трекеры (Jira, Яндекс.Трекер)',systems:'трекеры' },
+        { t:'ЭДО (Диадок, СБИС, КЭДО)',         systems:'ЭДО' },
+        { t:'Почта и мессенджеры',              systems:'почта' },
+        { t:'Документы и диски (Notion, Диск)', systems:'диски' },
+        { t:'Порталы закупок (ЕИС, zakupki)',   systems:'закупки' },
+        { t:'САПР и сметы (AutoCAD, Гранд-Смета)',systems:'САПР' },
+        { t:'Банк-клиент, казначейство',        systems:'банк' },
+        { t:'BI и дашборды (Power BI, DataLens)',systems:'BI' },
       ]},
     // x:'<группа>' — варианты внутри группы взаимоисключающи (модель знает, что «на ты» и «на вы» вместе — бессмыслица)
     { kind:'tone', multi:true, q:'Как вам удобнее общаться?',
@@ -222,6 +243,10 @@
         { t:'Информация теряется',          gripe:'информация теряется' },
         { t:'Отчёты и таблицы',             gripe:'отчёты и таблицы' },
         { t:'Вечная спешка',                gripe:'вечная спешка' },
+        { t:'Совещания ради совещаний',     gripe:'совещания ради совещаний' },
+        { t:'Не найти нужный документ',     gripe:'не найти нужный документ' },
+        { t:'Дубли и разночтения в данных', gripe:'дубли и разночтения в данных' },
+        { t:'Дёргают по мелочам',           gripe:'дёргают по мелочам' },
       ]},
     // depth перестал быть бинарным: это НАБОР того, что человек хочет видеть.
     // Каждый пункт реально включает свою секцию в карточке ЦС. solo:true — «достаточно результата» отменяет остальные.
@@ -1240,17 +1265,26 @@
     'согласования и решения':         'approvals',
     'разбор входящих':                'inbox',
     'контроль, что всё идёт по плану':'control',
+    'совещания и созвоны':            'meetings',
+    'поиск информации':               'search',
+    'исправление чужих ошибок':       'quality',
+    'тушение пожаров':                'rush',
     // gripe
     'бесконечные согласования':       'approvals',
     'рутина и копипаст':              'routine',
     'информация теряется':            'infoloss',
     'отчёты и таблицы':               'reports',
     'вечная спешка':                  'rush',
+    'совещания ради совещаний':       'meetings',
+    'не найти нужный документ':       'search',
+    'дубли и разночтения в данных':   'quality',
+    'дёргают по мелочам':             'inbox',
   };
   // Тема → на какую поверхность Пульса она давит (порядок секций — следствие, не хардкод focus→секция)
   const THEME = {
     reports:  { surface:'staff' }, approvals:{ surface:'wait' }, routine:{ surface:'staff' },
     inbox:    { surface:'cand'  }, control:  { surface:'wait' }, infoloss:{ surface:'staff' }, rush:{ surface:'wait' },
+    meetings: { surface:'meet'  }, search:   { surface:'staff'}, quality: { surface:'wait' },
   };
   const userThemes = () => !profile ? [] : [...new Set(userFocus().concat(userGripe()).map(v=>PAIN_THEME[v]).filter(Boolean))];
 
@@ -1258,6 +1292,9 @@
   const INDUSTRY_REG = {
     'строительстве':'44-ФЗ · сметы · ГОСТ', 'финансах':'152-ФЗ · МСФО · ЦБ', 'ИТ':'ИБ · SLA · релизы',
     'производстве':'ОТиТБ · снабжение', 'торговле':'ЕГАИС · остатки', 'госсекторе':'223-ФЗ · 44-ФЗ · ПДн', 'услугах':'договоры · SLA клиента',
+    'медицине':'323-ФЗ · врачебная тайна · Росздравнадзор', 'образовании':'273-ФЗ · ФГОС · лицензии',
+    'логистике':'ЭТрН · таможня · маршруты', 'энергетике':'Ростехнадзор · ОТиТБ · техприсоединение',
+    'телекоме':'126-ФЗ · Роскомнадзор · SLA сети', 'агро':'Меркурий · Россельхознадзор · субсидии',
   };
   // отраслей может быть несколько (холдинг) → регнормы объединяем без дублей
   const industryReg = () => { const r=[...new Set(userIndustry().map(i=>INDUSTRY_REG[i]).filter(Boolean).flatMap(s=>s.split(' · ')))];
@@ -1266,18 +1303,27 @@
   // ЕДИНАЯ тегированная библиотека возможностей. Новую возможность добавляешь ОДИН раз с тегами —
   // она всплывает у любого совпавшего профиля. Ни одно измерение не выдумывает контент под ответ.
   const CAP_LIB = [
-    { e:'📑', t:'Агент отчётности',       now:'готовит отчёт к утру',            domains:['*'], industries:['*'], themes:['reports'],           systems:['1С','Excel'] },
-    { e:'✅', t:'Агент согласований',      now:'собирает визы в одну очередь',    domains:['*'], industries:['*'], themes:['approvals'],         systems:['CRM','почте'] },
-    { e:'🔁', t:'Агент рутины',            now:'снимает копипаст по расписанию',  domains:['*'], industries:['*'], themes:['routine'],           systems:['Excel','1С'] },
-    { e:'🧠', t:'Агент памяти',            now:'держит контекст и источники',     domains:['*'], industries:['*'], themes:['infoloss'],          systems:['почте','трекерах'] },
-    { e:'✉️', t:'Агент входящих',          now:'разбирает почту и звонки за ночь',domains:['*'], industries:['*'], themes:['inbox'],             systems:['почте'] },
+    { e:'📑', t:'Агент отчётности',       now:'готовит отчёт к утру',            domains:['*'], industries:['*'], themes:['reports'],           systems:['1С','Excel','ERP','BI'] },
+    { e:'✅', t:'Агент согласований',      now:'собирает визы в одну очередь',    domains:['*'], industries:['*'], themes:['approvals'],         systems:['CRM','почта','ЭДО'] },
+    { e:'🔁', t:'Агент рутины',            now:'снимает копипаст по расписанию',  domains:['*'], industries:['*'], themes:['routine'],           systems:['Excel','1С','ERP'] },
+    { e:'🧠', t:'Агент памяти',            now:'держит контекст и источники',     domains:['*'], industries:['*'], themes:['infoloss'],          systems:['почта','трекеры','диски'] },
+    { e:'✉️', t:'Агент входящих',          now:'разбирает почту и звонки за ночь',domains:['*'], industries:['*'], themes:['inbox'],             systems:['почта'] },
     { e:'⏱️', t:'Агент приоритетов',       now:'сортирует срочное от фонового',   domains:['*'], industries:['*'], themes:['rush','control'],    systems:['*'] },
     { e:'🎛️', t:'Агент контроля плана',    now:'следит за планом и отклонениями', domains:['exec','project','ops','analytics'], industries:['*'], themes:['control'], systems:['*'] },
-    { e:'📐', t:'Агент смет и тендеров',    now:'сверяет сметы и НМЦК',            domains:['estimate','sales','project'], industries:['строительстве'], themes:['reports','approvals'], systems:['1С'] },
-    { e:'🏛️', t:'Агент госзакупок',        now:'мониторит закупки 44/223-ФЗ',     domains:['sales','legal','project','exec'], industries:['госсекторе'], themes:['approvals','reports'], systems:['*'] },
-    { e:'📦', t:'Агент снабжения',         now:'держит заявки и остатки',         domains:['ops','project'], industries:['производстве'], themes:['control','routine'], systems:['1С'] },
-    { e:'🏷️', t:'Агент остатков',          now:'сводит остатки и поставки',       domains:['sales','ops','analytics'], industries:['торговле'], themes:['reports','control'], systems:['1С'] },
-    { e:'🛡️', t:'Агент комплаенса',        now:'проверяет 152-ФЗ и риски',        domains:['legal','finance','exec'], industries:['финансах','госсекторе'], themes:['infoloss'], systems:['*'] },
+    { e:'📐', t:'Агент смет и тендеров',    now:'сверяет сметы и НМЦК',            domains:['estimate','sales','project'], industries:['строительстве'], themes:['reports','approvals'], systems:['1С','САПР','закупки'] },
+    { e:'🏛️', t:'Агент госзакупок',        now:'мониторит закупки 44/223-ФЗ',     domains:['sales','legal','project','exec'], industries:['госсекторе'], themes:['approvals','reports'], systems:['закупки','ЭДО'] },
+    { e:'📦', t:'Агент снабжения',         now:'держит заявки и остатки',         domains:['ops','project'], industries:['производстве'], themes:['control','routine'], systems:['1С','ERP'] },
+    { e:'🏷️', t:'Агент остатков',          now:'сводит остатки и поставки',       domains:['sales','ops','analytics'], industries:['торговле'], themes:['reports','control'], systems:['1С','ERP','BI'] },
+    { e:'🛡️', t:'Агент комплаенса',        now:'проверяет 152-ФЗ и риски',        domains:['legal','finance','exec'], industries:['финансах','госсекторе','медицине'], themes:['infoloss'], systems:['*'] },
+    // ЦС под новые темы боли — без них расширенные варианты опроса были бы пустыми словами
+    { e:'🗓️', t:'Агент встреч',            now:'собирает повестку и протокол',    domains:['*'], industries:['*'], themes:['meetings'], systems:['почта','диски'] },
+    { e:'🔎', t:'Агент поиска',            now:'находит нужное в переписке и документах', domains:['*'], industries:['*'], themes:['search','infoloss'], systems:['почта','диски','ЭДО'] },
+    { e:'🧮', t:'Агент сверки',            now:'ловит дубли и разночтения',       domains:['*'], industries:['*'], themes:['quality'], systems:['Excel','1С','ERP'] },
+    { e:'💳', t:'Агент платежей',          now:'готовит реестр платежей, сверяет выписки', domains:['finance','ops','exec'], industries:['*'], themes:['routine','reports'], systems:['банк','1С','ERP'] },
+    // отраслевые ЦС под новые отрасли
+    { e:'🚚', t:'Агент перевозок',         now:'следит за маршрутами и ЭТрН',     domains:['ops','project','analytics'], industries:['логистике'], themes:['control','reports'], systems:['ERP','трекеры'] },
+    { e:'⚕️', t:'Агент медкомплаенса',      now:'проверяет 323-ФЗ и врачебную тайну', domains:['legal','ops','hr','exec'], industries:['медицине'], themes:['quality','infoloss'], systems:['*'] },
+    { e:'⚡', t:'Агент техприсоединения',   now:'ведёт заявки и сроки Ростехнадзора', domains:['ops','project','legal'], industries:['энергетике'], themes:['approvals','control'], systems:['ЭДО','ERP'] },
   ];
   // scoreProfile: соответствие вычисляется, а не перечисляется. Домен — гейт; отрасль/боль/системы — веса.
   function scoreCap(cap){
@@ -1358,7 +1404,12 @@
   }
 
   // systems → провенанс-источник на карточках ЦС. Мультивыбор: нормализуем (старые профили хранили строку).
-  const SYSTEM_SOURCE = { '1С':'1С', 'Excel':'Excel/Таблицы', 'CRM':'CRM', 'трекерах':'трекер', 'почте':'почта' };
+  const SYSTEM_SOURCE = {
+    '1С':'1С', 'ERP':'ERP', 'Excel':'Excel/Таблицы', 'CRM':'CRM', 'трекеры':'трекер', 'ЭДО':'ЭДО',
+    'почта':'почта', 'диски':'документы', 'закупки':'портал закупок', 'САПР':'САПР/сметы', 'банк':'банк-клиент', 'BI':'BI',
+    // старые ключи из профилей, сохранённых до расширения опроса
+    'трекерах':'трекер', 'почте':'почта',
+  };
   const userSystems = () => { const s = profile && profile.systems; return !s ? [] : (Array.isArray(s) ? s : [s]); };
   const systemsLabel = () => userSystems().map(s=>SYSTEM_SOURCE[s]||s).join(', ');
   const systemSource = () => userSystems().length ? ('источник: '+systemsLabel()) : null;
