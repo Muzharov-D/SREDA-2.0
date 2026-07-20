@@ -1109,7 +1109,7 @@
         focus: focusSel.slice(), posture: postureSel.slice(), postureKey: postureKeySel.slice(),
         aiTool: toolSel.slice(), habit, industry: industrySel.slice(), systems: systemsSel.slice(),
         tone, brief, gripe: gripeSel.slice(),
-        chosen: assembleModules(domain, level), echo, baseCount: ROLES.length };
+        chosen: assembleModules(domain, level), echo, baseCount: ROLES.length, viaSurvey:true };
       save(profile);
       drawResult();
     }
@@ -1467,6 +1467,13 @@
   let myStaffCache = null;
   function myStaff(){
     if (myStaffCache) return myStaffCache;
+    // Человек, который нанимал сам, видит ровно тех, кого нанял. Библиотека не досыпает
+    // ему пятерых «под роль» — иначе «взять себе» ничего не значит.
+    if (growth && growth.hired && growth.hired.length && !(profile && profile.viaSurvey)){
+      const depKey = DOMAIN_DEPT[profile.domain] || profile.domain || 'assist';
+      myStaffCache = growth.hired.map((h,i)=>({ id:'csh'+i, e:h.e, t:h.t, now:h.now, busy:false, dep:depKey, matched:true, tag:'взят вами' }));
+      return myStaffCache;
+    }
     // РОЙ №2: базовые ЦС получали dep = id отдела ('eng'→'dev'), а подобранные — ключ ДОМЕНА ('eng').
     // Подобранные встают первыми, а фильтр передач смотрит на staff[0].dep и не находил ни строки,
     // т.к. лента живёт на id отделов. Ломалось у eng/exec/analytics/project/ops (5 из 8), плюс в одном
@@ -1531,6 +1538,8 @@
   }
 
   function enterCabinet(){
+    document.body.classList.remove('k2-chat','k2-chat2');
+    myStaffCache = null;
     injectStyles(); firstEnter=true; myStaffCache=null; myAdditions=[]; k2Live=null;
     auditLog=[]; metrics=M0();
     cockpit.height='me'; cockpit.view='pulse'; cockpit.csId=null;
@@ -2867,6 +2876,268 @@
   }
 
   /* ================================================================ BOOT   */
+
+  /* ================== РОСТ ==================================================
+     Человек, который ничего ещё не использовал, не должен получать штат, Пульс
+     и помощника. Он получает окно и строку ввода — и всё.
+     Задача выполняется базовыми ЦС из библиотеки МОЛЧА: он не знает, что внутри
+     работает штат. Понравился результат — только тогда: «это делал такой-то,
+     взять его себе?». Каждая следующая поверхность приходит как ответ на то,
+     что человек уже сделал.
+     Зрелость не спрашивается и не берётся из должности — она И ЕСТЬ этот след. */
+  const LS_GROW = 'sreda_kam2_growth_v1';
+  let growth = null;
+  const G0 = () => ({ tasks:0, accepted:0, returned:0, hired:[], know:[], feed:[] });
+  function loadGrowth(){
+    try{ growth = JSON.parse(localStorage.getItem(LS_GROW)||'null') || G0(); }catch(e){ growth = G0(); }
+    ['hired','know','feed'].forEach(k=>{ if(!Array.isArray(growth[k])) growth[k]=[]; });
+    ['tasks','accepted','returned'].forEach(k=>{ if(typeof growth[k]!=='number') growth[k]=0; });
+    return growth;
+  }
+  function saveGrowth(){ try{ localStorage.setItem(LS_GROW, JSON.stringify(growth)); }catch(e){} }
+
+  // что открыто — функция следа
+  const hasStaff = () => growth.hired.length >= 1;
+  const hasPulse = () => growth.hired.length >= 2 || growth.accepted >= 3;
+
+  // ассистент набирает знания о человеке из его же работы — это и есть душа Среды:
+  // сначала он знает про тебя пару фактов, потом может встать вместо тебя.
+  function learn(k, v, from){
+    if (!v) return;
+    const has = growth.know.some(x=>x.k===k && x.v===v);
+    if (has) return;
+    growth.know.unshift({ k, v, from:from||'из задачи', at:nowHM() });
+    growth.know = growth.know.slice(0, 12);
+  }
+
+  const TEXT_DOMAIN = {
+    finance:['платёж','плат','счёт','счета','сверк','бухгалт','ндс','оплат','выписк','дебитор','баланс','ддс','налог','акт'],
+    estimate:['смет','расценк','кс-2','кс-3','нмцк','подряд','объём работ'],
+    eng:['код','релиз','баг','деплой','инцидент','сервер','api','тест','архитектур','скрипт'],
+    sales:['клиент','сделк','кп','коммерческое','воронк','crm','лид','продаж'],
+    marketing:['кампан','креатив','лендинг','реклам','трафик','контент','смм','бренд','презентац'],
+    ops:['склад','поставк','логист','производств','снабжен','закупк','остатк'],
+    hr:['ваканс','кандидат','собеседован','найм','онбординг','адаптац'],
+    legal:['договор','юрид','претенз','соглашен','контрагент','нда','риск'],
+    project:['проект','этап','веха','срок','статус'],
+    analytics:['дашборд','метрик','отчёт','данные','аналитик','выгрузк','sql','витрин'],
+    exec:['стратег','квартал','okr','цели','совет директоров'],
+    assist:['встреч','календар','протокол','напомн','поездк','бронир'],
+  };
+  const TEXT_SYS = { '1С':['1с','1c'], 'Excel':['excel','эксель','таблиц'], 'CRM':['crm','срм','битрикс','amo'],
+    'почта':['почт','письм','mail'], 'ERP':['erp','sap'], 'BI':['bi','дашборд','power bi'], 'ЭДО':['эдо','диадок'] };
+
+  function guessDomain(text){
+    const t=String(text).toLowerCase(); let best=null, bs=0;
+    Object.keys(TEXT_DOMAIN).forEach(d=>{ const n=TEXT_DOMAIN[d].filter(k=>t.indexOf(k)>=0).length; if(n>bs){bs=n;best=d;} });
+    return bs?best:null;
+  }
+  function guessSystems(text){
+    const t=String(text).toLowerCase();
+    return Object.keys(TEXT_SYS).filter(s=>TEXT_SYS[s].some(k=>t.indexOf(k)>=0));
+  }
+  // текст задачи → каноническая тема боли. Тегами, а не разбором смысла:
+  // без LLM честно матчим ключевые слова на те же 10 тем, что уже держит модель.
+  const TEXT_THEME = {
+    reports:  ['отчёт','отчет','сверк','акт','свод','выгрузк','дашборд','презентац','итог','баланс','смет'],
+    approvals:['соглас','виз','утверд','подпис','лимит','разреш','апрув'],
+    routine:  ['рутин','копипаст','каждый','регуляр','повторя','ежемесяч','еженедел','ежеднев','раз в'],
+    inbox:    ['почт','письм','входящ','звонок','транскрипт','чат','заявк'],
+    infoloss: ['контекст','найти','где лежит','память','искать','история'],
+    control:  ['контрол','отклонен','план','срок','просроч','бюджет','риск'],
+    rush:     ['срочн','горит','сегодня','аврал','вчера'],
+    meetings: ['встреч','созвон','совещан','календар','протокол'],
+    search:   ['подобрать','найди','поиск','сравн'],
+    quality:  ['ошибк','проверить','качеств','перепроверить','дефект'],
+  };
+  function textThemes(text){
+    const t = String(text).toLowerCase();
+    return Object.keys(TEXT_THEME).filter(th => TEXT_THEME[th].some(k => t.indexOf(k) >= 0));
+  }
+  // исполнителя выбирает МОДЕЛЬ: теги библиотеки против того, что человек написал.
+  // Ничего не пишется под конкретный запрос — совпадают домен, тема и система.
+  function pickCap(text, dom){
+    const t = String(text).toLowerCase();
+    const th = textThemes(text);
+    let best = null, bs = -1;
+    CAP_LIB.forEach(c => {
+      let sc = 0;
+      const doms = Array.isArray(c.domains) ? c.domains : [];
+      if (dom && doms.indexOf(dom) >= 0) sc += 4;          // профильный исполнитель
+      if (doms[0] === '*') sc += 1;                         // универсальный — годится всем, но слабее
+      (c.themes || []).forEach(x => { if (th.indexOf(x) >= 0) sc += 3; });
+      (c.systems || []).forEach(sy => { if (sy !== '*' && t.indexOf(String(sy).toLowerCase()) >= 0) sc += 2; });
+      if (sc > bs) { bs = sc; best = c; }
+    });
+    return best || CAP_LIB[0];
+  }
+
+
+  function provisionalProfile(){
+    return { domain:null, level:2, roleTitle:'', wants:[], depth:0, focus:[], gripe:[], industry:[],
+             systems:[], aiTool:[], postureKey:[], tone:'ты', brief:false, chosen:[], provisional:true };
+  }
+  function chatStyles(){
+    if ($('#k2ChatCss')) return;
+    const st=document.createElement('style'); st.id='k2ChatCss';
+    st.textContent = ".k2-cw{max-width:760px;margin:0 auto;padding:34px 20px 48px;display:flex;flex-direction:column;gap:14px}"
+      +".k2-cw h1{font-size:23px;letter-spacing:-.02em;margin:0}"
+      +".k2-cw .sub{color:var(--k-dim);font-size:13.5px}"
+      +".k2-feed{display:flex;flex-direction:column;gap:10px}"
+      +".k2-msg{align-self:flex-end;max-width:82%;background:rgba(54,201,148,.12);border-radius:12px 12px 4px 12px;padding:10px 13px;font-size:14.5px}"
+      +".k2-work{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--k-dim);padding:2px 2px}"
+      +".k2-work b{color:#e9efec;font-weight:600}"
+      +".k2-inbar{display:flex;gap:8px;align-items:center;border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:8px 8px 8px 12px}"
+      +".k2-inbar textarea{flex:1;background:transparent;border:0;outline:0;color:inherit;font:inherit;resize:none;height:24px;max-height:110px}"
+      +".k2-hint{display:flex;flex-wrap:wrap;gap:6px}"
+      +".k2-lnk{color:var(--k-gold);cursor:pointer;text-decoration:underline;text-underline-offset:2px}"
+      +"body.k2-chat .app{grid-template-columns:1fr !important}"
+      +"body.k2-chat .nav{display:none !important}"
+      +"body.k2-chat #cmdBtn,body.k2-chat .tb-right,body.k2-chat2 #cmdBtn,body.k2-chat2 .tb-right{display:none !important}"
+      +"body.k2-chat .stage,body.k2-chat2 .stage{padding:0 !important;overflow-y:auto}";
+    document.head.appendChild(st);
+  }
+
+  function renderChat(){
+    chatStyles();
+    document.body.classList.add('k2-chat');
+    if (!profile) profile = provisionalProfile();
+    loadGrowth();
+    const nav = $('#nav'), stage = $('#stage');
+    if (nav){
+      if (hasStaff()){
+        document.body.classList.remove('k2-chat'); document.body.classList.add('k2-chat2');
+        nav.style.display=''; nav.innerHTML = '<div class="k2-rail-h">МОЙ ЦИФРОВОЙ ШТАТ</div>';
+        growth.hired.forEach(h=>{ const it=el('div','k2-cs');
+          it.innerHTML='<div class="e">'+h.e+'</div><div><div class="t">'+esc(h.t)+'</div><div class="m">'+esc(h.now)+'</div></div>';
+          nav.appendChild(it); });
+      } else { document.body.classList.remove('k2-chat2'); nav.style.display='none'; nav.innerHTML=''; }
+    }
+    const wrap = el('div','k2-cw');
+    wrap.innerHTML = '<div><h1>СРЕДА</h1><div class="sub">Напишите, что нужно сделать. Просто словами.</div></div>'
+      + '<div class="k2-feed" id="chatFeed"></div>'
+      + '<div class="k2-inbar"><textarea id="chatIn" rows="1" placeholder="Например: собрать акт сверки с поставщиком за март"></textarea>'
+      + '<button class="k2-btn" id="chatGo">Сделать</button></div>'
+      + (growth.tasks ? '' : '<div class="k2-hint"><span class="k2-tag act" data-ex="Собрать акт сверки с поставщиком за март">акт сверки</span>'
+          + '<span class="k2-tag act" data-ex="Подготовить презентацию по итогам квартала">презентация по итогам</span>'
+          + '<span class="k2-tag act" data-ex="Проверить договор с подрядчиком на риски">проверить договор</span></div>')
+      + '<div class="sub" style="margin-top:4px">'
+      + (growth.know.length ? 'Среда знает о вас: <b>'+growth.know.length+'</b> '+plural(growth.know.length,'факт','факта','фактов')
+          +' · <span class="k2-lnk" id="knowOpen">посмотреть</span> · ' : '')
+      + '<span class="k2-lnk" id="goSurvey">узнать меня за 2 минуты</span></div>';
+    stage.innerHTML=''; stage.appendChild(wrap);
+    growth.feed.forEach(m=> paintFeed(m));
+    const inp = $('#chatIn');
+    const submit = ()=>{ const v=(inp.value||'').trim(); if(!v) return; inp.value=''; doTask(v); };
+    $('#chatGo').onclick = submit;
+    inp.addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); submit(); } });
+    wrap.querySelectorAll('[data-ex]').forEach(b=> b.onclick=()=>{ inp.value=b.dataset.ex; submit(); });
+    const gs=$('#goSurvey'); if(gs) gs.onclick=()=>{ profile=null; runSurvey(); };
+    const ko=$('#knowOpen'); if(ko) ko.onclick=()=> showKnow();
+  }
+
+  function paintFeed(m){
+    const fd=$('#chatFeed'); if(!fd) return;
+    if (m.role==='user'){ fd.appendChild(el('div','k2-msg', esc(m.text))); return; }
+    if (m.role==='done'){
+      const p=el('div','k2-panel');
+      p.innerHTML = '<div class="k2-item"><div class="e">'+(m.verdict==='ok'?'✓':'↩')+'</div><div style="flex:1">'
+        + '<div class="b">'+esc(m.title)+'</div><div class="m">'+esc(m.prov)+'</div></div></div>';
+      fd.appendChild(p);
+    }
+  }
+
+  function doTask(text){
+    loadGrowth();
+    const dom = guessDomain(text) || profile.domain;
+    const sys = guessSystems(text);
+    if (dom && !profile.domain){ profile.domain = dom;
+      learn('Чем занимается', DOMAINS[dom] ? DOMAINS[dom].label : dom, 'по формулировке задачи'); }
+    sys.forEach(x=>{ if(profile.systems.indexOf(x)<0) profile.systems.push(x); learn('Работает в', x, 'упомянуто в задаче'); });
+    const cap = pickCap(text, dom || profile.domain);
+    growth.tasks++; growth.feed.push({role:'user', text:text}); saveGrowth();
+    const fd=$('#chatFeed');
+    paintFeed({role:'user', text:text});
+    const work = el('div','k2-work'); fd.appendChild(work);
+    const steps = ['подбираю исполнителя под задачу',
+      'собираю контекст'+(profile.systems.length?' · '+profile.systems.join(', '):''),
+      'проверяю границы: что делать нельзя', 'готовлю результат'];
+    let i=0;
+    const tick = ()=>{
+      if (i<steps.length){ work.innerHTML += '<div>· '+esc(steps[i])+'</div>'; i++; setTimeout(tick, 430); return; }
+      work.innerHTML += '<div><b>готово</b></div>';
+      const p = el('div','k2-panel'); p.style.borderColor='var(--k-gold)';
+      const prov = ['из чего собрано: ваша формулировка',
+        'контекст: '+(dom&&DOMAINS[dom]?DOMAINS[dom].label:'общий'),
+        profile.systems.length?('источник: '+profile.systems.join(', ')):'источник: ваш текст',
+        'проверка допустимости: пройдена'].join(' · ');
+      p.innerHTML = '<div class="k2-item"><div class="e">📄</div><div style="flex:1">'
+        + '<div class="b">Готово: '+esc(text.length>70?text.slice(0,70)+'…':text)+'</div>'
+        + '<div class="m">'+esc(prov)+'</div></div></div>'
+        + '<div style="display:flex;gap:8px;margin-top:10px"><button class="k2-btn" id="tOk">Годится</button>'
+        + '<button class="k2-tag act" id="tNo">Не годится</button></div>';
+      fd.appendChild(p);
+      $('#tOk').onclick = ()=> acceptTask(text, cap, p);
+      $('#tNo').onclick = ()=>{ growth.returned++;
+        const m={role:'done', verdict:'back', title:'Вернул на доработку', prov:'учту в следующий раз'};
+        growth.feed.push(m); saveGrowth(); p.remove(); paintFeed(m); };
+    };
+    setTimeout(tick, 300);
+  }
+
+  function acceptTask(text, cap, panel){
+    growth.accepted++;
+    const m = {role:'done', verdict:'ok', title:'Принято: '+(text.length>60?text.slice(0,60)+'…':text), prov:'сделал '+cap.t};
+    growth.feed.push(m); saveGrowth(); panel.remove(); paintFeed(m);
+    if (growth.hired.some(h=>h.t===cap.t)){ if (hasPulse()) offerCabinet(); return; }
+    const fd=$('#chatFeed');
+    const o = el('div','k2-panel'); o.style.borderColor='var(--k-gold)';
+    o.innerHTML = '<div class="k2-item"><div class="e">'+cap.e+'</div><div style="flex:1">'
+      + '<div class="b">Это делал «'+esc(cap.t)+'»</div>'
+      + '<div class="m">'+esc(cap.now)+' — взять его себе? Дальше будет делать это без просьбы.</div></div></div>'
+      + '<div style="display:flex;gap:8px;margin-top:10px"><button class="k2-btn" id="hireY">Взять себе</button>'
+      + '<button class="k2-tag act" id="hireN">Не надо</button></div>';
+    fd.appendChild(o);
+    $('#hireY').onclick = ()=>{
+      growth.hired.push({ e:cap.e, t:cap.t, now:cap.now });
+      learn('Взял в штат', cap.t, 'после принятой работы');
+      saveGrowth(); cabToast('✓ «'+cap.t+'» теперь в вашем штате — слева');
+      renderChat(); if (hasPulse()) setTimeout(offerCabinet, 500);
+    };
+    $('#hireN').onclick = ()=> o.remove();
+  }
+
+  function offerCabinet(){
+    const fd=$('#chatFeed'); if(!fd || $('#cabOffer')) return;
+    const o = el('div','k2-panel'); o.id='cabOffer'; o.style.borderColor='var(--k-gold)';
+    o.innerHTML = '<div class="k2-item"><div class="e">🗂️</div><div style="flex:1">'
+      + '<div class="b">У вас уже '+growth.hired.length+' '+plural(growth.hired.length,'сотрудник','сотрудника','сотрудников')+'</div>'
+      + '<div class="m">Их пора видеть вместе: день, что ждёт вас, что они сделали.</div></div></div>'
+      + '<div style="display:flex;gap:8px;margin-top:10px"><button class="k2-btn" id="cabY">Собрать кабинет</button></div>';
+    fd.appendChild(o);
+    $('#cabY').onclick = ()=>{
+      profile.chosen = ['today','task','intake'];
+      if (!profile.roleTitle){
+        const r = resolveRole(profile.domain || 'assist', profile.level || 2);
+        profile.roleTitle = (r && r.t) ? r.t : ((profile.domain && DOMAINS[profile.domain]) ? DOMAINS[profile.domain].label : 'Ваша роль');
+      }
+      save(profile);
+      k2Audit('Кабинет собран', 'после '+growth.accepted+' принятых работ и '+growth.hired.length+' нанятых ЦС', 'ok');
+      enterCabinet();
+    };
+  }
+
+  function showKnow(){
+    const fd=$('#chatFeed'); if(!fd) return;
+    const p=el('div','k2-panel');
+    p.innerHTML = '<div class="k2-sec-h">Что Среда узнала о вас</div>'
+      + (growth.know.length
+          ? growth.know.map(k=>'<div class="k2-item"><div class="e">•</div><div><div class="b">'+esc(k.k)+': '+esc(k.v)+'</div><div class="m">'+esc(k.from)+'</div></div></div>').join('')
+          : '<div class="k2-empty">Пока ничего — Среда узнаёт вас из задач, а не из анкеты.</div>')
+      + '<div class="k2-empty" style="padding-top:8px">Это ваш личный помощник. Чем больше он знает, тем точнее работает — и тем больше может сделать вместо вас.</div>';
+    fd.appendChild(p);
+  }
+
   function boot(){
     if (!$('#stage')) return;
     profile = load();
@@ -2875,7 +3146,7 @@
       profile.chosen = profile.chosen.filter(id => MODULES.some(m=>m.id===id));
     }
     if (profile && profile.chosen && profile.chosen.length){ injectStyles(); enterCabinet(); }
-    else { profile=null; runSurvey(); }
+    else { injectStyles(); renderChat(); }   // вход = чат, а не анкета
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ()=> setTimeout(boot,0));
   else setTimeout(boot, 0);
