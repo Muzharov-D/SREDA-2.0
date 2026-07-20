@@ -1388,8 +1388,8 @@
   /* ============ КАБИНЕТ СОБИРАЕТ САМ ПОЛЬЗОВАТЕЛЬ ============
      Среда ПРЕДЛАГАЕТ раскладку скорингом; как только человек сам подвинул/изменил —
      его раскладка побеждает (custom=true) и живёт между сессиями. Всегда можно вернуть подобранное. */
-  const WKEYS = ['wait','flow','meet','staff','cand'];
-  const WTITLE = { wait:'Ждёт меня', flow:'Передачи', meet:'Встречи дня', staff:'Мои ЦС', cand:'Предложено помощником' };
+  const WKEYS = ['wait','check','flow','meet','staff','cand'];
+  const WTITLE = { wait:'Ждёт меня', check:'Проверка работ', flow:'Передачи', meet:'Встречи дня', staff:'Мои ЦС', cand:'Предложено помощником' };
   const ACCENTS = ['#36c994','#60a5fa','#e8b448','#e86a5e','#a78bfa','#22d3ee'];
   let layout = null, editMode = false;
   const defaultLayout = () => ({ custom:false, order:surfaceOrder(), span:{wait:2,staff:2,flow:2,meet:1,cand:1}, hidden:[], h:{}, accent:null });
@@ -1432,7 +1432,9 @@
 
   // порядок секций Пульса = скоринг поверхностей от тем боли + posture (не хардкод)
   function surfaceOrder(){
-    const score={wait:0,flow:0,meet:0,staff:0,cand:0};
+    const score={wait:0,check:0,flow:0,meet:0,staff:0,cand:0};
+    // у того, кто проверяет чужие работы, это главная работа дня — поверхность идёт первой
+    if (canReview()) score.check += 4;
     userThemes().forEach(t=>{ const s=THEME[t]&&THEME[t].surface; if(s) score[s]+=2; });
     // posture теперь реально двигает акцент кабинета, а не только порядок чипа:
     // «сам» → делать (мои ЦС), «поручать/направлять» → принимать (ждёт меня + передачи)
@@ -1441,7 +1443,7 @@
       else if(pk==='delegate'){ score.wait+=1; score.flow+=1; }
       else if(pk==='direct'){ score.wait+=2; score.flow+=1; }
     });
-    const base=['wait','flow','meet','staff','cand'];
+    const base=['wait','check','flow','meet','staff','cand'];
     return base.slice().sort((a,b)=> (score[b]-score[a]) || (base.indexOf(a)-base.indexOf(b)));
   }
 
@@ -1784,7 +1786,9 @@
     const xs = feed().filter(f=>f[0]==='x' && (canCompany() || f[3]===(staff[0]&&staff[0].dep))).slice(0,3);
     xs.forEach(f=> s5.appendChild(rowEl('↔', String(f[2]), 'в потоке · '+deptLabel(f[3]), null)));
     // ---- раскладка: Среда предложила скорингом, пользователь пересобрал под себя ----
+    // 6. Проверка работ — есть только у того, кто проверяет чужое (руководитель и выше)
     const secMap = { wait:s1, flow:s5, meet:s2, staff:s3, cand:s4 };
+    if (canReview()) secMap.check = reviewSection();
     ensureLayout();
     if (!layout.custom && userThemes().length){   // бейдж приоритета — только пока раскладку ведёт модель
       const hh=secMap[layout.order[0]] && secMap[layout.order[0]].querySelector('.k2-sec-h');
@@ -1960,6 +1964,132 @@
   }
 
   /* ---- точки участия (§4): приёмка / санкция / уточнение ---- */
+  /* ============ ПРОВЕРКА РАБОТ · направленное внимание =====================
+     Руководитель проверяет выборочно и наугад — не потому, что так правильно,
+     а потому что нет сигнала, куда смотреть. ЦС считает дешёвые признаки по
+     ВСЕМ работам цикла и решает, какие показать первыми. Проверяет по-прежнему
+     человек: признаки не выносят вердикт, они расставляют очередь.
+     Пул работ ГЕНЕРИРУЕТСЯ из домена — ни одна работа не написана руками,
+     иначе новая роль или отрасль потребовала бы дописывать контент. */
+  const REVIEW_SIGNALS = [
+    { k:'drift',  t:'расхождение с прошлым циклом того же исполнителя', w:3 },
+    { k:'range',  t:'показатель вышел из коридора',                     w:3 },
+    { k:'incons', t:'внутренняя несогласованность',                     w:2 },
+    { k:'gaps',   t:'пропуски и незаполненное',                         w:2 },
+    { k:'late',   t:'сдано после срока',                                w:1 },
+  ];
+  const REVIEW_KIND = { finance:'Сверка', estimate:'Смета', eng:'Ревью', sales:'Сделка',
+    marketing:'Кампания', ops:'Заявка', hr:'Подбор', legal:'Договор', project:'Этап',
+    analytics:'Отчёт', exec:'Решение', assist:'Заявка' };
+  const REVIEW_POOL = 100;   // работ за цикл
+  const REVIEW_LOOK = 12;    // столько человек успевает посмотреть за цикл
+  const REVIEW_SHOW = 6;     // столько показываем сразу — остальное за «ещё»
+  const canReview = () => !!profile && profile.level >= 3;   // проверяет тот, у кого есть подчинённые
+  let reviewMode = 'signals';   // 'signals' | 'random' — переключатель для показа
+  let reviewAll  = false;       // очередь длинная: сразу показываем первые, остальное по кнопке
+  const reviewSeen = {};        // id → 'ok' | 'back'
+
+  // детерминированный хэш: одна и та же Среда показывает одно и то же при каждом входе
+  function rhash(i, salt){
+    let h = 2166136261 ^ Math.imul(i, 2654435761);
+    const s = String(profile && profile.domain) + '|' + salt;
+    for (let j=0;j<s.length;j++){ h ^= s.charCodeAt(j); h = Math.imul(h, 16777619); }
+    h ^= h>>>15; h = Math.imul(h, 2246822507); h ^= h>>>13;
+    return ((h>>>0) % 10000) / 10000;
+  }
+  function reviewWorkers(){
+    const dep = DOMAIN_DEPT[profile.domain];
+    const t = (ORG.team && Array.isArray(ORG.team[dep])) ? ORG.team[dep] : [];
+    const names = t.map(p => [p.name, p.surname].filter(Boolean).join(' ').trim()).filter(Boolean).slice(0,4);
+    ['исполнитель А','исполнитель Б','исполнитель В','исполнитель Г']
+      .forEach(n=>{ if(names.length<4) names.push(n); });
+    return names;
+  }
+  function reviewPool(){
+    const who = reviewWorkers(), kind = REVIEW_KIND[profile.domain] || 'Работа', out = [];
+    for (let i=0;i<REVIEW_POOL;i++){
+      // дефект — то, что человек увидит, только ОТКРЫВ работу. Признак — не дефект,
+      // а его дешёвый след: бывает и там, где всё в порядке, и пропускается там, где нет.
+      const bad = rhash(i,'bad') < 0.08;
+      const sig = REVIEW_SIGNALS.filter(s => rhash(i, s.k) < (bad ? 0.42 : 0.022));
+      out.push({ id:'w'+i, n:i+1, bad:bad, signals:sig,
+        who: who[Math.floor(rhash(i,'who')*who.length) % who.length],
+        title: kind+' №'+(i+1),
+        score: sig.reduce((a,s)=>a+s.w, 0) });
+    }
+    return out;
+  }
+  const reviewRandom = pool => pool.slice().sort((a,b)=> rhash(a.n,'rnd')-rhash(b.n,'rnd')).slice(0, REVIEW_LOOK);
+  const reviewDirected = pool => pool.slice()
+    .sort((a,b)=> (b.score-a.score) || (a.n-b.n)).slice(0, REVIEW_LOOK);
+
+  function reviewSection(){
+    const pool = reviewPool();
+    const bad = pool.filter(w=>w.bad).length;
+    const directed = reviewDirected(pool), random = reviewRandom(pool);
+    const sample = reviewMode==='signals' ? directed : random;
+    const hitD = directed.filter(w=>w.bad).length, hitR = random.filter(w=>w.bad).length;
+    const s = section('Проверка работ', `${REVIEW_LOOK} из ${REVIEW_POOL}`);
+
+    const sw = el('div','k2-panel');
+    sw.innerHTML = `<div class="k2-item"><div style="flex:1">
+        <div class="b">${reviewMode==='signals'
+          ? B('Поднято по признакам', 'Поднято к проверке — ЦС посчитал признаки по всем работам цикла')
+          : B('Случайная выборка', 'Случайная выборка — как сейчас, без подсказки куда смотреть')}</div>
+        <div class="m">${T('за цикл','за цикл')} ${REVIEW_POOL} ${plural(REVIEW_POOL,'работа','работы','работ')} · ${T('успеваешь','успеваете')} посмотреть ${REVIEW_LOOK}</div></div>
+      <div style="display:flex;gap:6px">
+        <button class="k2-tag act${reviewMode==='signals'?' ok':''}" id="rvSig">по признакам</button>
+        <button class="k2-tag act${reviewMode==='random'?' ok':''}" id="rvRnd">наугад</button>
+      </div></div>`;
+    const bSig = sw.querySelector('#rvSig'), bRnd = sw.querySelector('#rvRnd');
+    if(bSig) bSig.onclick = ()=>{ if(reviewMode==='signals') return; reviewMode='signals';
+      k2Audit('Проверка: очередь по признакам', `${REVIEW_LOOK} из ${REVIEW_POOL}`, 'ok'); renderCockpit(); };
+    if(bRnd) bRnd.onclick = ()=>{ if(reviewMode==='random') return; reviewMode='random';
+      k2Audit('Проверка: случайная выборка', `${REVIEW_LOOK} из ${REVIEW_POOL}`, 'warn'); renderCockpit(); };
+    s.appendChild(sw);
+
+    sample.slice(0, reviewAll ? REVIEW_LOOK : REVIEW_SHOW).forEach(w=>{
+      const it = el('div','k2-item'); it.style.cursor='pointer';
+      const seen = reviewSeen[w.id];
+      const why = w.signals.length
+        ? w.signals.map(x=>x.t).join(' · ')
+        : (reviewMode==='random' ? 'признаков нет — работа взята наугад' : '');
+      const dot = w.signals.length ? '🟡' : '⚪';
+      it.innerHTML = `<div class="e">${seen?(seen==='ok'?'✓':'↩'):dot}</div><div style="flex:1">
+          <div class="b">${esc(w.title)} · <span style="color:var(--k-dim)">${esc(w.who)}</span></div>
+          <div class="m">${esc(why)}</div></div>
+        ${seen?'':`<div style="display:flex;gap:6px"><button class="k2-tag act ok">Принять</button><button class="k2-tag act">Вернуть</button></div>`}`;
+      if(!seen){
+        const [okB, backB] = it.querySelectorAll('.act');
+        okB.onclick = e=>{ e.stopPropagation(); reviewSeen[w.id]='ok'; bump('accepted'); if(!w.signals.length) bump('clean');
+          k2Audit('Работа принята', w.title+' · '+w.who+(w.signals.length?(' · признаки: '+w.signals.map(x=>x.k).join(',')):''), 'ok');
+          persist(); renderCockpit(); };
+        backB.onclick = e=>{ e.stopPropagation(); reviewSeen[w.id]='back'; bump('rejected');
+          k2Audit('Работа возвращена автору', w.title+' · '+w.who, 'warn');
+          persist(); cabToast('↩ Возвращено автору'); renderCockpit(); };
+      }
+      it.onclick = ()=> cabToast(w.signals.length
+        ? 'Поднято потому, что: '+w.signals.map(x=>x.t).join('; ')
+        : 'Признаков нет — работа попала в выборку случайно');
+      s.appendChild(it);
+    });
+
+    if (!reviewAll && sample.length > REVIEW_SHOW){
+      const more = el('div','k2-item'); more.style.cursor='pointer';
+      more.innerHTML = '<div class="e">⋯</div><div style="flex:1"><div class="m">ещё '+(sample.length-REVIEW_SHOW)+' '+plural(sample.length-REVIEW_SHOW,'работа','работы','работ')+' в очереди проверки</div></div>';
+      more.onclick = ()=>{ reviewAll = true; renderCockpit(); };
+      s.appendChild(more);
+    }
+    // честная сводка: пул — модель, поэтому сравнение считается, а не рисуется
+    const sum = el('div','k2-panel'); sum.style.marginTop='8px';
+    sum.innerHTML = `<div class="k2-empty" style="padding:8px 2px">
+      На этом цикле дефект несут <b>${bad}</b> ${plural(bad,'работа','работы','работ')} из ${REVIEW_POOL}.
+      Та же дюжина проверок находит <b>${hitD}</b> по признакам и <b>${hitR}</b> наугад.
+      Признаки не судят — они решают, что посмотреть первым.</div>`;
+    s.appendChild(sum);
+    return s;
+  }
+
   function participationPoints(){
     const pts=[];
     // §4: точки — по ТВОИМ ЦС/домену. Оркестратор (level>=4) видит всю компанию;
@@ -1968,8 +2098,16 @@
     const myDep = DOMAIN_DEPT[profile.domain];
     const myLabel = deptLabel(myDep||profile.domain);
     const mine = id => { const s=String(id); return s.indexOf('apn')===0 || s.indexOf('drt')===0 || s.indexOf('drc')===0; };
-    const apprOk  = a => orch || mine(a.id) || a.dept===myLabel;
-    const draftOk = d => orch || mine(d.id) || d.dept===myDep || deptLabel(d.dept)===myLabel;
+    // ДОЛЖНОСТЬ РЕШАЕТ ОХВАТ ДАННЫХ (зрелость решает рычаги — это другая ось).
+    // Было: уровни 1–3 видели одно и то же, различался только титул в шапке.
+    //   1 Исполнитель — только то, что создал сам;
+    //   2 Специалист  — весь свой домен;
+    //   3 Руководитель— + санкции своего отдела (решение о расходе и риске);
+    //   4+ Оркестратор— вся компания.
+    const canSanction = profile.level >= 3;
+    const apprOk  = a => canSanction && (orch || mine(a.id) || a.dept===myLabel);
+    const draftOk = d => orch || mine(d.id) ||
+      (profile.level >= 2 && (d.dept===myDep || deptLabel(d.dept)===myLabel));
     // РОЙ №2: единственное место, где dept шёл БЕЗ deptLabel — из-за этого мои же addApproval (эскалация,
     // раздача из звонка) с dept=ключом домена рисовали на проекторе «… · finance · риск low».
     // deptLabel безопасен и для готовых меток (вернёт как есть), поэтому лечим на выходе — закрывает и будущие источники.
@@ -2470,6 +2608,17 @@
       clarify:   [{ id:'cl0', text:'ЦС спрашивает: '+dcontent().clarify, who:'цифровой сотрудник ждёт вашего слова' }],
       coord:     [{ id:'co0', text:dcontent().coord, who:'согласование как РЦС — привлечение вашего цифрового сотрудника' }],
     };
+    // У доменов без своего отдела в оргструктуре лента пуста — специалисту нечего принимать,
+    // и уровни 1 и 2 сходятся в один экран. Достраиваем из ДОМЕННОГО контента: это те же
+    // параметры модели, а не текст, написанный под конкретную роль.
+    const myDep = DOMAIN_DEPT[profile.domain] || profile.domain;
+    if (!k2Live.drafts.some(d => d.dept===myDep || deptLabel(d.dept)===deptLabel(myDep))){
+      const dc = dcontent();
+      k2Live.drafts.unshift(
+        { id:'drd0', text:dc.cand.draft, dept:myDep, who:'коллега по направлению' },
+        { id:'drd1', text:'Черновик: '+dc.cand.task, dept:myDep, who:'коллега по направлению' }
+      );
+    }
   }
   function liveApprovals(){ initLive(); return k2Live.approvals; }
   function liveDrafts(){ initLive(); return k2Live.drafts; }
