@@ -2915,13 +2915,13 @@
     estimate:['смет','расценк','кс-2','кс-3','нмцк','подряд','объём работ'],
     eng:['код','релиз','баг','деплой','инцидент','сервер','api','тест','архитектур','скрипт'],
     sales:['клиент','сделк','кп','коммерческое','воронк','crm','лид','продаж'],
-    marketing:['кампан','креатив','лендинг','реклам','трафик','контент','смм','бренд','презентац'],
+    marketing:['кампан','креатив','лендинг','реклам','трафик','контент','смм','бренд'],
     ops:['склад','поставк','логист','производств','снабжен','закупк','остатк'],
     hr:['ваканс','кандидат','собеседован','найм','онбординг','адаптац'],
     legal:['договор','юрид','претенз','соглашен','контрагент','нда','риск'],
     project:['проект','этап','веха','срок','статус'],
     analytics:['дашборд','метрик','отчёт','данные','аналитик','выгрузк','sql','витрин'],
-    exec:['стратег','квартал','okr','цели','совет директоров'],
+    exec:['стратег','okr','совет директоров','правление','цели года'],
     assist:['встреч','календар','протокол','напомн','поездк','бронир'],
   };
   const TEXT_SYS = { '1С':['1с','1c'], 'Excel':['excel','эксель','таблиц'], 'CRM':['crm','срм','битрикс','amo'],
@@ -2956,13 +2956,21 @@
   }
   // исполнителя выбирает МОДЕЛЬ: теги библиотеки против того, что человек написал.
   // Ничего не пишется под конкретный запрос — совпадают домен, тема и система.
-  function pickCap(text, dom){
+  function pickCap(text, dom, exclude){
     const t = String(text).toLowerCase();
     const th = textThemes(text);
     let best = null, bs = -1;
     CAP_LIB.forEach(c => {
+      if (exclude && exclude.indexOf(c.t) >= 0) return;   // поддержка не бывает ведущим
       let sc = 0;
       const doms = Array.isArray(c.domains) ? c.domains : [];
+      const inds = Array.isArray(c.industries) ? c.industries : ['*'];
+      // отраслевой ЦС не предлагается человеку не из этой отрасли: на нулевом уровне
+      // отрасль ещё неизвестна, и «Агент Меркурия» на платёж — это провал доверия
+      if (inds[0] !== '*'){
+        const mine = (profile.industry||[]);
+        if (!mine.length || !inds.some(x=>mine.indexOf(x)>=0)) return;
+      }
       if (dom && doms.indexOf(dom) >= 0) sc += 4;          // профильный исполнитель
       if (doms[0] === '*') sc += 1;                         // универсальный — годится всем, но слабее
       (c.themes || []).forEach(x => { if (th.indexOf(x) >= 0) sc += 3; });
@@ -2991,6 +2999,19 @@
       +".k2-inbar textarea{flex:1;background:transparent;border:0;outline:0;color:inherit;font:inherit;resize:none;height:24px;max-height:110px}"
       +".k2-hint{display:flex;flex-wrap:wrap;gap:6px}"
       +".k2-lnk{color:var(--k-gold);cursor:pointer;text-decoration:underline;text-underline-offset:2px}"
+      +".k2-crew{display:flex;flex-direction:column;gap:6px;padding:2px}"
+      +".k2-crew-h{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--k-dim)}"
+      +".k2-crew-row{display:flex;flex-wrap:wrap;gap:6px}"
+      +".k2-crew-a{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:3px 10px 3px 6px}"
+      +".k2-crew-a i{font-style:normal;font-size:13px}"
+      +".k2-talk{display:flex;flex-direction:column;gap:8px;padding:4px 2px}"
+      +".k2-say{display:flex;gap:9px;align-items:flex-start}"
+      +".k2-say>i{font-style:normal;font-size:14px;line-height:1.5}"
+      +".k2-say b{display:block;font-size:12px;color:var(--k-gold);font-weight:600}"
+      +".k2-say span{display:block;font-size:13.5px;color:#c8d2ce}"
+      +".k2-res{display:flex;flex-direction:column;gap:7px;margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.1);font-size:13px;color:#c8d2ce}"
+      +".k2-res .k{display:block;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--k-dim);margin-bottom:2px}"
+      +".k2-res .deny{color:#e6b871}"
       +"body.k2-chat .app{grid-template-columns:1fr !important}"
       +"body.k2-chat .nav{display:none !important}"
       +"body.k2-chat #cmdBtn,body.k2-chat .tb-right,body.k2-chat2 #cmdBtn,body.k2-chat2 .tb-right{display:none !important}"
@@ -3047,6 +3068,52 @@
     }
   }
 
+  /* ---- задачу делает ГРУППА, а не один агент -----------------------------
+     Состав собирается тегами библиотеки, реплики — из РОЛИ агента и знаний
+     компании (контекст домена, правило допуска, регнорма отрасли).
+     Ни одна строка не пишется под конкретную формулировку запроса. */
+  const RISK_WORDS = ['сверх','лимит','скидк','оплат','платёж','платеж','перевод','договор','подпис',
+    'персональн','увольн','штраф','пеня','вне бюджета','предоплат','аванс'];
+  function riskOf(text){ const t=String(text).toLowerCase(); return RISK_WORDS.some(w=>t.indexOf(w)>=0); }
+
+  const SUPPORT = ['Агент памяти','Агент согласований','Агент приоритетов'];
+  function assembleParty(text, dom){
+    const lead = pickCap(text, dom, SUPPORT);
+    const party = [lead];
+    const add = title => { const c = CAP_LIB.find(x=>x.t===title); if (c && !party.some(p=>p.t===c.t)) party.push(c); };
+    add('Агент памяти');                       // приносит знания компании — он в группе всегда
+    if (riskOf(text)) add('Агент согласований');
+    if (party.length < 3) add('Агент приоритетов');
+    return party.slice(0,4);
+  }
+  // что каждый скажет — из его роли, домена и памяти компании
+  function partyLines(party, text, dom){
+    const dc = DCONTENT[dom];            // без дефолта: чужой контекст хуже, чем никакого
+    const mem = (dc && dc.mem) || [];
+    const ctx  = (mem[0]||'').replace(/^контекст:\s*/,'');
+    const rule = (mem[1]||'').replace(/^правило:\s*/,'');
+    const reg  = industryReg ? industryReg() : '';
+    const sysL = profile.systems && profile.systems.length ? profile.systems.join(', ') : '';
+    const out = [];
+    party.forEach((c,i)=>{
+      let line;
+      if (c.t === 'Агент памяти'){
+        line = ctx ? ('в памяти компании: ' + ctx) : 'в памяти компании по этой теме пока пусто — запомню этот случай';
+        if (reg) line += ' · нормы: ' + reg;
+      } else if (c.t === 'Агент согласований'){
+        line = rule ? ('правило: ' + rule) : 'это действие требует санкции — сам не проведу';
+      } else if (c.t === 'Агент приоритетов'){
+        line = 'сверил с тем, что уже в работе — не конфликтует';
+      } else if (i === 0){
+        line = 'беру на себя: ' + c.now + (sysL ? (' · подключаюсь к ' + sysL) : '');
+      } else {
+        line = c.now;
+      }
+      out.push({ e:c.e, who:c.t, line:line });
+    });
+    return out;
+  }
+
   function doTask(text){
     loadGrowth();
     const dom = guessDomain(text) || profile.domain;
@@ -3054,35 +3121,69 @@
     if (dom && !profile.domain){ profile.domain = dom;
       learn('Чем занимается', DOMAINS[dom] ? DOMAINS[dom].label : dom, 'по формулировке задачи'); }
     sys.forEach(x=>{ if(profile.systems.indexOf(x)<0) profile.systems.push(x); learn('Работает в', x, 'упомянуто в задаче'); });
-    const cap = pickCap(text, dom || profile.domain);
+    const d = dom || profile.domain || null;
+    const party = assembleParty(text, d);
+    const lead = party[0];
+    const risky = riskOf(text);
     growth.tasks++; growth.feed.push({role:'user', text:text}); saveGrowth();
-    const fd=$('#chatFeed');
+    const fd = $('#chatFeed');
     paintFeed({role:'user', text:text});
-    const work = el('div','k2-work'); fd.appendChild(work);
-    const steps = ['подбираю исполнителя под задачу',
-      'собираю контекст'+(profile.systems.length?' · '+profile.systems.join(', '):''),
-      'проверяю границы: что делать нельзя', 'готовлю результат'];
-    let i=0;
+
+    // группа собралась — её видно до того, как она начала работать
+    const crew = el('div','k2-crew');
+    crew.innerHTML = '<div class="k2-crew-h">над задачей работают ' + party.length + '</div>'
+      + '<div class="k2-crew-row">' + party.map(c=>'<span class="k2-crew-a"><i>'+c.e+'</i>'+esc(c.t)+'</span>').join('') + '</div>';
+    fd.appendChild(crew);
+
+    const talk = el('div','k2-talk'); fd.appendChild(talk);
+    const lines = partyLines(party, text, d);
+    let i = 0;
     const tick = ()=>{
-      if (i<steps.length){ work.innerHTML += '<div>· '+esc(steps[i])+'</div>'; i++; setTimeout(tick, 430); return; }
-      work.innerHTML += '<div><b>готово</b></div>';
+      if (i < lines.length){
+        const L = lines[i];
+        const row = el('div','k2-say');
+        row.innerHTML = '<i>'+L.e+'</i><div><b>'+esc(L.who)+'</b><span>'+esc(L.line)+'</span></div>';
+        talk.appendChild(row); i++; setTimeout(tick, 520); return;
+      }
+      showResult();
+    };
+
+    function showResult(){
+      const dc = (DCONTENT[d] || DCONTENT.sales);
+      const rule = ((dc.mem||[])[1]||'').replace(/^правило:\s*/,'');
+      const src = [];
+      if (profile.systems.length) src.push(profile.systems.join(', '));
+      if (dc && (dc.mem||[])[0]) src.push('память компании');   // только если там правда что-то было
+      if (industryReg && industryReg()) src.push('нормы отрасли');
+      if (!src.length) src.push('только ваша формулировка — контекста по этой теме у меня пока нет');
       const p = el('div','k2-panel'); p.style.borderColor='var(--k-gold)';
-      const prov = ['из чего собрано: ваша формулировка',
-        'контекст: '+(dom&&DOMAINS[dom]?DOMAINS[dom].label:'общий'),
-        profile.systems.length?('источник: '+profile.systems.join(', ')):'источник: ваш текст',
-        'проверка допустимости: пройдена'].join(' · ');
-      p.innerHTML = '<div class="k2-item"><div class="e">📄</div><div style="flex:1">'
-        + '<div class="b">Готово: '+esc(text.length>70?text.slice(0,70)+'…':text)+'</div>'
-        + '<div class="m">'+esc(prov)+'</div></div></div>'
+      let html = '<div class="k2-item"><div class="e">📄</div><div style="flex:1">'
+        + '<div class="b">' + esc(lead.t) + ' — сделано</div>'
+        + '<div class="m">' + esc(lead.now) + '</div></div></div>'
+        + '<div class="k2-res"><div><span class="k">из чего собрано</span>' + esc(src.join(' · ')) + '</div>';
+      if (risky){
+        html += '<div class="deny"><span class="k">чего не сделал</span>'
+          + esc(rule ? ('нужна санкция — ' + rule) : 'действие требует санкции руководителя')
+          + ' · отклонено <b>до выполнения</b>, попытка в аудите</div>';
+      }
+      html += '<div><span class="k">дальше</span>' + esc(risky ? 'запросить санкцию — и я довожу до конца'
+        : 'могу повторять это без просьбы') + '</div></div>'
         + '<div style="display:flex;gap:8px;margin-top:10px"><button class="k2-btn" id="tOk">Годится</button>'
-        + '<button class="k2-tag act" id="tNo">Не годится</button></div>';
+        + '<button class="k2-tag act" id="tNo">Не годится</button>'
+        + (risky ? '<button class="k2-tag act" id="tEsc">Запросить санкцию</button>' : '') + '</div>';
+      p.innerHTML = html;
       fd.appendChild(p);
-      $('#tOk').onclick = ()=> acceptTask(text, cap, p);
+      $('#tOk').onclick = ()=> acceptTask(text, lead, p);
       $('#tNo').onclick = ()=>{ growth.returned++;
         const m={role:'done', verdict:'back', title:'Вернул на доработку', prov:'учту в следующий раз'};
         growth.feed.push(m); saveGrowth(); p.remove(); paintFeed(m); };
-    };
-    setTimeout(tick, 300);
+      const esc2 = $('#tEsc');
+      if (esc2) esc2.onclick = ()=>{ esc2.disabled = true; esc2.textContent = 'санкция запрошена';
+        k2Audit('Запрошена санкция из чата', text, 'warn');
+        const n = el('div','k2-work'); n.innerHTML = '<div>· ушло руководителю — вернусь, когда ответят</div>';
+        fd.appendChild(n); };
+    }
+    setTimeout(tick, 320);
   }
 
   function acceptTask(text, cap, panel){
