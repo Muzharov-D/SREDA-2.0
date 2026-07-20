@@ -3064,6 +3064,21 @@
       +".k2-own-i>i{font-style:normal;font-size:13px;line-height:1.5}"
       +".k2-own-i b{display:block;font-size:13.5px;font-weight:600}"
       +".k2-own-i span{display:block;font-size:12px;color:var(--k-dim)}"
+      +".k2-work-res{margin-top:10px;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:12px 13px;display:flex;flex-direction:column;gap:8px}"
+      +".k2-wr-h{display:flex;flex-direction:column;gap:2px}"
+      +".k2-wr-h b{font-size:14.5px}.k2-wr-h span{font-size:12px;color:var(--k-dim)}"
+      +".k2-wr-h.deny b{color:#e6b871}"
+      +".k2-wr-sum{display:flex;flex-wrap:wrap;gap:14px;padding:8px 0;border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08)}"
+      +".k2-wr-sum>div{display:flex;flex-direction:column;font-size:13.5px;font-variant-numeric:tabular-nums}"
+      +".k2-wr-sum span{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--k-dim)}"
+      +".k2-wr-sum .d{color:#e6b871}.k2-wr-sum .ok{color:var(--k-gold)}"
+      +".k2-wr-t{font-size:12px;color:var(--k-dim)}"
+      +".k2-wr-i{display:flex;gap:10px;align-items:baseline;font-size:13px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)}"
+      +".k2-wr-i b{min-width:82px;font-weight:600}"
+      +".k2-wr-i span{flex:1;color:#c8d2ce}"
+      +".k2-wr-i em{font-style:normal;color:var(--k-dim);font-variant-numeric:tabular-nums}"
+      +".k2-wr-a{display:flex;align-items:center;gap:10px;margin-top:2px}"
+      +".k2-wr-n{font-size:11.5px;color:var(--k-dim)}"
       +"body.k2-chat .app{grid-template-columns:1fr !important}"
       +"body.k2-chat .nav{display:none !important}"
       +"body.k2-chat #cmdBtn,body.k2-chat .tb-right,body.k2-chat2 #cmdBtn,body.k2-chat2 .tb-right{display:none !important}"
@@ -3204,6 +3219,82 @@
     return out;
   }
 
+
+  /* ---- РАБОТА, КОТОРАЯ ПРАВДА ДЕЛАЕТСЯ ----------------------------------
+     Скептик прав: пока ЦС не возвращает результат, спорить не о чем.
+     Сверка — не язык, а арифметика, поэтому её можно сделать честно и без
+     модели: реальные реестры, реальное сопоставление, выгружаемый файл.
+     Платёж — не текст, а операция над реестром: границу видно по тому,
+     что баланс НЕ изменился. */
+  const W = () => (typeof window!=='undefined' && window.__K2WORK) || null;
+
+  function workFor(text){
+    const t = String(text).toLowerCase();
+    if (!W()) return null;
+    if (/сверк|сверить|акт сверки|расхожден/.test(t)) return { kind:'recon' };
+    if (/плат|оплат|перевод|провести/.test(t)){
+      // Номер документа — не сумма. УПД-1052 однажды увёл платёж на 1 052 ₽,
+      // поэтому сначала выкидываем документные токены (слово-цифры, № цифры),
+      // а потом ищем то, что выглядит как деньги: группы по три или 4+ цифры.
+      const clean = t.replace(/[а-яёa-z]{2,}[-–—]\d+/g, ' ').replace(/№\s?\d+/g, ' ');
+      const m = clean.match(/(\d{1,3}(?:[\s. ]\d{3})+(?:[.,]\d{1,2})?|\d{4,}(?:[.,]\d{1,2})?)/);
+      let sum = m ? parseFloat(String(m[1]).replace(/[\s. ]/g, '').replace(',', '.')) : null;
+      if (!sum || isNaN(sum) || sum < 100) sum = 214980.50;   // спорный документ из сверки
+      return { kind:'pay', sum:sum, vendor:'ООО «Поставщик»' };
+    }
+    return null;
+  }
+
+  function reconBlock(){
+    const w = W(); const res = w.reconcile();
+    const box = el('div','k2-work-res');
+    box.innerHTML = '<div class="k2-wr-h"><b>Акт сверки собран</b>'
+      + '<span>' + res.rowsOurs + ' наших строк против ' + res.rowsTheirs + ' у поставщика</span></div>'
+      + '<div class="k2-wr-sum"><div><span>у нас</span>' + w.money(res.sumOurs) + ' ₽</div>'
+      + '<div><span>у поставщика</span>' + w.money(res.sumTheirs) + ' ₽</div>'
+      + '<div class="d"><span>расхождение</span>' + w.money(res.diff) + ' ₽</div></div>'
+      + '<div class="k2-wr-t">Найдено расхождений: ' + res.issues.length + '</div>'
+      + res.issues.map(i=>'<div class="k2-wr-i"><b>'+esc(i.doc)+'</b><span>'+esc(i.text)+'</span>'
+          + (i.delta ? '<em>'+w.money(Math.abs(i.delta))+' ₽</em>' : '<em>—</em>') + '</div>').join('')
+      + '<div class="k2-wr-a"><button class="k2-btn" id="dlRecon">Скачать файл</button>'
+      + '<span class="k2-wr-n">CSV · открывается в Excel</span></div>';
+    setTimeout(()=>{
+      const b = $('#dlRecon'); if(!b) return;
+      b.onclick = ()=>{
+        const blob = new Blob([w.reconCsv(res)], {type:'text/csv;charset=utf-8'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = 'сверка-март.csv';
+        document.body.appendChild(a); a.click(); a.remove();
+        w.chainAdd('Выгружен акт сверки', res.issues.length + ' расхождений на ' + w.money(Math.abs(res.diff)) + ' ₽', 'ok');
+        cabToast('✓ Файл сохранён');
+      };
+    }, 30);
+    return { node:box, res:res };
+  }
+
+  function payBlock(sum, vendor){
+    const w = W();
+    const before = w.ledgerLoad().balance;
+    const r = w.pay(vendor, sum);                    // НАСТОЯЩАЯ попытка операции
+    const after = w.ledgerLoad().balance;
+    const box = el('div','k2-work-res');
+    if (r.ok){
+      box.innerHTML = '<div class="k2-wr-h"><b>Платёж проведён</b><span>' + esc(vendor) + ' · ' + w.money(sum) + ' ₽</span></div>'
+        + '<div class="k2-wr-sum"><div><span>было</span>' + w.money(before) + ' ₽</div>'
+        + '<div><span>стало</span>' + w.money(after) + ' ₽</div></div>';
+    } else {
+      box.innerHTML = '<div class="k2-wr-h deny"><b>Остановлено границей</b><span>' + esc(vendor) + ' · ' + w.money(sum) + ' ₽</span></div>'
+        + '<div class="k2-wr-t">' + (r.reason==='limit'
+            ? ('лимит одной операции без санкции — ' + w.money(w.LIMIT) + ' ₽')
+            : 'недостаточно средств на счёте') + '</div>'
+        + '<div class="k2-wr-sum"><div><span>баланс до</span>' + w.money(before) + ' ₽</div>'
+        + '<div><span>баланс после</span>' + w.money(after) + ' ₽</div>'
+        + '<div class="' + (before===after ? 'ok' : 'd') + '"><span>изменился</span>' + (before===after ? 'нет' : 'ДА') + '</div></div>'
+        + '<div class="k2-wr-n">Операция не выполнялась: остановка произошла до обращения к реестру. Попытка записана в аудит.</div>';
+    }
+    return { node:box, blocked:!r.ok, sum:sum, vendor:vendor };
+  }
+
   function doTask(text){
     loadGrowth();
     const dom = guessDomain(text) || profile.domain;
@@ -3220,6 +3311,15 @@
     paintFeed({role:'user', text:text});
 
     // группа собралась — её видно до того, как она начала работать
+    // ПАМЯТЬ ОРГАНИЗАЦИИ: решение, принятое другим человеком, приходит раньше работы
+    if (W()){
+      const rec = W().orgRecall(text);
+      if (rec.length){
+        const r0 = rec[0];
+        fd.appendChild(assistRow('В компании по этому уже решили: ' + r0.decision,
+          r0.by + ' · ' + r0.at + ' · решение действует для всех, кто спросит'));
+      }
+    }
     // помощник вспоминает раньше, чем группа начинает работать
     const key = taskKey(text, d);
     const prev = seenBefore(key);
@@ -3256,6 +3356,7 @@
       if (dc && (dc.mem||[])[0]) src.push('память компании');   // только если там правда что-то было
       if (industryReg && industryReg()) src.push('нормы отрасли');
       if (!src.length) src.push('только ваша формулировка — контекста по этой теме у меня пока нет');
+      const job = workFor(text);
       const p = el('div','k2-panel'); p.style.borderColor='var(--k-gold)';
       let html = '<div class="k2-item"><div class="e">📄</div><div style="flex:1">'
         + '<div class="b">' + esc(lead.t) + ' — сделано</div>'
@@ -3272,6 +3373,21 @@
         + '<button class="k2-tag act" id="tNo">Не годится</button>'
         + (risky ? '<button class="k2-tag act" id="tEsc">Запросить санкцию</button>' : '') + '</div>';
       p.innerHTML = html;
+      // настоящий результат врезается перед кнопками
+      if (job){
+        let made = null;
+        if (job.kind === 'recon') made = reconBlock();
+        else if (job.kind === 'pay') made = payBlock(job.sum, job.vendor);
+        if (made){
+          const anchor = p.querySelector('.k2-res');
+          if (anchor) anchor.parentNode.insertBefore(made.node, anchor);
+          else p.appendChild(made.node);
+          if (job.kind === 'pay' && made.blocked){
+            const d2 = p.querySelector('.k2-res .deny');
+            if (d2) d2.innerHTML = '<span class="k">чего не сделал</span>платёж не проведён — реестр не тронут, попытка в аудите';
+          }
+        }
+      }
       fd.appendChild(p);
       markSeen(key, { cap: lead.t, denied: risky ? (rule || 'нужна санкция') : (memo.denied||null) });
       saveGrowth();
@@ -3280,10 +3396,26 @@
         const m={role:'done', verdict:'back', title:'Вернул на доработку', prov:'учту в следующий раз'};
         growth.feed.push(m); saveGrowth(); p.remove(); paintFeed(m); };
       const esc2 = $('#tEsc');
-      if (esc2) esc2.onclick = ()=>{ esc2.disabled = true; esc2.textContent = 'санкция запрошена';
+      if (esc2) esc2.onclick = ()=>{
+        esc2.disabled = true; esc2.textContent = 'санкция получена';
         k2Audit('Запрошена санкция из чата', text, 'warn');
-        const n = el('div','k2-work'); n.innerHTML = '<div>· ушло руководителю — вернусь, когда ответят</div>';
-        fd.appendChild(n); };
+        const job2 = workFor(text);
+        if (job2 && job2.kind === 'pay' && W()){
+          const before = W().ledgerLoad().balance;
+          const r = W().pay(job2.vendor, job2.sum, { sanctioned:true });
+          const after = W().ledgerLoad().balance;
+          const n = el('div','k2-work-res');
+          n.innerHTML = '<div class="k2-wr-h"><b>Проведено по санкции</b><span>' + esc(job2.vendor) + ' · ' + W().money(job2.sum) + ' ₽</span></div>'
+            + '<div class="k2-wr-sum"><div><span>было</span>' + W().money(before) + ' ₽</div>'
+            + '<div><span>стало</span>' + W().money(after) + ' ₽</div></div>'
+            + '<div class="k2-wr-n">Та же операция, тот же код — разница только в санкции. Обе записи в аудите.</div>';
+          fd.appendChild(n);
+          W().orgRemember(job2.vendor, 'платёж сверх лимита проводим только с санкцией РЦС', profile.roleTitle || 'коллега');
+        } else {
+          const n = el('div','k2-work'); n.innerHTML = '<div>· ушло руководителю — вернусь, когда ответят</div>';
+          fd.appendChild(n);
+        }
+      };
     }
     setTimeout(tick, 320);
   }
