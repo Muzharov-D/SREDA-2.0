@@ -2887,10 +2887,12 @@
      Зрелость не спрашивается и не берётся из должности — она И ЕСТЬ этот след. */
   const LS_GROW = 'sreda_kam2_growth_v1';
   let growth = null;
-  const G0 = () => ({ tasks:0, accepted:0, returned:0, hired:[], know:[], feed:[] });
+  const G0 = () => ({ tasks:0, accepted:0, returned:0, hired:[], know:[], feed:[], themes:{}, routines:[], done:[], seen:0 });
   function loadGrowth(){
     try{ growth = JSON.parse(localStorage.getItem(LS_GROW)||'null') || G0(); }catch(e){ growth = G0(); }
-    ['hired','know','feed'].forEach(k=>{ if(!Array.isArray(growth[k])) growth[k]=[]; });
+    ['hired','know','feed','routines','done'].forEach(k=>{ if(!Array.isArray(growth[k])) growth[k]=[]; });
+    if (!growth.themes || typeof growth.themes!=='object') growth.themes={};
+    if (typeof growth.seen!=='number') growth.seen=0;
     ['tasks','accepted','returned'].forEach(k=>{ if(typeof growth[k]!=='number') growth[k]=0; });
     return growth;
   }
@@ -2908,6 +2910,42 @@
     if (has) return;
     growth.know.unshift({ k, v, from:from||'из задачи', at:nowHM() });
     growth.know = growth.know.slice(0, 12);
+  }
+
+
+  /* ---- помощник ----------------------------------------------------------
+     Он не выдаётся при входе. Он появляется тогда, когда у человека
+     появляется штат — то есть когда есть кого вести. Дальше он говорит
+     только по делу: узнаёт повтор, помнит, чем кончилось в прошлый раз,
+     и предлагает снять с человека то, что уже повторилось. */
+  const hasAssist = () => growth.hired.length >= 1;
+  const hasOwnPulse = () => growth.routines.length >= 1 || growth.hired.length >= 2;
+
+  function taskKey(text, dom){
+    const th = textThemes(text);
+    return (dom||'—') + '/' + (th[0] || 'общее');
+  }
+  function seenBefore(key){ return (growth.themes[key]||{}).n || 0; }
+  function markSeen(key, meta){
+    const cur = growth.themes[key] || { n:0 };
+    cur.n++; if (meta) Object.assign(cur, meta);
+    growth.themes[key] = cur; return cur;
+  }
+  function assistRow(text, sub){
+    const r = el('div','k2-assist');
+    r.innerHTML = '<i>◆</i><div><b>помощник</b><span>'+esc(text)+'</span>'
+      + (sub ? '<em>'+esc(sub)+'</em>' : '') + '</div>';
+    return r;
+  }
+  // первый прогон регулярки делаем сразу — иначе обещание «будет само» ничем не подтверждено
+  function addRoutine(text, capT, key){
+    if (growth.routines.some(r=>r.key===key)) return null;
+    const r = { key:key, text:text, cap:capT, when:'пн 08:00', since:nowHM() };
+    growth.routines.push(r);
+    growth.done.unshift({ cap:capT, text:text, at:nowHM(), first:true });
+    learn('Повторяется', text.length>44?text.slice(0,44)+'…':text, 'сделано регулярным');
+    saveGrowth();
+    return r;
   }
 
   const TEXT_DOMAIN = {
@@ -3012,6 +3050,20 @@
       +".k2-res{display:flex;flex-direction:column;gap:7px;margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.1);font-size:13px;color:#c8d2ce}"
       +".k2-res .k{display:block;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--k-dim);margin-bottom:2px}"
       +".k2-res .deny{color:#e6b871}"
+      +".k2-assist{display:flex;gap:9px;align-items:flex-start;padding:9px 11px;border-left:2px solid var(--k-gold);background:rgba(54,201,148,.06);border-radius:0 8px 8px 0}"
+      +".k2-assist>i{font-style:normal;color:var(--k-gold);font-size:12px;line-height:1.6}"
+      +".k2-assist b{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--k-gold)}"
+      +".k2-assist span{display:block;font-size:14px;color:#e2e9e6;margin-top:2px}"
+      +".k2-assist em{display:block;font-style:normal;font-size:12.5px;color:var(--k-dim);margin-top:3px}"
+      +".k2-own{border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:12px}"
+      +".k2-own-h{display:flex;align-items:baseline;gap:10px}"
+      +".k2-own-h b{font-size:16px}.k2-own-h span{font-size:12px;color:var(--k-dim)}"
+      +".k2-own-s{display:flex;flex-direction:column;gap:6px}"
+      +".k2-own-t{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--k-dim)}"
+      +".k2-own-i{display:flex;gap:9px;align-items:flex-start}"
+      +".k2-own-i>i{font-style:normal;font-size:13px;line-height:1.5}"
+      +".k2-own-i b{display:block;font-size:13.5px;font-weight:600}"
+      +".k2-own-i span{display:block;font-size:12px;color:var(--k-dim)}"
       +"body.k2-chat .app{grid-template-columns:1fr !important}"
       +"body.k2-chat .nav{display:none !important}"
       +"body.k2-chat #cmdBtn,body.k2-chat .tb-right,body.k2-chat2 #cmdBtn,body.k2-chat2 .tb-right{display:none !important}"
@@ -3035,7 +3087,10 @@
       } else { document.body.classList.remove('k2-chat2'); nav.style.display='none'; nav.innerHTML=''; }
     }
     const wrap = el('div','k2-cw');
-    wrap.innerHTML = '<div><h1>СРЕДА</h1><div class="sub">Напишите, что нужно сделать. Просто словами.</div></div>'
+    wrap.innerHTML = '<div><h1>' + (hasOwnPulse() ? 'Ваша Среда' : 'СРЕДА') + '</h1><div class="sub">'
+      + (hasOwnPulse() ? 'Помощник собрал день. Ниже — что нужно от вас.' : 'Напишите, что нужно сделать. Просто словами.')
+      + '</div></div>'
+      + '<div id="ownPulse"></div>'
       + '<div class="k2-feed" id="chatFeed"></div>'
       + '<div class="k2-inbar"><textarea id="chatIn" rows="1" placeholder="Например: собрать акт сверки с поставщиком за март"></textarea>'
       + '<button class="k2-btn" id="chatGo">Сделать</button></div>'
@@ -3043,10 +3098,11 @@
           + '<span class="k2-tag act" data-ex="Подготовить презентацию по итогам квартала">презентация по итогам</span>'
           + '<span class="k2-tag act" data-ex="Проверить договор с подрядчиком на риски">проверить договор</span></div>')
       + '<div class="sub" style="margin-top:4px">'
-      + (growth.know.length ? 'Среда знает о вас: <b>'+growth.know.length+'</b> '+plural(growth.know.length,'факт','факта','фактов')
+      + (growth.know.length && !hasOwnPulse() ? 'Среда знает о вас: <b>'+growth.know.length+'</b> '+plural(growth.know.length,'факт','факта','фактов')
           +' · <span class="k2-lnk" id="knowOpen">посмотреть</span> · ' : '')
       + '<span class="k2-lnk" id="goSurvey">узнать меня за 2 минуты</span></div>';
     stage.innerHTML=''; stage.appendChild(wrap);
+    if (hasOwnPulse()) $('#ownPulse').appendChild(ownPulse());
     growth.feed.forEach(m=> paintFeed(m));
     const inp = $('#chatIn');
     const submit = ()=>{ const v=(inp.value||'').trim(); if(!v) return; inp.value=''; doTask(v); };
@@ -3055,6 +3111,40 @@
     wrap.querySelectorAll('[data-ex]').forEach(b=> b.onclick=()=>{ inp.value=b.dataset.ex; submit(); });
     const gs=$('#goSurvey'); if(gs) gs.onclick=()=>{ profile=null; runSurvey(); };
     const ko=$('#knowOpen'); if(ko) ko.onclick=()=> showKnow();
+  }
+
+
+  // Личный Пульс. Не кабинетный: в нём только то, что человек сам завёл —
+  // его регулярки, его штат, его запрошенные санкции.
+  function ownPulse(){
+    const box = el('div','k2-own');
+    const hh = growth.hired.length;
+    box.innerHTML = '<div class="k2-own-h"><b>Ваш день</b><span>'+nowHM()+' · собрал помощник</span></div>';
+    if (growth.done.length){
+      const s1 = el('div','k2-own-s');
+      s1.innerHTML = '<div class="k2-own-t">Сделано без вас</div>' + growth.done.slice(0,3).map(d=>
+        '<div class="k2-own-i"><i>✓</i><div><b>'+esc(d.text.length>58?d.text.slice(0,58)+'…':d.text)+'</b>'
+        + '<span>'+esc(d.cap)+' · '+esc(d.at)+(d.first?' · первый прогон':'')+'</span></div></div>').join('');
+      box.appendChild(s1);
+    }
+    if (growth.routines.length){
+      const s2 = el('div','k2-own-s');
+      s2.innerHTML = '<div class="k2-own-t">Идёт само</div>' + growth.routines.map(r=>
+        '<div class="k2-own-i"><i>🔁</i><div><b>'+esc(r.text.length>58?r.text.slice(0,58)+'…':r.text)+'</b>'
+        + '<span>'+esc(r.cap)+' · '+esc(r.when)+'</span></div></div>').join('');
+      box.appendChild(s2);
+    }
+    const s3 = el('div','k2-own-s');
+    s3.innerHTML = '<div class="k2-own-t">Ваш штат · '+hh+'</div>' + growth.hired.map(h=>
+      '<div class="k2-own-i"><i>'+h.e+'</i><div><b>'+esc(h.t)+'</b><span>'+esc(h.now)+'</span></div></div>').join('');
+    box.appendChild(s3);
+    if (growth.know.length){
+      const s4 = el('div','k2-own-s');
+      s4.innerHTML = '<div class="k2-own-t">Помощник знает о вас · '+growth.know.length+'</div>'
+        + growth.know.slice(0,3).map(k=>'<div class="k2-own-i"><i>•</i><div><b>'+esc(k.k)+': '+esc(k.v)+'</b><span>'+esc(k.from)+'</span></div></div>').join('');
+      box.appendChild(s4);
+    }
+    return box;
   }
 
   function paintFeed(m){
@@ -3130,6 +3220,16 @@
     paintFeed({role:'user', text:text});
 
     // группа собралась — её видно до того, как она начала работать
+    // помощник вспоминает раньше, чем группа начинает работать
+    const key = taskKey(text, d);
+    const prev = seenBefore(key);
+    const memo = growth.themes[key] || {};
+    if (hasAssist() && prev >= 1){
+      fd.appendChild(assistRow(
+        prev === 1 ? 'Это уже второй раз по этой теме.' : ('Это ' + (prev+1) + '-й раз по этой теме.'),
+        memo.denied ? ('в прошлый раз упёрлись в границу: ' + memo.denied + ' — сразу запрошу санкцию')
+                    : (memo.cap ? ('в прошлый раз это делал ' + memo.cap + ' — отдаю ему же') : null)));
+    }
     const crew = el('div','k2-crew');
     crew.innerHTML = '<div class="k2-crew-h">над задачей работают ' + party.length + '</div>'
       + '<div class="k2-crew-row">' + party.map(c=>'<span class="k2-crew-a"><i>'+c.e+'</i>'+esc(c.t)+'</span>').join('') + '</div>';
@@ -3173,7 +3273,9 @@
         + (risky ? '<button class="k2-tag act" id="tEsc">Запросить санкцию</button>' : '') + '</div>';
       p.innerHTML = html;
       fd.appendChild(p);
-      $('#tOk').onclick = ()=> acceptTask(text, lead, p);
+      markSeen(key, { cap: lead.t, denied: risky ? (rule || 'нужна санкция') : (memo.denied||null) });
+      saveGrowth();
+      $('#tOk').onclick = ()=> acceptTask(text, lead, p, key, prev);
       $('#tNo').onclick = ()=>{ growth.returned++;
         const m={role:'done', verdict:'back', title:'Вернул на доработку', prov:'учту в следующий раз'};
         growth.feed.push(m); saveGrowth(); p.remove(); paintFeed(m); };
@@ -3186,11 +3288,16 @@
     setTimeout(tick, 320);
   }
 
-  function acceptTask(text, cap, panel){
+  function acceptTask(text, cap, panel, key, prev){
     growth.accepted++;
     const m = {role:'done', verdict:'ok', title:'Принято: '+(text.length>60?text.slice(0,60)+'…':text), prov:'сделал '+cap.t};
     growth.feed.push(m); saveGrowth(); panel.remove(); paintFeed(m);
-    if (growth.hired.some(h=>h.t===cap.t)){ if (hasPulse()) offerCabinet(); return; }
+    // задача повторилась и исполнитель уже в штате — снимаем её с человека совсем
+    if (growth.hired.some(h=>h.t===cap.t)){
+      if (key && prev >= 1 && !growth.routines.some(r=>r.key===key)){ offerRoutine(text, cap, key); return; }
+      if (hasPulse()) offerCabinet();
+      return;
+    }
     const fd=$('#chatFeed');
     const o = el('div','k2-panel'); o.style.borderColor='var(--k-gold)';
     o.innerHTML = '<div class="k2-item"><div class="e">'+cap.e+'</div><div style="flex:1">'
@@ -3202,10 +3309,39 @@
     $('#hireY').onclick = ()=>{
       growth.hired.push({ e:cap.e, t:cap.t, now:cap.now });
       learn('Взял в штат', cap.t, 'после принятой работы');
+      const first = growth.hired.length === 1;
       saveGrowth(); cabToast('✓ «'+cap.t+'» теперь в вашем штате — слева');
-      renderChat(); if (hasPulse()) setTimeout(offerCabinet, 500);
+      renderChat();
+      const fd2 = $('#chatFeed');
+      if (first && fd2) fd2.appendChild(assistRow(
+        'Теперь у вас есть штат — я его веду.',
+        'Я помню, чем кончилась каждая задача, и не буду спрашивать дважды.'));
+      if (hasPulse()) setTimeout(offerCabinet, 500);
     };
     $('#hireN').onclick = ()=> o.remove();
+  }
+
+
+  function offerRoutine(text, cap, key){
+    const fd = $('#chatFeed'); if (!fd) return;
+    const o = el('div','k2-panel'); o.style.borderColor='var(--k-gold)';
+    o.innerHTML = '<div class="k2-item"><div class="e">🔁</div><div style="flex:1">'
+      + '<div class="b">Вы просите это не в первый раз</div>'
+      + '<div class="m">' + esc(cap.t) + ' может делать это сам по расписанию — вам останется только смотреть результат.</div></div></div>'
+      + '<div style="display:flex;gap:8px;margin-top:10px"><button class="k2-btn" id="rtY">Пусть делает сам</button>'
+      + '<button class="k2-tag act" id="rtN">Пока нет</button></div>';
+    fd.appendChild(o);
+    $('#rtY').onclick = ()=>{
+      addRoutine(text, cap.t, key);
+      k2Audit('Задача стала регулярной', text + ' · ' + cap.t, 'ok');
+      cabToast('✓ ' + cap.t + ' будет делать это сам');
+      renderChat();
+      const fd2 = $('#chatFeed');
+      if (fd2) fd2.appendChild(assistRow(
+        'Готово — снял это с вас. Первый прогон уже сделал, он вверху в «Сделано без вас».',
+        'дальше по расписанию: пн 08:00'));
+    };
+    $('#rtN').onclick = ()=> o.remove();
   }
 
   function offerCabinet(){
