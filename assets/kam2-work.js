@@ -230,4 +230,191 @@
     ledgerLoad: ledgerLoad, pay: pay,
     orgRemember: orgRemember, orgRecall: orgRecall, orgLoad: orgLoad,
   };
+
+  /* ======================= ЧУЖОЙ ФАЙЛ ======================================
+     Самое дорогое в корпоративном ИИ — не модель, а сопоставление колонок.
+     Обычно это неделя настройки на каждый источник. Здесь структура таблицы
+     определяется ПО СОДЕРЖИМОМУ, а не по названиям колонок: где бы что ни
+     лежало и как бы ни называлось, документ, дата и сумма находятся сами.
+     Работает на выгрузке из 1С, Excel, ERP — потому что не знает про них
+     ничего, кроме того, что видит в ячейках.
+     ====================================================================== */
+
+  const DATE_RE = /^\s*(\d{1,2})[.\-\/](\d{1,2})(?:[.\-\/](\d{2,4}))?\s*$/;
+  const DOC_RE  = /[A-Za-zА-Яа-яЁё]{1,6}[\s-]?№?\s?\d{2,}|^\d{4,}$/;
+
+  function sniffSep(text) {
+    const head = text.split(/\r?\n/).slice(0, 5).join('\n');
+    const cand = [';', '\t', ',', '|'];
+    let best = ';', bestN = 0;
+    cand.forEach(c => {
+      const n = head.split(c).length - 1;
+      if (n > bestN) { bestN = n; best = c; }
+    });
+    return best;
+  }
+
+  function parseNum(v) {
+    if (v == null) return null;
+    let x = String(v).replace(/\u00a0/g, ' ').trim();
+    if (!x || !/\d/.test(x)) return null;
+    if (!/^[-+\s\d.,]+$/.test(x)) return null;
+    x = x.replace(/\s/g, '');
+    const lastC = x.lastIndexOf(','), lastD = x.lastIndexOf('.');
+    if (lastC > -1 && lastD > -1) {
+      if (lastC > lastD) x = x.replace(/\./g, '').replace(',', '.');
+      else x = x.replace(/,/g, '');
+    } else if (lastC > -1) {
+      x = (x.length - lastC - 1) === 3 ? x.replace(/,/g, '') : x.replace(',', '.');
+    } else if (lastD > -1) {
+      if ((x.length - lastD - 1) === 3 && x.split('.').length > 2) x = x.replace(/\./g, '');
+    }
+    const n = parseFloat(x);
+    return isNaN(n) ? null : n;
+  }
+
+  function splitLine(line, sep) {
+    const out = []; let cur = '', q = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { if (q && line[i + 1] === '"') { cur += '"'; i++; } else q = !q; continue; }
+      if (c === sep && !q) { out.push(cur); cur = ''; continue; }
+      cur += c;
+    }
+    out.push(cur);
+    return out.map(x => x.replace(/\u00a0/g, ' ').trim());
+  }
+
+  /** Разбор таблицы + определение смысла колонок по содержимому. */
+  function parseTable(text) {
+    text = String(text).replace(/^\uFEFF/, '');
+    const sep = sniffSep(text);
+    const lines = text.split(/\r?\n/).filter(l => l.trim().length);
+    if (lines.length < 2) return { ok: false, why: 'в файле меньше двух строк' };
+    const grid = lines.map(l => splitLine(l, sep));
+    const width = Math.max.apply(null, grid.map(r => r.length));
+    if (width < 2) return { ok: false, why: 'не вижу колонок — проверьте разделитель' };
+
+    // шапка — если в первой строке почти нет чисел, а ниже они есть
+    const numShare = r => r.filter(c => parseNum(c) != null).length / Math.max(1, r.length);
+    const hasHeader = numShare(grid[0]) < 0.34 && grid.length > 1 && numShare(grid[1]) >= numShare(grid[0]);
+    const headers = hasHeader ? grid[0] : grid[0].map((_, i) => 'колонка ' + (i + 1));
+    const rows = (hasHeader ? grid.slice(1) : grid).filter(r => r.join('').trim().length);
+
+    // профиль каждой колонки — только по данным
+    const prof = [];
+    for (let c = 0; c < width; c++) {
+      const vals = rows.map(r => (r[c] == null ? '' : r[c]));
+      const nonEmpty = vals.filter(v => v !== '');
+      const nums = nonEmpty.filter(v => parseNum(v) != null);
+      const dates = nonEmpty.filter(v => DATE_RE.test(v));
+      const docs = nonEmpty.filter(v => DOC_RE.test(v));
+      const uniq = new Set(nonEmpty.map(v => v.toLowerCase())).size;
+      const parsed = nums.map(parseNum);
+      prof.push({
+        i: c, header: headers[c] || '',
+        fill: nonEmpty.length / Math.max(1, rows.length),
+        numShare: nonEmpty.length ? nums.length / nonEmpty.length : 0,
+        dateShare: nonEmpty.length ? dates.length / nonEmpty.length : 0,
+        docShare: nonEmpty.length ? docs.length / nonEmpty.length : 0,
+        uniqShare: nonEmpty.length ? uniq / nonEmpty.length : 0,
+        avgAbs: parsed.length ? parsed.reduce((a, b) => a + Math.abs(b), 0) / parsed.length : 0,
+        decShare: nonEmpty.length ? nonEmpty.filter(v => /[.,]\d{1,2}\s*$/.test(v)).length / nonEmpty.length : 0,
+      });
+    }
+
+    const pick = (score, exclude) => {
+      let best = null, bs = -1;
+      prof.forEach(c => {
+        if (exclude && exclude.indexOf(c.i) >= 0) return;
+        const v = score(c);
+        if (v > bs) { bs = v; best = c; }
+      });
+      return bs > 0 ? best : null;
+    };
+    const dateCol = pick(c => c.dateShare > 0.6 ? c.dateShare : 0);
+    const sumCol = pick(c => {
+      if (c.numShare < 0.7 || c.fill < 0.5) return 0;
+      if (dateCol && c.i === dateCol.i) return 0;
+      // деньги — это большие числа и/или копейки, а не порядковые номера
+      return c.numShare + c.decShare * 1.5 + Math.min(1, Math.log10(1 + c.avgAbs) / 5);
+    }, dateCol ? [dateCol.i] : []);
+    const docCol = pick(c => {
+      if (c.uniqShare < 0.5 || c.fill < 0.6) return 0;
+      if ((dateCol && c.i === dateCol.i) || (sumCol && c.i === sumCol.i)) return 0;
+      return c.docShare * 2 + c.uniqShare;
+    }, [dateCol && dateCol.i, sumCol && sumCol.i].filter(x => x != null));
+
+    return {
+      ok: true, sep: sep, hasHeader: hasHeader, headers: headers, rows: rows,
+      cols: { doc: docCol ? docCol.i : null, date: dateCol ? dateCol.i : null, sum: sumCol ? sumCol.i : null },
+      profile: prof,
+      count: rows.length,
+      total: sumCol ? +rows.reduce((a, r) => a + (parseNum(r[sumCol.i]) || 0), 0).toFixed(2) : null,
+    };
+  }
+
+  const asRec = (t) => t.rows.map((r, i) => ({
+    doc: t.cols.doc != null ? String(r[t.cols.doc] || '').trim() : ('строка ' + (i + 1)),
+    date: t.cols.date != null ? String(r[t.cols.date] || '').trim() : '',
+    sum: t.cols.sum != null ? (parseNum(r[t.cols.sum]) || 0) : 0,
+  }));
+
+  /** Сверка ДВУХ загруженных таблиц — тем же алгоритмом, что и демо-данные. */
+  function reconcileFiles(tA, tB) {
+    const a = asRec(tA), b = asRec(tB);
+    const res = reconcile(a, b);
+    res.fromFiles = true;
+    return res;
+  }
+
+  /** Анализ ОДНОЙ таблицы: дубли, пропуски в нумерации, выбросы по сумме. */
+  function analyzeOne(t) {
+    const rec = asRec(t);
+    const issues = [];
+    const seen = {};
+    rec.forEach(r => { if (r.doc) seen[r.doc] = (seen[r.doc] || 0) + 1; });
+    Object.keys(seen).forEach(d => {
+      if (seen[d] > 1) {
+        const r = rec.find(x => x.doc === d);
+        issues.push({ kind: 'dup', doc: d, text: 'документ встречается ' + seen[d] + ' раза', delta: r ? r.sum : 0 });
+      }
+    });
+    // Выброс ищем по медиане и MAD, а не по среднему: одно аномальное значение
+    // само раздувает среднее и стандартное отклонение — и перестаёт быть аномалией.
+    const sums = rec.map(r => r.sum).filter(x => x);
+    if (sums.length > 4) {
+      const srt = sums.slice().sort((x, y) => x - y);
+      const med = arr => arr.length % 2 ? arr[(arr.length - 1) / 2] : (arr[arr.length / 2 - 1] + arr[arr.length / 2]) / 2;
+      const m = med(srt);
+      const mad = med(sums.map(x => Math.abs(x - m)).sort((x, y) => x - y));
+      const scale = mad > 0 ? mad * 1.4826 : 0;
+      if (scale > 0) rec.forEach(r => {
+        if (r.sum && Math.abs(r.sum - m) > 5 * scale) {
+          issues.push({ kind: 'outlier', doc: r.doc,
+            text: 'сумма резко выбивается из ряда (обычно около ' + money(+m.toFixed(2)) + ')', delta: r.sum });
+        }
+      });
+    }
+    const nums = rec.map(r => (String(r.doc).match(/(\d+)\s*$/) || [])[1]).filter(Boolean).map(Number).sort((x, y) => x - y);
+    if (nums.length > 3) {
+      const gaps = [];
+      for (let i = 1; i < nums.length; i++) {
+        const d = nums[i] - nums[i - 1];
+        if (d > 1 && d <= 20) for (let k = nums[i - 1] + 1; k < nums[i]; k++) gaps.push(k);
+      }
+      if (gaps.length && gaps.length <= 12) {
+        issues.push({ kind: 'gap', doc: '№ ' + gaps.slice(0, 6).join(', ') + (gaps.length > 6 ? '…' : ''), text: 'пропуски в нумерации: ' + gaps.length + ' шт.', delta: 0 });
+      }
+    }
+    const empties = rec.filter(r => !r.sum).length;
+    if (empties) issues.push({ kind: 'empty', doc: '—', text: empties + ' ' + (empties === 1 ? 'строка без суммы' : 'строк без суммы'), delta: 0 });
+    return { rows: rec.length, total: t.total, issues: issues.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)) };
+  }
+
+  root.__K2WORK.parseTable = parseTable;
+  root.__K2WORK.reconcileFiles = reconcileFiles;
+  root.__K2WORK.analyzeOne = analyzeOne;
+  root.__K2WORK.parseNum = parseNum;
+
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -3079,11 +3079,161 @@
       +".k2-wr-i em{font-style:normal;color:var(--k-dim);font-variant-numeric:tabular-nums}"
       +".k2-wr-a{display:flex;align-items:center;gap:10px;margin-top:2px}"
       +".k2-wr-n{font-size:11.5px;color:var(--k-dim)}"
+      +".k2-wr-h.ok b{color:var(--k-gold)}"
+      +".k2-drop{border:1px dashed rgba(255,255,255,.22);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:5px;align-items:flex-start;transition:border-color .15s,background-color .15s}"
+      +".k2-drop.on{border-color:var(--k-gold);background:rgba(54,201,148,.07)}"
+      +".k2-drop b{font-size:13.5px}"
+      +".k2-drop span{font-size:12.5px;color:var(--k-dim);max-width:60ch}"
+      +".k2-drop button{margin-top:4px}"
       +"body.k2-chat .app{grid-template-columns:1fr !important}"
       +"body.k2-chat .nav{display:none !important}"
       +"body.k2-chat #cmdBtn,body.k2-chat .tb-right,body.k2-chat2 #cmdBtn,body.k2-chat2 .tb-right{display:none !important}"
       +"body.k2-chat .stage,body.k2-chat2 .stage{padding:0 !important;overflow-y:auto}";
     document.head.appendChild(st);
+  }
+
+
+  /* ---- ЧУЖОЙ ФАЙЛ --------------------------------------------------------
+     Человек приносит свою выгрузку — и Среда работает на ЕГО данных, без
+     настройки, без сопоставления колонок, без интеграции. Структура таблицы
+     определяется по содержимому ячеек, поэтому годится выгрузка из 1С, Excel
+     или ERP с любыми названиями колонок и в любом порядке. */
+  let pendingTable = null;   // первая таблица ждёт вторую — тогда это сверка
+
+  // 1С часто отдаёт cp1251: сначала UTF-8, при «кракозябрах» — перекодируем
+  function decodeBuf(buf){
+    let txt = new TextDecoder('utf-8').decode(buf);
+    if (txt.indexOf('\uFFFD') >= 0){
+      try { txt = new TextDecoder('windows-1251').decode(buf); } catch(e){}
+    }
+    return txt;
+  }
+
+  function colName(t, i){
+    if (i == null) return null;
+    const h = (t.headers[i]||'').trim();
+    return h && !/^колонка /.test(h) ? h + ' (' + (i+1) + '-я)' : (i+1) + '-я колонка';
+  }
+
+  function tableUnderstood(t, name){
+    const w = W();
+    const box = el('div','k2-work-res');
+    const c = t.cols;
+    box.innerHTML = '<div class="k2-wr-h"><b>Разобрал ' + esc(name) + '</b>'
+      + '<span>' + t.count + ' ' + plural(t.count,'строка','строки','строк')
+      + ' · разделитель «' + (t.sep === '\t' ? 'таб' : t.sep) + '»'
+      + ' · шапка ' + (t.hasHeader ? 'есть' : 'не найдена — не нужна') + '</span></div>'
+      + '<div class="k2-wr-t">Понял без настройки, по содержимому:</div>'
+      + '<div class="k2-wr-i"><b>документ</b><span>' + esc(colName(t, c.doc) || 'не нашёл — сверю по порядку строк') + '</span><em></em></div>'
+      + '<div class="k2-wr-i"><b>дата</b><span>' + esc(colName(t, c.date) || 'нет в файле') + '</span><em></em></div>'
+      + '<div class="k2-wr-i"><b>сумма</b><span>' + esc(colName(t, c.sum) || 'не нашёл') + '</span><em>'
+      + (t.total != null ? w.money(t.total) + ' ₽' : '') + '</em></div>';
+    return box;
+  }
+
+  function issuesBlock(title, sub, issues, csvMaker, fileName){
+    const w = W();
+    const box = el('div','k2-work-res');
+    box.innerHTML = '<div class="k2-wr-h' + (issues.length ? '' : ' ok') + '"><b>' + esc(title) + '</b><span>' + esc(sub) + '</span></div>'
+      + (issues.length
+          ? issues.map(i=>'<div class="k2-wr-i"><b>'+esc(i.doc)+'</b><span>'+esc(i.text)+'</span><em>'
+              + (i.delta ? w.money(Math.abs(i.delta)) + ' ₽' : '—') + '</em></div>').join('')
+          : '<div class="k2-wr-t">Расхождений не нашёл — данные сходятся.</div>')
+      + (issues.length ? '<div class="k2-wr-a"><button class="k2-btn" id="dlUser">Скачать разбор</button>'
+          + '<span class="k2-wr-n">CSV · открывается в Excel</span></div>' : '');
+    setTimeout(()=>{
+      const b = $('#dlUser'); if(!b || !csvMaker) return;
+      b.onclick = ()=>{
+        const blob = new Blob([csvMaker()], {type:'text/csv;charset=utf-8'});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = fileName || 'разбор.csv'; document.body.appendChild(a); a.click(); a.remove();
+        w.chainAdd('Выгружен разбор файла', title + ' · ' + issues.length + ' находок', 'ok');
+        cabToast('✓ Файл сохранён');
+      };
+    }, 30);
+    return box;
+  }
+
+  function userCsv(issues, head){
+    const rows = [['документ','тип','описание','влияние, ₽']];
+    issues.forEach(i=> rows.push([i.doc, i.kind, i.text, String(i.delta).replace('.',',')]));
+    return '\uFEFF' + [head].concat(rows.map(r=>r.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(';'))).join('\r\n');
+  }
+
+  function handleFiles(list){
+    const w = W(); if (!w || !list || !list.length) return;
+    const fd = $('#chatFeed'); if (!fd) return;
+    const files = [].slice.call(list).filter(f=>/\.(csv|txt|tsv)$/i.test(f.name)).slice(0,2);
+    if (!files.length){
+      fd.appendChild(assistRow('Пока читаю только CSV, TSV и TXT.',
+        'В 1С и Excel: «Сохранить как» → CSV. xlsx — это архив, его разберём на пилоте.'));
+      return;
+    }
+    let done = 0; const tables = [];
+    files.forEach((file, idx)=>{
+      const rd = new FileReader();
+      rd.onload = ()=>{
+        const txt = decodeBuf(rd.result);
+        const t = w.parseTable(txt);
+        tables[idx] = { t:t, name:file.name };
+        if (++done === files.length) finish();
+      };
+      rd.onerror = ()=>{ if (++done === files.length) finish(); };
+      rd.readAsArrayBuffer(file);
+    });
+
+    function finish(){
+      const good = tables.filter(x=>x && x.t && x.t.ok);
+      if (!good.length){
+        fd.appendChild(assistRow('Файл не похож на таблицу.', (tables[0] && tables[0].t && tables[0].t.why) || ''));
+        return;
+      }
+      good.forEach(g=> fd.appendChild(tableUnderstood(g.t, g.name)));
+      w.chainAdd('Загружена выгрузка', good.map(g=>g.name + ' · ' + g.t.count + ' строк').join(' | '), 'ok');
+
+      if (good.length === 2){
+        const r = w.reconcileFiles(good[0].t, good[1].t);
+        fd.appendChild(issuesBlock('Сверка ваших файлов',
+          good[0].name + ' против ' + good[1].name + ' · расхождение ' + w.money(r.diff) + ' ₽',
+          r.issues, ()=> w.reconCsv(r), 'сверка.csv'));
+        pendingTable = null;
+      } else if (pendingTable){
+        const r = w.reconcileFiles(pendingTable.t, good[0].t);
+        fd.appendChild(issuesBlock('Сверка ваших файлов',
+          pendingTable.name + ' против ' + good[0].name + ' · расхождение ' + w.money(r.diff) + ' ₽',
+          r.issues, ()=> w.reconCsv(r), 'сверка.csv'));
+        pendingTable = null;
+      } else {
+        const a = w.analyzeOne(good[0].t);
+        fd.appendChild(issuesBlock('Разбор ' + good[0].name,
+          a.rows + ' ' + plural(a.rows,'строка','строки','строк') + (a.total!=null ? ' на ' + w.money(a.total) + ' ₽' : ''),
+          a.issues, ()=> userCsv(a.issues, ['файл', good[0].name]), 'разбор.csv'));
+        pendingTable = good[0];
+        fd.appendChild(assistRow('Бросьте вторую выгрузку — сверю их между собой.',
+          'например, ваш реестр против акта поставщика'));
+      }
+      if (typeof growth === 'object' && growth){
+        learn('Приносит выгрузки', good.map(g=>g.name).join(', '), 'загружено в чат');
+        saveGrowth();
+      }
+      fd.scrollTop = fd.scrollHeight;
+    }
+  }
+
+  function dropZone(){
+    const z = el('div','k2-drop');
+    z.innerHTML = '<b>Перетащите сюда свою выгрузку</b>'
+      + '<span>CSV из 1С, Excel или ERP. Настраивать нечего: колонки определю сам — по содержимому, а не по названиям.</span>'
+      + '<input type="file" id="k2File" accept=".csv,.txt,.tsv" multiple hidden><button class="k2-tag act" id="k2Pick">выбрать файл</button>';
+    const stop = e=>{ e.preventDefault(); e.stopPropagation(); };
+    ['dragenter','dragover'].forEach(ev=> z.addEventListener(ev, e=>{ stop(e); z.classList.add('on'); }));
+    ['dragleave','drop'].forEach(ev=> z.addEventListener(ev, e=>{ stop(e); z.classList.remove('on'); }));
+    z.addEventListener('drop', e=> handleFiles(e.dataTransfer && e.dataTransfer.files));
+    setTimeout(()=>{
+      const inp = $('#k2File'), btn = $('#k2Pick');
+      if (btn && inp){ btn.onclick = ()=> inp.click(); inp.onchange = ()=> handleFiles(inp.files); }
+    }, 20);
+    return z;
   }
 
   function renderChat(){
@@ -3116,7 +3266,13 @@
       + (growth.know.length && !hasOwnPulse() ? 'Среда знает о вас: <b>'+growth.know.length+'</b> '+plural(growth.know.length,'факт','факта','фактов')
           +' · <span class="k2-lnk" id="knowOpen">посмотреть</span> · ' : '')
       + '<span class="k2-lnk" id="goSurvey">узнать меня за 2 минуты</span></div>';
+    const dz = document.createElement('div'); dz.id='dropHost';
+    wrap.appendChild(dz);
     stage.innerHTML=''; stage.appendChild(wrap);
+    $('#dropHost').appendChild(dropZone());
+    // бросить файл можно куда угодно на экран
+    ['dragover','drop'].forEach(ev=> stage.addEventListener(ev, e=>{ e.preventDefault();
+      if (ev==='drop' && e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); }));
     if (hasOwnPulse()) $('#ownPulse').appendChild(ownPulse());
     growth.feed.forEach(m=> paintFeed(m));
     const inp = $('#chatIn');
